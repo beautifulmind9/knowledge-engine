@@ -40,4 +40,8 @@
 - What evidence supports it?
 - What assumptions are being used?
 - What stakeholders are affected?
+<<<<<<< HEAD
 - What decision or recommendation follows?
+=======
+- What decision or recommendation follows?
+>>>>>>> a2c83ff (Organize documentation into docs folder)

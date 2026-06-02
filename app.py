@@ -115,6 +115,86 @@ def unique_list(items):
     return clean_items
 
 
+def infer_audience_problem(situation, goal, audience, constraints, problem_names):
+    combined_text = " ".join(
+        [
+            situation,
+            goal,
+            audience,
+            constraints
+        ]
+    ).lower()
+
+    if "ovara" in combined_text or "caribbean" in combined_text or "market" in combined_text:
+        return (
+            "People interested in Caribbean markets often face scattered, technical, "
+            "and hard-to-use information, making it difficult to understand what matters "
+            "and make clearer decisions."
+        )
+
+    if "linkedin" in combined_text or "post" in combined_text or "content" in combined_text:
+        return (
+            "The audience may scroll past the message unless the core idea is clear, "
+            "concrete, and immediately relevant."
+        )
+
+    if "website" in combined_text or "landing page" in combined_text:
+        return (
+            "Visitors may not quickly understand what the product does, who it is for, "
+            "or why it matters."
+        )
+
+    if "friend" in combined_text or "message" in combined_text or "ask" in combined_text:
+        return (
+            "The reader may not understand the seriousness of the situation or the specific "
+            "kind of help being requested."
+        )
+
+    if problem_names:
+        return problem_names[0]
+
+    return "The audience may not immediately understand why this matters."
+
+
+def build_draft_starter(situation, goal, audience, constraints):
+    combined_text = " ".join(
+        [
+            situation,
+            goal,
+            audience,
+            constraints
+        ]
+    ).lower()
+
+    if "ovara" in combined_text:
+        return (
+            "Caribbean market information is often scattered, technical, and hard to turn into decisions. "
+            "Ovara helps make that information clearer, more organized, and easier to act on."
+        )
+
+    if "linkedin" in combined_text or "post" in combined_text:
+        return (
+            "The clearest messages do not try to say everything at once. "
+            "They lead with the one idea the audience needs to understand first."
+        )
+
+    if "website" in combined_text or "landing page" in combined_text:
+        return (
+            "A visitor should not have to work hard to understand what this is, who it helps, "
+            "and why it matters."
+        )
+
+    if "friend" in combined_text or "ask" in combined_text:
+        return (
+            "I need to be honest about where I am right now, and I am asking because I trust you."
+        )
+
+    return (
+        "Most people do not need more information. "
+        "They need a clearer way to understand what the information means and what they can do with it."
+    )
+
+
 def build_writing_brief(situation, goal, audience, constraints, related_concepts, related_problems, matched_items):
     concept_names = [
         concept.get("name", "")
@@ -165,12 +245,13 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
     if not core_message:
         core_message = situation.strip()
 
-    audience_problem = ""
-
-    if problem_names:
-        audience_problem = problem_names[0]
-    else:
-        audience_problem = "The audience may not immediately understand why this matters."
+    audience_problem = infer_audience_problem(
+        situation=situation,
+        goal=goal,
+        audience=audience,
+        constraints=constraints,
+        problem_names=problem_names
+    )
 
     writing_rules = unique_list(
         [
@@ -204,18 +285,12 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
         ]
     )[:5]
 
-    draft_starter = (
-        "Most people do not need more information. "
-        "They need a clearer way to understand what the information means and what they can do with it."
+    draft_starter = build_draft_starter(
+        situation=situation,
+        goal=goal,
+        audience=audience,
+        constraints=constraints
     )
-
-    combined_text = " ".join([situation, goal, audience, constraints]).lower()
-
-    if "ovara" in combined_text:
-        draft_starter = (
-            "Caribbean market information is often scattered, technical, and hard to turn into decisions. "
-            "Ovara helps make that information clearer, more organized, and easier to act on."
-        )
 
     return {
         "core_message": core_message,
@@ -228,6 +303,7 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
         "draft_starter": draft_starter,
         "revision_checklist": [
             "Is the core message clear in the first sentence?",
+            "Is the audience problem specific rather than generic?",
             "Is the language concrete rather than abstract?",
             "Does the audience understand why this matters?",
             "Is there one main point instead of too many competing points?",

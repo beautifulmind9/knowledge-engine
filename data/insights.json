@@ -1,0 +1,2696 @@
+[
+  {
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_001.txt",
+    "chapter_or_section": "Introduction - What Sticks?",
+    "concept_ids": [
+      "concept_001"
+    ],
+    "problem_ids": [
+      "problem_001"
+    ],
+    "title": "Stories make ideas easier to remember and retell",
+    "knowledge_type": "Principle",
+    "what_it_says": "Stories are easier to understand, remember, and retell than abstract explanations.",
+    "how_to_apply": [
+      "Use a concrete situation.",
+      "Create a clear sequence of events.",
+      "Include memorable details.",
+      "Make the outcome easy to retell."
+    ],
+    "examples": [
+      "The Kidney Heist urban legend."
+    ],
+    "when_to_use": [
+      "When explaining an idea people need to remember.",
+      "When trying to make information easier to retell.",
+      "When communicating with a broad audience."
+    ],
+    "when_not_to_use": [
+      "When precision matters more than memorability.",
+      "When a technical specification is required."
+    ],
+    "tradeoffs": [
+      "Stories improve recall but may simplify complex ideas."
+    ],
+    "keywords": [
+      "storytelling",
+      "memory",
+      "communication",
+      "retelling"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 3,
+    "evidence": "The Kidney Heist is a story that sticks. We understand it, we remember it, and we can retell it later.",
+    "extraction_date": "2026-05-31",
+    "id": "insight_001"
+  },
+  {
+    "id": "insight_003",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_009.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_002"
+    ],
+    "problem_ids": [
+      "problem_002"
+    ],
+    "title": "Use intent instead of detailed plans",
+    "knowledge_type": "principle",
+    "what_it_says": "In complex and unpredictable situations, detailed plans quickly become obsolete. A clear statement of intent allows people to adapt while remaining aligned with the desired outcome.",
+    "why_it_matters": "Teams can respond to changing conditions without waiting for new instructions.",
+    "examples_from_source": [
+      {
+        "example_name": "Military Commander's Intent",
+        "what_happened": "Army leaders replaced rigid plans with concise statements describing the desired end state.",
+        "why_it_matters": "Soldiers could improvise when circumstances changed.",
+        "concept_demonstrated": "Commander's Intent",
+        "transferable_lesson": "Communicate outcomes rather than prescribing every action."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "State the desired outcome rather than every step.",
+        "condition": "When operating in uncertain environments.",
+        "action": "Communicate intent and allow local adaptation.",
+        "rationale": "Unexpected events will invalidate detailed plans."
+      }
+    ],
+    "patterns": [],
+    "warnings": [
+      {
+        "warning": "Overly detailed plans become obsolete.",
+        "consequence": "People cannot adapt effectively.",
+        "prevention": "Define intent and empower execution."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Intent-Based Leadership",
+        "when_to_use": "When teams face uncertainty.",
+        "steps": [
+          "Define desired outcome",
+          "Communicate intent",
+          "Allow local decisions",
+          "Measure against outcome"
+        ],
+        "adaptation_notes": "Works in business, education, product development, and military operations."
+      }
+    ],
+    "when_to_use": [
+      "Complex environments",
+      "Rapid change",
+      "Decentralized teams"
+    ],
+    "when_not_to_use": [
+      "Highly predictable repetitive tasks"
+    ],
+    "tradeoffs": [
+      "Less control over specific actions in exchange for greater adaptability."
+    ],
+    "keywords": [
+      "intent",
+      "adaptability",
+      "leadership"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "You can lose the ability to execute the original plan, but you never lose the responsibility of executing the intent.",
+    "extraction_date": "2026-05-31"
+  },
+  {
+    "id": "insight_004",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_009.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_003"
+    ],
+    "problem_ids": [
+      "problem_003",
+      "problem_001"
+    ],
+    "title": "Simplicity comes from identifying the core",
+    "knowledge_type": "principle",
+    "what_it_says": "Making ideas stick requires identifying the single most important idea and removing competing messages.",
+    "why_it_matters": "People remember and act on focused ideas more effectively.",
+    "examples_from_source": [
+      {
+        "example_name": "Commander's Intent as a single objective",
+        "what_happened": "Military leaders identify one overriding objective.",
+        "why_it_matters": "Everyone can align around the same goal.",
+        "concept_demonstrated": "Finding the Core",
+        "transferable_lesson": "Choose one primary message."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Prioritize one core message.",
+        "condition": "When communicating an idea.",
+        "action": "Remove secondary messages that compete with the main point.",
+        "rationale": "People cannot focus on several 'most important' ideas simultaneously."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core Extraction",
+        "description": "Reduce information until only the essential idea remains.",
+        "steps": [
+          "List important ideas",
+          "Rank them",
+          "Select the most important",
+          "Remove competing priorities"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Too many priorities dilute the message.",
+        "consequence": "People struggle to remember or act.",
+        "prevention": "Choose one core objective."
+      }
+    ],
+    "application_patterns": [],
+    "when_to_use": [
+      "Strategy communication",
+      "Marketing",
+      "Teaching",
+      "Leadership"
+    ],
+    "when_not_to_use": [
+      "When detailed technical reference material is required"
+    ],
+    "tradeoffs": [
+      "Some nuance is sacrificed for clarity."
+    ],
+    "keywords": [
+      "simplicity",
+      "focus",
+      "core message"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "You can't have five most important goals.",
+    "extraction_date": "2026-05-31"
+  },
+  {
+    "id": "insight_005",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_002"
+    ],
+    "problem_ids": [
+      "problem_004"
+    ],
+    "title": "A simple core principle can coordinate complex organizations",
+    "knowledge_type": "principle",
+    "what_it_says": "Organizations can align thousands of decisions by establishing a simple core idea that employees use as a decision filter.",
+    "why_it_matters": "People can act independently while remaining aligned with organizational goals, reducing the need for detailed rules and oversight.",
+    "examples_from_source": [
+      {
+        "example_name": "Southwest Airlines Low-Fare Airline",
+        "what_happened": "Herb Kelleher instructed employees to evaluate decisions by asking whether they helped Southwest remain the low-fare airline.",
+        "why_it_matters": "The principle enabled employees to make decisions without needing executive approval.",
+        "concept_demonstrated": "Commander's Intent",
+        "transferable_lesson": "Create a simple decision filter that employees can apply to everyday choices."
+      },
+      {
+        "example_name": "Chicken Caesar Salad Proposal",
+        "what_happened": "A proposed menu addition was evaluated against Southwest's low-fare mission.",
+        "why_it_matters": "The idea was rejected because it did not support the core objective.",
+        "concept_demonstrated": "Decision Filtering",
+        "transferable_lesson": "Evaluate new initiatives based on whether they advance the primary objective."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Test decisions against the core mission.",
+        "condition": "When evaluating a new initiative or request.",
+        "action": "Ask whether it directly supports the organization's primary objective.",
+        "rationale": "Resources should reinforce the central strategic goal."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core Principle Decision Filter",
+        "description": "Use a simple organizational principle to guide decentralized decisions.",
+        "steps": [
+          "Define the core objective.",
+          "Communicate it broadly.",
+          "Evaluate decisions against it.",
+          "Reject actions that conflict with it."
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Do not confuse simplicity with dumbing down.",
+        "consequence": "Important strategic clarity may be replaced with oversimplification.",
+        "prevention": "Focus on prioritization and elegance rather than reducing complexity for its own sake."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Mission-Based Decision Making",
+        "when_to_use": "When coordinating teams or scaling decision-making.",
+        "steps": [
+          "Define a single core mission.",
+          "Translate it into a decision question.",
+          "Train people to use the question independently."
+        ],
+        "adaptation_notes": "The mission should be specific enough to eliminate ambiguity."
+      }
+    ],
+    "when_to_use": [
+      "Scaling organizations",
+      "Creating alignment",
+      "Reducing decision bottlenecks"
+    ],
+    "when_not_to_use": [
+      "Situations requiring highly detailed procedural instructions"
+    ],
+    "tradeoffs": [
+      "Simple principles improve speed but may not capture every nuance."
+    ],
+    "keywords": [
+      "commander's intent",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "decision making"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "\"We are THE low-fare airline.\"",
+    "extraction_date": "2026-05-31"
+  },
+  {
+    "id": "insight_006",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_004",
+      "concept_005"
+    ],
+    "problem_ids": [
+      "problem_005"
+    ],
+    "title": "Communicate the most important idea first",
+    "knowledge_type": "communication principle",
+    "what_it_says": "Effective communication starts with the most important information and organizes supporting details afterward.",
+    "why_it_matters": "Audiences receive the key message even if they stop reading or listening before the end.",
+    "examples_from_source": [
+      {
+        "example_name": "Journalistic Lead",
+        "what_happened": "News stories begin with the most important information in the lead.",
+        "why_it_matters": "Readers quickly understand the core message.",
+        "concept_demonstrated": "Core Message Prioritization",
+        "transferable_lesson": "Lead with the central idea before providing context."
+      },
+      {
+        "example_name": "Inverted Pyramid",
+        "what_happened": "Information is organized from most important to least important.",
+        "why_it_matters": "Readers retain critical information regardless of how much they consume.",
+        "concept_demonstrated": "Inverted Pyramid Structure",
+        "transferable_lesson": "Structure communication according to importance."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Identify the core message before communicating.",
+        "condition": "When writing, presenting, or explaining information.",
+        "action": "Place the most important point first.",
+        "rationale": "Audiences may not consume the entire message."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Inverted Pyramid Communication",
+        "description": "Organize information from highest importance to lowest importance.",
+        "steps": [
+          "Identify the key message.",
+          "Place it first.",
+          "Add supporting details.",
+          "Finish with less critical information."
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Avoid burying the lead.",
+        "consequence": "Audiences may miss the most important message.",
+        "prevention": "Determine the central idea before focusing on details."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Lead-First Writing",
+        "when_to_use": "Writing reports, presentations, articles, or executive summaries.",
+        "steps": [
+          "Define the main takeaway.",
+          "State it immediately.",
+          "Provide supporting evidence.",
+          "Add secondary details last."
+        ],
+        "adaptation_notes": "Particularly useful when audience attention is limited."
+      }
+    ],
+    "when_to_use": [
+      "Reports",
+      "Presentations",
+      "Executive communication",
+      "Journalism"
+    ],
+    "when_not_to_use": [
+      "Narratives designed to create suspense"
+    ],
+    "tradeoffs": [
+      "Improves clarity but may reduce dramatic storytelling impact."
+    ],
+    "keywords": [
+      "lead",
+      "communication",
+      "writing",
+      "clarity",
+      "journalism"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "\"The first sentence, called the lead, contains the most essential elements of the story.\"",
+    "extraction_date": "2026-05-31"
+  },
+  {
+    "id": "insight_009",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_002",
+      "concept_006"
+    ],
+    "problem_ids": [
+      "problem_004"
+    ],
+    "title": "A clear commander's intent enables decentralized decision making",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Organizations can coordinate thousands of independent decisions when everyone understands a simple core objective. A concise commander's intent acts as a decision filter that helps employees evaluate opportunities and tradeoffs without requiring constant management oversight.",
+    "why_it_matters": "Teams operate in environments filled with unexpected situations. A clear intent allows people to make aligned decisions even when no explicit rule exists.",
+    "examples_from_source": [
+      {
+        "example_name": "Southwest Airlines Low-Fare Strategy",
+        "what_happened": "Herb Kelleher instructed employees that Southwest was 'THE low-fare airline.' When a proposal was made to serve chicken Caesar salads, the decision was evaluated against whether it strengthened the company's low-fare position.",
+        "why_it_matters": "A single strategic principle provided a consistent way to judge operational decisions.",
+        "concept_demonstrated": "Commander's Intent",
+        "transferable_lesson": "Create a simple strategic statement that employees can use to evaluate new ideas and requests."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Evaluate actions against the core objective.",
+        "condition": "When considering a new initiative, feature, or request.",
+        "action": "Ask whether the proposal directly advances the organization's primary goal.",
+        "rationale": "Resources should support the core strategy rather than create distractions."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core Intent Decision Pattern",
+        "description": "Use a central strategic objective as a filter for decentralized decisions.",
+        "steps": [
+          "Define the core objective.",
+          "Communicate it broadly.",
+          "Evaluate decisions against the objective.",
+          "Approve actions that reinforce the objective.",
+          "Reject actions that weaken or distract from it."
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Multiple competing priorities can weaken decision quality.",
+        "consequence": "Employees may make inconsistent choices and lose strategic alignment.",
+        "prevention": "Keep the primary objective clear and easy to apply."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Organizational Alignment Through Intent",
+        "when_to_use": "When teams must make independent decisions in dynamic environments.",
+        "steps": [
+          "Define the desired end state.",
+          "Express it in simple language.",
+          "Use it as a recurring decision filter.",
+          "Train employees to reference it during tradeoff discussions."
+        ],
+        "adaptation_notes": "Works for companies, projects, products, teams, and leadership situations."
+      }
+    ],
+    "when_to_use": [
+      "strategy communication",
+      "leadership",
+      "organizational alignment",
+      "product decision making"
+    ],
+    "when_not_to_use": [
+      "situations requiring detailed technical instructions",
+      "highly regulated tasks that require strict procedural compliance"
+    ],
+    "tradeoffs": [
+      "Simple strategic guidance increases flexibility but may omit operational details."
+    ],
+    "keywords": [
+      "commander's intent",
+      "alignment",
+      "strategy",
+      "decision making",
+      "leadership"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "Kelleher's Commander's Intent is 'We are THE low-fare airline.'",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_010",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_003"
+    ],
+    "problem_ids": [
+      "problem_003"
+    ],
+    "title": "Simplicity is prioritization, not simplification",
+    "knowledge_type": "concept",
+    "what_it_says": "Effective simplicity comes from identifying and emphasizing the most important idea rather than reducing complexity through oversimplification or dumbing down.",
+    "why_it_matters": "People often misunderstand simplicity as removing sophistication. The real challenge is deciding what matters most.",
+    "examples_from_source": [
+      {
+        "example_name": "Southwest Core Message",
+        "what_happened": "The company reduced its strategic focus to being 'THE low-fare airline.'",
+        "why_it_matters": "The message remained powerful because it clarified priorities rather than removing complexity.",
+        "concept_demonstrated": "Finding the Core",
+        "transferable_lesson": "Distill communication to the most important priority before adding supporting details."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Prioritize before simplifying.",
+        "condition": "When crafting a message or strategy.",
+        "action": "Identify the single most important idea first.",
+        "rationale": "Clarity emerges from prioritization, not from merely using simpler words."
+      }
+    ],
+    "patterns": [],
+    "warnings": [
+      {
+        "warning": "Confusing simplicity with dumbing down.",
+        "consequence": "Important nuance may be removed without improving clarity.",
+        "prevention": "Focus on identifying the core message rather than reducing intellectual depth."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Core-First Communication",
+        "when_to_use": "When creating messaging, presentations, product narratives, or strategic plans.",
+        "steps": [
+          "Identify the central idea.",
+          "Prioritize it above supporting details.",
+          "Communicate it first.",
+          "Add supporting context afterward."
+        ],
+        "adaptation_notes": "Useful for writing, teaching, marketing, and leadership communication."
+      }
+    ],
+    "when_to_use": [
+      "writing",
+      "storytelling",
+      "product messaging",
+      "leadership communication"
+    ],
+    "when_not_to_use": [
+      "situations where all details carry equal importance"
+    ],
+    "tradeoffs": [
+      "Strong prioritization increases clarity but may leave secondary information unexplored."
+    ],
+    "keywords": [
+      "simplicity",
+      "prioritization",
+      "core message",
+      "clarity"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "They're simple because they reflect the Commander's Intent. It's about elegance and prioritization, not dumbing down.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_011",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt",
+    "chapter_or_section": "Burying the Lead",
+    "concept_ids": [
+      "concept_004",
+      "concept_005"
+    ],
+    "problem_ids": [
+      "problem_005",
+      "problem_006"
+    ],
+    "title": "Lead with the most important information",
+    "knowledge_type": "communication pattern",
+    "what_it_says": "Journalists use the inverted pyramid structure by presenting the most important information first and placing supporting details afterward. This maximizes understanding regardless of how much attention the audience gives the content.",
+    "why_it_matters": "People often stop reading before reaching the end. Presenting the core message first ensures it is received even when attention is limited.",
+    "examples_from_source": [
+      {
+        "example_name": "Inverted Pyramid Journalism",
+        "what_happened": "Journalists place the most important information in the lead and organize subsequent details in decreasing order of importance.",
+        "why_it_matters": "Readers gain the most critical information even if they do not finish the article.",
+        "concept_demonstrated": "Inverted Pyramid Structure",
+        "transferable_lesson": "Place the core message at the beginning of communications."
+      },
+      {
+        "example_name": "Civil War Telegraph Reporting",
+        "what_happened": "Reporters transmitted the most important information first because communication lines could be interrupted at any moment.",
+        "why_it_matters": "The structure evolved as a practical solution to uncertainty and limited attention.",
+        "concept_demonstrated": "Core Message Prioritization",
+        "transferable_lesson": "Assume communication may be interrupted and lead with what matters most."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Communicate the most important information first.",
+        "condition": "When writing articles, presentations, reports, or messages.",
+        "action": "Start with the core message before supporting details.",
+        "rationale": "Audiences may not consume the entire communication."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Inverted Pyramid",
+        "description": "Structure communication from highest importance to lowest importance.",
+        "steps": [
+          "Identify the key message.",
+          "Place it at the beginning.",
+          "Add supporting details.",
+          "End with lower-priority context."
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Burying the lead.",
+        "consequence": "Audiences may miss the main point or lose interest before reaching it.",
+        "prevention": "Identify the core message and place it at the beginning."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Attention-Constrained Communication",
+        "when_to_use": "When readers, users, customers, or teams may only consume part of a message.",
+        "steps": [
+          "Determine the most important takeaway.",
+          "Open with that takeaway.",
+          "Add evidence and context afterward.",
+          "Place optional details near the end."
+        ],
+        "adaptation_notes": "Useful in writing, presentations, product updates, marketing, and executive communication."
+      }
+    ],
+    "when_to_use": [
+      "articles",
+      "reports",
+      "executive summaries",
+      "marketing communication",
+      "product communication"
+    ],
+    "when_not_to_use": [
+      "mystery narratives",
+      "stories where suspense is intentionally preserved"
+    ],
+    "tradeoffs": [
+      "Leading with the conclusion improves clarity but may reduce suspense and narrative tension."
+    ],
+    "keywords": [
+      "burying the lead",
+      "inverted pyramid",
+      "communication",
+      "journalism",
+      "prioritization"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 3,
+    "evidence": "The inverted pyramid structure—the most important info is at the top.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_015",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_011.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_003",
+      "concept_007",
+      "concept_008"
+    ],
+    "problem_ids": [
+      "problem_005",
+      "problem_006",
+      "problem_008"
+    ],
+    "title": "Finding the core requires forced prioritization",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Communicators often lose sight of the core message because they become immersed in details and complexity. Finding the core requires choosing one central idea and resisting the temptation to communicate everything at once.",
+    "why_it_matters": "People cannot easily remember or act on multiple competing priorities. Clear communication depends on identifying and emphasizing the single most important message.",
+    "examples_from_source": [
+      {
+        "example_name": "Journalists writing leads",
+        "what_happened": "Journalists often become immersed in details and lose track of the most important element of a story, leading to buried leads.",
+        "why_it_matters": "The example shows how expertise and information abundance can obscure what audiences actually need to know.",
+        "concept_demonstrated": "Forced Prioritization",
+        "transferable_lesson": "When communicating, identify the one thing the audience must remember before adding supporting details."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Choose one core message.",
+        "condition": "When multiple important ideas compete for attention.",
+        "action": "Identify the single most important message and communicate it first.",
+        "rationale": "A message with one clear priority is easier to understand and remember."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core Extraction",
+        "description": "Reduce complexity by selecting one dominant idea.",
+        "steps": [
+          "Gather available information",
+          "Identify what matters most",
+          "Select one core message",
+          "Organize supporting details around it"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Do not allow details to overshadow the core message.",
+        "consequence": "The audience may miss the most important point.",
+        "prevention": "Continually evaluate whether each detail supports the central idea."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Single Message Communication",
+        "when_to_use": "When explaining complex topics, strategies, products, or initiatives.",
+        "steps": [
+          "Determine the core idea",
+          "State it first",
+          "Add supporting information afterward",
+          "Remove competing priorities"
+        ],
+        "adaptation_notes": "Applicable to writing, presentations, marketing, leadership, and teaching."
+      }
+    ],
+    "when_to_use": [
+      "Creating presentations",
+      "Writing articles",
+      "Developing product messaging",
+      "Communicating strategy"
+    ],
+    "when_not_to_use": [
+      "When the objective is comprehensive reference documentation"
+    ],
+    "tradeoffs": [
+      "Simplicity may omit nuance, but improves clarity and memorability."
+    ],
+    "keywords": [
+      "core message",
+      "lead",
+      "simplicity",
+      "prioritization",
+      "focus"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 3,
+    "evidence": "There's only one lead, and there's only one core. You must choose.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_016",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_014.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_010",
+      "concept_002"
+    ],
+    "problem_ids": [
+      "problem_004",
+      "problem_009"
+    ],
+    "title": "Finding the core is not enough; it must be communicated",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Organizations often know their priorities but fail to communicate them effectively. A core idea only becomes valuable when it is understood and applied consistently by others.",
+    "why_it_matters": "Execution depends on shared understanding. Strategic priorities must be translated into messages that influence everyday decisions.",
+    "examples_from_source": [
+      {
+        "example_name": "Hoover Adams and local news coverage",
+        "what_happened": "Adams identified local focus as the newspaper's core priority and repeatedly communicated it to staff through memorable language and examples.",
+        "why_it_matters": "The organization aligned around a shared principle rather than relying on constant supervision.",
+        "concept_demonstrated": "Core Message Transmission",
+        "transferable_lesson": "Leaders must communicate priorities in a form that others can remember and apply independently."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Translate priorities into memorable guidance.",
+        "condition": "When a strategy must be executed by many people.",
+        "action": "Convert abstract priorities into simple, repeatable messages.",
+        "rationale": "People cannot consistently execute priorities they do not clearly understand."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Strategy-to-Message Translation",
+        "description": "Convert a strategic priority into a memorable communication tool.",
+        "steps": [
+          "Identify the core priority",
+          "Express it simply",
+          "Repeat consistently",
+          "Use it to guide decisions"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Assuming people understand priorities because leadership understands them.",
+        "consequence": "Teams make inconsistent decisions.",
+        "prevention": "Communicate priorities repeatedly in memorable forms."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Organizational Alignment Message",
+        "when_to_use": "When leading teams or implementing strategy.",
+        "steps": [
+          "Identify the most important priority",
+          "Create a memorable expression",
+          "Repeat it consistently",
+          "Use it to evaluate decisions"
+        ],
+        "adaptation_notes": "Useful for leadership, operations, product teams, and change initiatives."
+      }
+    ],
+    "when_to_use": [
+      "Leadership",
+      "Strategy execution",
+      "Team alignment",
+      "Organizational change"
+    ],
+    "when_not_to_use": [
+      "Highly technical procedures requiring detailed instructions"
+    ],
+    "tradeoffs": [
+      "Simple messages improve alignment but may not capture every nuance."
+    ],
+    "keywords": [
+      "alignment",
+      "leadership",
+      "execution",
+      "strategy",
+      "communication"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "Finding the core isn't synonymous with communicating the core.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_017",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_014.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_011",
+      "concept_006"
+    ],
+    "problem_ids": [
+      "problem_004"
+    ],
+    "title": "Concrete phrases become decision-making tools",
+    "knowledge_type": "application_pattern",
+    "what_it_says": "Simple and concrete phrases help people make consistent decisions because they translate abstract priorities into practical guidance.",
+    "why_it_matters": "People can apply concrete instructions more easily than abstract principles.",
+    "examples_from_source": [
+      {
+        "example_name": "Names, names, and names",
+        "what_happened": "Hoover Adams reduced the newspaper's strategy to a simple phrase that guided thousands of editorial decisions.",
+        "why_it_matters": "The phrase provided clarity across many situations without requiring detailed oversight.",
+        "concept_demonstrated": "Concrete Decision Heuristic",
+        "transferable_lesson": "Create memorable phrases that employees can use as decision filters."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Express priorities in concrete language.",
+        "condition": "When people must make independent decisions.",
+        "action": "Use tangible words and examples rather than abstractions.",
+        "rationale": "Concrete ideas are easier to understand and apply."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Decision Heuristic Creation",
+        "description": "Turn a strategic objective into a memorable phrase.",
+        "steps": [
+          "Identify the core value",
+          "Express it concretely",
+          "Repeat consistently",
+          "Use it to evaluate choices"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Using vague strategic language.",
+        "consequence": "Employees interpret priorities differently.",
+        "prevention": "Use concrete, specific language."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Decision Filter Phrase",
+        "when_to_use": "When teams make frequent decentralized decisions.",
+        "steps": [
+          "Define the priority",
+          "Create a memorable phrase",
+          "Share it broadly",
+          "Reference it in decisions"
+        ],
+        "adaptation_notes": "Works in leadership, product development, customer service, and operations."
+      }
+    ],
+    "when_to_use": [
+      "Decentralized teams",
+      "Operational decision making",
+      "Leadership communication"
+    ],
+    "when_not_to_use": [
+      "Situations requiring detailed technical specifications"
+    ],
+    "tradeoffs": [
+      "Concrete phrases improve execution but may oversimplify complex realities."
+    ],
+    "keywords": [
+      "heuristic",
+      "decision filter",
+      "concrete",
+      "alignment",
+      "execution"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "\"Names, names, and names\" is a simple statement that is symbolic of a core truth.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_018",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_014.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_012",
+      "concept_003"
+    ],
+    "problem_ids": [
+      "problem_001"
+    ],
+    "title": "Simple messages are both core and compact",
+    "knowledge_type": "framework",
+    "what_it_says": "Effective simplicity requires both identifying the core idea and expressing it in a compact form.",
+    "why_it_matters": "Compact messages are easier to remember, communicate, and apply.",
+    "examples_from_source": [
+      {
+        "example_name": "Names, names, and names",
+        "what_happened": "A complex editorial philosophy was compressed into three repeated words.",
+        "why_it_matters": "The message remained memorable without losing its strategic meaning.",
+        "concept_demonstrated": "Compact Communication",
+        "transferable_lesson": "Reduce ideas to their smallest useful form while preserving meaning."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Compress ideas without losing the core.",
+        "condition": "When communicating important priorities.",
+        "action": "Reduce unnecessary words while preserving meaning.",
+        "rationale": "Lower information load improves memorability."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core + Compact Formula",
+        "description": "Combine prioritization with brevity.",
+        "steps": [
+          "Identify the core idea",
+          "Remove unnecessary language",
+          "Create a memorable phrase",
+          "Repeat consistently"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Confusing brevity with simplicity.",
+        "consequence": "Messages become short but meaningless.",
+        "prevention": "Ensure compactness preserves the core message."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Message Compression",
+        "when_to_use": "When creating slogans, principles, priorities, or positioning statements.",
+        "steps": [
+          "Identify the essential idea",
+          "Remove excess language",
+          "Test memorability",
+          "Use consistently"
+        ],
+        "adaptation_notes": "Applicable to branding, leadership, teaching, and marketing."
+      }
+    ],
+    "when_to_use": [
+      "Brand messaging",
+      "Leadership principles",
+      "Product positioning",
+      "Teaching"
+    ],
+    "when_not_to_use": [
+      "Legal or technical documents requiring precision and detail"
+    ],
+    "tradeoffs": [
+      "Compactness improves memorability but can sacrifice nuance."
+    ],
+    "keywords": [
+      "simplicity",
+      "brevity",
+      "memorability",
+      "communication",
+      "core"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 3,
+    "evidence": "Simple messages are core and compact.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_019",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_015.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_013",
+      "concept_003"
+    ],
+    "problem_ids": [
+      "problem_011"
+    ],
+    "title": "Simple ideas require both a core and compact expression",
+    "knowledge_type": "framework",
+    "what_it_says": "A message becomes sticky when it combines a meaningful core idea with a concise form. Compactness alone is insufficient because short messages can be irrelevant, misleading, or empty.",
+    "why_it_matters": "The goal is not brevity for its own sake but brevity that preserves and reinforces an important truth.",
+    "examples_from_source": [
+      {
+        "example_name": "Names, names, and names",
+        "what_happened": "A complex editorial philosophy was compressed into a memorable phrase that still preserved its strategic meaning.",
+        "why_it_matters": "The phrase remained useful because it represented a genuine priority rather than a catchy slogan.",
+        "concept_demonstrated": "Core and Compact Messaging",
+        "transferable_lesson": "Compress ideas only after identifying the essential message."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Compact ideas only after identifying the core.",
+        "condition": "When creating memorable communication.",
+        "action": "Reduce language while preserving the most important truth.",
+        "rationale": "Compactness without substance creates empty slogans."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Core Plus Compact Formula",
+        "description": "Create messages that are both meaningful and concise.",
+        "steps": [
+          "Identify the core truth",
+          "Remove unnecessary language",
+          "Preserve meaning",
+          "Test memorability"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Confusing brevity with effectiveness.",
+        "consequence": "Messages become memorable but meaningless.",
+        "prevention": "Ensure the message remains tied to a meaningful core."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Message Compression",
+        "when_to_use": "When creating principles, slogans, positioning statements, or strategic guidance.",
+        "steps": [
+          "Identify the core idea",
+          "Remove excess language",
+          "Preserve meaning",
+          "Validate usefulness"
+        ],
+        "adaptation_notes": "Applicable to leadership, branding, education, and product communication."
+      }
+    ],
+    "when_to_use": [
+      "Brand messaging",
+      "Leadership communication",
+      "Product positioning",
+      "Teaching"
+    ],
+    "when_not_to_use": [
+      "Situations requiring exhaustive explanation"
+    ],
+    "tradeoffs": [
+      "Compact messages improve recall but may sacrifice nuance."
+    ],
+    "keywords": [
+      "simplicity",
+      "brevity",
+      "communication",
+      "memorability",
+      "core"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 3,
+    "evidence": "Simple messages are core and compact.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_020",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_015.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_014",
+      "concept_006"
+    ],
+    "problem_ids": [
+      "problem_004"
+    ],
+    "title": "Proverbs are compact decision-making tools",
+    "knowledge_type": "decision_rule",
+    "what_it_says": "Proverbs survive because they encode practical wisdom into memorable rules of thumb that help people make decisions across many situations.",
+    "why_it_matters": "People remember and apply simple guidance more easily than detailed instructions.",
+    "examples_from_source": [
+      {
+        "example_name": "A bird in the hand is worth two in the bush",
+        "what_happened": "The proverb survived across cultures and centuries because it expresses a useful principle about preferring certainty over speculation.",
+        "why_it_matters": "Its longevity demonstrates the power of compact wisdom.",
+        "concept_demonstrated": "Proverb-Based Communication",
+        "transferable_lesson": "Distill experience into short principles that guide future decisions."
+      },
+      {
+        "example_name": "The Golden Rule",
+        "what_happened": "A simple statement became powerful enough to influence behavior across an entire lifetime.",
+        "why_it_matters": "Compact messages can guide action when they express important truths.",
+        "concept_demonstrated": "Proverb-Based Communication",
+        "transferable_lesson": "Simple guidance can shape behavior more effectively than lengthy explanations."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Create principles that function like proverbs.",
+        "condition": "When people need guidance across many situations.",
+        "action": "Express wisdom as short, memorable rules.",
+        "rationale": "People can recall and apply concise principles more easily."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Wisdom Compression",
+        "description": "Convert experience into a reusable rule of thumb.",
+        "steps": [
+          "Identify a recurring lesson",
+          "Distill it into a short statement",
+          "Make it memorable",
+          "Apply it repeatedly"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Organizational Proverb",
+        "when_to_use": "When establishing culture, values, or decision principles.",
+        "steps": [
+          "Identify a recurring priority",
+          "Express it succinctly",
+          "Repeat it consistently",
+          "Use it to evaluate choices"
+        ],
+        "adaptation_notes": "Useful in leadership, operations, product development, and culture building."
+      }
+    ],
+    "when_to_use": [
+      "Culture building",
+      "Leadership",
+      "Decision making",
+      "Strategy execution"
+    ],
+    "when_not_to_use": [
+      "Complex situations requiring detailed analysis"
+    ],
+    "tradeoffs": [
+      "Rules of thumb improve speed but may overlook exceptional cases."
+    ],
+    "keywords": [
+      "proverb",
+      "heuristic",
+      "wisdom",
+      "decision making",
+      "simplicity"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "Proverbs offer rules of thumb for the behavior of individuals.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_021",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_015.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_015"
+    ],
+    "problem_ids": [
+      "problem_010"
+    ],
+    "title": "Expertise creates resistance to simplicity",
+    "knowledge_type": "warning",
+    "what_it_says": "As expertise increases, people become more attracted to nuance and complexity and may view simplification as oversimplification.",
+    "why_it_matters": "This tendency makes it harder for experts to communicate clearly with non-experts.",
+    "examples_from_source": [
+      {
+        "example_name": "Expert discomfort with sound bites",
+        "what_happened": "Experts fear that simplifying ideas will appear misleading or intellectually weak.",
+        "why_it_matters": "The fear discourages effective communication.",
+        "concept_demonstrated": "Curse of Knowledge",
+        "transferable_lesson": "Communicators must separate necessary complexity from unnecessary complexity."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Simplify without abandoning the core truth.",
+        "condition": "When communicating expert knowledge.",
+        "action": "Retain essential meaning while reducing unnecessary complexity.",
+        "rationale": "Audiences need clarity more than exhaustive detail."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Expert Complexity Trap",
+        "description": "Increasing expertise leads to increasing communication complexity.",
+        "steps": [
+          "Gain expertise",
+          "Appreciate nuance",
+          "Add complexity",
+          "Lose audience accessibility"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Treating simplicity as dumbing down.",
+        "consequence": "Messages become difficult for audiences to understand or apply.",
+        "prevention": "Focus on preserving the core rather than preserving every detail."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Expert-to-Novice Translation",
+        "when_to_use": "When teaching, presenting, or explaining specialized topics.",
+        "steps": [
+          "Identify the core lesson",
+          "Remove unnecessary detail",
+          "Use accessible language",
+          "Validate understanding"
+        ],
+        "adaptation_notes": "Especially useful in education, consulting, product communication, and leadership."
+      }
+    ],
+    "when_to_use": [
+      "Teaching",
+      "Consulting",
+      "Leadership",
+      "Product communication"
+    ],
+    "when_not_to_use": [
+      "Specialist-to-specialist technical discussions"
+    ],
+    "tradeoffs": [
+      "Simplification improves accessibility but may reduce precision."
+    ],
+    "keywords": [
+      "expertise",
+      "complexity",
+      "communication",
+      "knowledge",
+      "simplicity"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "That's when the Curse of Knowledge kicks in.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_029",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_016.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_016",
+      "concept_003"
+    ],
+    "problem_ids": [
+      "problem_012"
+    ],
+    "title": "Simplicity requires actively resisting feature creep",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Complexity accumulates naturally as people add features and capabilities. Preserving simplicity requires deliberate discipline and continuous prioritization.",
+    "why_it_matters": "Without resistance, products and ideas become overloaded and lose effectiveness.",
+    "examples_from_source": [
+      {
+        "example_name": "Palm Pilot design philosophy",
+        "what_happened": "Jeff Hawkins limited the Palm Pilot to four core functions and rejected additional features that threatened simplicity.",
+        "why_it_matters": "The product succeeded by focusing on a few tasks and performing them well.",
+        "concept_demonstrated": "Feature Creep",
+        "transferable_lesson": "Define what something will not do as carefully as what it will do."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Do a few things well.",
+        "condition": "When designing products, services, or systems.",
+        "action": "Reject additions that weaken the core purpose.",
+        "rationale": "Additional features often reduce overall usability and focus."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Feature Creep Resistance",
+        "description": "Protect a core purpose from gradual complexity.",
+        "steps": [
+          "Identify the core purpose",
+          "Evaluate new additions",
+          "Reject nonessential features",
+          "Reinforce simplicity repeatedly"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Adding features because there is available capacity.",
+        "consequence": "The product becomes harder to use and less effective.",
+        "prevention": "Evaluate additions against the core objective."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Simplicity Protection",
+        "when_to_use": "When developing products, processes, services, or strategies.",
+        "steps": [
+          "Define the core purpose",
+          "Identify unnecessary additions",
+          "Remove distractions",
+          "Protect focus"
+        ],
+        "adaptation_notes": "Applicable to product management, operations, and communication."
+      }
+    ],
+    "when_to_use": [
+      "Product design",
+      "Process improvement",
+      "Strategy development"
+    ],
+    "when_not_to_use": [
+      "Situations where functionality gaps genuinely prevent success"
+    ],
+    "tradeoffs": [
+      "Simplicity improves usability but may reduce feature breadth."
+    ],
+    "keywords": [
+      "feature creep",
+      "simplicity",
+      "focus",
+      "product design",
+      "prioritization"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "The Palm Pilot would do only four things, but it would do them well.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_030",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_016.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_017",
+      "concept_010"
+    ],
+    "problem_ids": [
+      "problem_009"
+    ],
+    "title": "Visual reminders can reinforce strategic priorities",
+    "knowledge_type": "application_pattern",
+    "what_it_says": "Physical objects can serve as memorable symbols of a core idea and help teams make consistent decisions.",
+    "why_it_matters": "Visual reminders reinforce priorities more effectively than abstract instructions alone.",
+    "examples_from_source": [
+      {
+        "example_name": "Palm Pilot wooden block",
+        "what_happened": "Jeff Hawkins carried a wooden block the size of the Palm Pilot and used it to challenge suggestions that added unnecessary features.",
+        "why_it_matters": "The block became a constant reminder of the product's commitment to simplicity.",
+        "concept_demonstrated": "Visual Proverb",
+        "transferable_lesson": "Create visible symbols that reinforce important principles."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Create visible reminders of priorities.",
+        "condition": "When teams face repeated tradeoffs.",
+        "action": "Use physical symbols to reinforce the core principle.",
+        "rationale": "Concrete reminders help people remember and apply priorities."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Visual Proverb Creation",
+        "description": "Use a physical object to represent a core idea.",
+        "steps": [
+          "Identify the core principle",
+          "Choose a symbolic object",
+          "Display it consistently",
+          "Reference it during decisions"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Symbolic Alignment Tool",
+        "when_to_use": "When leading teams, designing products, or driving change.",
+        "steps": [
+          "Identify the key priority",
+          "Create a visual symbol",
+          "Use it during discussions",
+          "Connect decisions back to it"
+        ],
+        "adaptation_notes": "Useful for leadership, product teams, and organizational culture."
+      }
+    ],
+    "when_to_use": [
+      "Leadership",
+      "Product development",
+      "Change management"
+    ],
+    "when_not_to_use": [
+      "Situations where priorities are already universally understood"
+    ],
+    "tradeoffs": [
+      "Symbols improve recall but may oversimplify complex considerations."
+    ],
+    "keywords": [
+      "visual proverb",
+      "symbol",
+      "alignment",
+      "simplicity",
+      "communication"
+    ],
+    "confidence_score": 5,
+    "importance_score": 4,
+    "novelty_score": 5,
+    "evidence": "The block of wood became a visual reminder to do a few things and do them well.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_031",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_016.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_018"
+    ],
+    "problem_ids": [
+      "problem_013",
+      "problem_001"
+    ],
+    "title": "Meaningful concepts are easier to remember than raw data",
+    "knowledge_type": "psychological pattern",
+    "what_it_says": "People remember information more easily when it is connected to existing concepts rather than presented as isolated facts.",
+    "why_it_matters": "Communication becomes more memorable when it links new information to familiar mental structures.",
+    "examples_from_source": [
+      {
+        "example_name": "JFK FBI NATO UPS NASA IRS exercise",
+        "what_happened": "Participants remembered more letters when they were grouped into recognizable concepts than when they appeared as random characters.",
+        "why_it_matters": "Meaning transforms disconnected data into memorable chunks.",
+        "concept_demonstrated": "Memory Chunking",
+        "transferable_lesson": "Connect information to existing knowledge whenever possible."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Package information into meaningful concepts.",
+        "condition": "When teaching or communicating complex information.",
+        "action": "Organize facts around familiar ideas or categories.",
+        "rationale": "People remember concepts more easily than isolated details."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Concept Chunking",
+        "description": "Group information into meaningful units.",
+        "steps": [
+          "Identify related information",
+          "Connect it to a familiar concept",
+          "Present it as a unit",
+          "Reinforce the association"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Presenting information as disconnected facts.",
+        "consequence": "People remember less and learn more slowly.",
+        "prevention": "Attach new information to existing mental models."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Knowledge Chunking",
+        "when_to_use": "When teaching, training, writing, or presenting information.",
+        "steps": [
+          "Identify the core concepts",
+          "Group related information",
+          "Link to existing knowledge",
+          "Reinforce the structure"
+        ],
+        "adaptation_notes": "Useful in education, onboarding, documentation, and content creation."
+      }
+    ],
+    "when_to_use": [
+      "Training",
+      "Education",
+      "Documentation",
+      "Knowledge management"
+    ],
+    "when_not_to_use": [
+      "Situations requiring exact recall of raw data"
+    ],
+    "tradeoffs": [
+      "Chunking improves recall but may obscure lower-level details."
+    ],
+    "keywords": [
+      "memory",
+      "chunking",
+      "learning",
+      "cognitive load",
+      "concepts"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "In Round 2, you were remembering concepts.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_032",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_017.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_020",
+      "concept_018"
+    ],
+    "problem_ids": [
+      "problem_015",
+      "problem_001"
+    ],
+    "title": "Compact messages work by activating existing knowledge",
+    "knowledge_type": "psychological pattern",
+    "what_it_says": "People remember compact ideas because they function as pointers to knowledge that is already stored in memory rather than requiring entirely new information to be remembered.",
+    "why_it_matters": "Communication becomes more efficient when it leverages what audiences already know.",
+    "examples_from_source": [
+      {
+        "example_name": "JFK memory exercise",
+        "what_happened": "Participants remembered JFK more easily than random letters because the concept already contained many stored associations.",
+        "why_it_matters": "Existing knowledge reduces memory load.",
+        "concept_demonstrated": "Memory Flagging",
+        "transferable_lesson": "Anchor new communication to familiar concepts whenever possible."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Use existing knowledge whenever possible.",
+        "condition": "When communicating complex ideas.",
+        "action": "Connect new information to concepts the audience already understands.",
+        "rationale": "Existing mental structures reduce cognitive effort."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Memory Flagging",
+        "description": "Use a small cue to activate a larger body of existing knowledge.",
+        "steps": [
+          "Identify existing audience knowledge",
+          "Create a compact cue",
+          "Link the cue to the concept",
+          "Allow existing associations to fill in detail"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Knowledge Activation",
+        "when_to_use": "When teaching, persuading, or explaining unfamiliar ideas.",
+        "steps": [
+          "Identify a familiar concept",
+          "Use it as a reference point",
+          "Attach new information",
+          "Reinforce the connection"
+        ],
+        "adaptation_notes": "Useful in education, marketing, onboarding, and communication."
+      }
+    ],
+    "when_to_use": [
+      "Teaching",
+      "Training",
+      "Marketing",
+      "Knowledge transfer"
+    ],
+    "when_not_to_use": [
+      "When audiences lack the prerequisite knowledge"
+    ],
+    "tradeoffs": [
+      "Leveraging existing knowledge improves comprehension but may create inaccurate assumptions if the analogy is weak."
+    ],
+    "keywords": [
+      "memory",
+      "association",
+      "knowledge",
+      "learning",
+      "communication"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "You tap the existing memory terrain of your audience.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_033",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_017.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_019"
+    ],
+    "problem_ids": [
+      "problem_014",
+      "problem_015"
+    ],
+    "title": "Schemas accelerate learning by connecting new ideas to known concepts",
+    "knowledge_type": "framework",
+    "what_it_says": "New concepts become easier to understand when they are explained through concepts that people already know.",
+    "why_it_matters": "Schemas provide prebuilt mental structures that reduce the effort required to learn new information.",
+    "examples_from_source": [
+      {
+        "example_name": "Pomelo explanation",
+        "what_happened": "A pomelo was explained as a supersized grapefruit rather than through a detailed list of attributes.",
+        "why_it_matters": "The grapefruit schema enabled faster understanding and recall.",
+        "concept_demonstrated": "Schema-Based Learning",
+        "transferable_lesson": "Introduce unfamiliar concepts through familiar reference points."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Teach new ideas through existing schemas.",
+        "condition": "When introducing unfamiliar concepts.",
+        "action": "Link the new concept to a familiar category or example.",
+        "rationale": "People learn faster when they can build on existing knowledge."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Schema Mapping",
+        "description": "Connect unfamiliar concepts to familiar concepts.",
+        "steps": [
+          "Identify the new concept",
+          "Find a familiar analogy or category",
+          "Explain similarities",
+          "Highlight key differences"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Explaining new concepts only through isolated attributes.",
+        "consequence": "Learning becomes slower and less memorable.",
+        "prevention": "Anchor explanations to familiar schemas."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Schema-Based Teaching",
+        "when_to_use": "When educating, onboarding, or introducing complex topics.",
+        "steps": [
+          "Identify audience knowledge",
+          "Select a familiar schema",
+          "Map the new idea onto it",
+          "Clarify distinctions"
+        ],
+        "adaptation_notes": "Useful in education, consulting, training, and product adoption."
+      }
+    ],
+    "when_to_use": [
+      "Education",
+      "Training",
+      "Onboarding",
+      "Consulting"
+    ],
+    "when_not_to_use": [
+      "When no relevant schema exists"
+    ],
+    "tradeoffs": [
+      "Schemas improve learning speed but may oversimplify important distinctions."
+    ],
+    "keywords": [
+      "schema",
+      "learning",
+      "teaching",
+      "mental models",
+      "understanding"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "We've made it easier for you to learn a new concept by tying it to a concept that you already know.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_034",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_017.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_021"
+    ],
+    "problem_ids": [
+      "problem_015"
+    ],
+    "title": "Complexity can be built from layers of simple ideas",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Complex knowledge does not require starting with complexity. It can emerge from a sequence of simple concepts introduced in the right order.",
+    "why_it_matters": "People learn and retain complicated subjects more effectively when knowledge is layered progressively.",
+    "examples_from_source": [
+      {
+        "example_name": "Economics trade example",
+        "what_happened": "Teachers begin with a simple trade scenario involving apples and oranges before introducing more advanced economic concepts.",
+        "why_it_matters": "Students develop foundational schemas that support future learning.",
+        "concept_demonstrated": "Layered Complexity",
+        "transferable_lesson": "Teach difficult subjects by progressively building on simple foundations."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Build complexity gradually.",
+        "condition": "When teaching complicated subjects.",
+        "action": "Introduce simple foundational concepts before advanced ones.",
+        "rationale": "Foundational schemas support deeper understanding."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Progressive Layering",
+        "description": "Develop complex understanding through staged learning.",
+        "steps": [
+          "Introduce a simple concept",
+          "Ensure understanding",
+          "Add a new layer",
+          "Repeat until complexity emerges"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Starting with full complexity.",
+        "consequence": "Learners become overwhelmed and retain less information.",
+        "prevention": "Create foundational schemas first."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Scaffolded Learning",
+        "when_to_use": "When teaching, onboarding, or explaining sophisticated topics.",
+        "steps": [
+          "Start simple",
+          "Build foundational understanding",
+          "Add complexity incrementally",
+          "Connect new layers to existing schemas"
+        ],
+        "adaptation_notes": "Useful in education, consulting, product training, and documentation."
+      }
+    ],
+    "when_to_use": [
+      "Education",
+      "Training",
+      "Documentation",
+      "Knowledge management"
+    ],
+    "when_not_to_use": [
+      "When learners already possess advanced schemas"
+    ],
+    "tradeoffs": [
+      "Layering improves comprehension but may require more time than direct explanation."
+    ],
+    "keywords": [
+      "learning",
+      "complexity",
+      "scaffolding",
+      "education",
+      "schemas"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "It is possible to create complexity through the artful use of simplicity.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_035",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_018.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_019",
+      "concept_021"
+    ],
+    "problem_ids": [
+      "problem_017"
+    ],
+    "title": "Schemas can be stretched to create complexity",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Complex knowledge can be built by repeatedly adapting and extending simple schemas rather than introducing complexity all at once.",
+    "why_it_matters": "People learn difficult subjects more effectively when new ideas are built on foundations they already understand.",
+    "examples_from_source": [
+      {
+        "example_name": "Economics trade schema",
+        "what_happened": "Students first learn trade through a simple apples-and-oranges scenario, then adapt that schema to more advanced situations.",
+        "why_it_matters": "The schema provides a foundation for increasingly sophisticated understanding.",
+        "concept_demonstrated": "Layered Complexity",
+        "transferable_lesson": "Build advanced knowledge by modifying simple foundational models."
+      },
+      {
+        "example_name": "Physics pulley schema",
+        "what_happened": "Students begin with idealized pulley problems and later combine or stretch those schemas to solve more complex situations.",
+        "why_it_matters": "Complex reasoning emerges from reusable building blocks.",
+        "concept_demonstrated": "Schema-Based Learning",
+        "transferable_lesson": "Introduce simple models first, then increase complexity gradually."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Teach complexity through progressive schema expansion.",
+        "condition": "When introducing difficult subjects.",
+        "action": "Start with simple models and extend them incrementally.",
+        "rationale": "People learn faster when complexity builds on existing understanding."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Schema Expansion",
+        "description": "Create complex understanding by extending simple mental models.",
+        "steps": [
+          "Teach a simple schema",
+          "Ensure comprehension",
+          "Modify one dimension",
+          "Add new layers",
+          "Repeat as needed"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Progressive Knowledge Construction",
+        "when_to_use": "When teaching, onboarding, or explaining technical concepts.",
+        "steps": [
+          "Identify a foundational schema",
+          "Teach the simple version",
+          "Add complexity gradually",
+          "Connect each addition to the existing model"
+        ],
+        "adaptation_notes": "Useful in education, training, consulting, and product onboarding."
+      }
+    ],
+    "when_to_use": [
+      "Education",
+      "Training",
+      "Onboarding",
+      "Knowledge transfer"
+    ],
+    "when_not_to_use": [
+      "When the audience already possesses advanced schemas"
+    ],
+    "tradeoffs": [
+      "Progressive learning improves comprehension but may require more time."
+    ],
+    "keywords": [
+      "schema",
+      "learning",
+      "complexity",
+      "teaching",
+      "education"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "Schemas help us create complex messages from simple materials.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_036",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_018.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_022",
+      "concept_015"
+    ],
+    "problem_ids": [
+      "problem_016",
+      "problem_010"
+    ],
+    "title": "Accessibility is often more valuable than perfect accuracy",
+    "knowledge_type": "strategic tradeoff",
+    "what_it_says": "Communication should prioritize usefulness and comprehension over perfect technical accuracy when audiences cannot yet understand the more precise explanation.",
+    "why_it_matters": "An idea that people can understand and apply is more valuable than a perfectly accurate explanation that they cannot use.",
+    "examples_from_source": [
+      {
+        "example_name": "Solar system model of the atom",
+        "what_happened": "Students are taught that electrons orbit the nucleus like planets orbit the sun even though this model is not fully accurate.",
+        "why_it_matters": "The simplified analogy helps learners build understanding before encountering more advanced explanations.",
+        "concept_demonstrated": "Useful Simplicity",
+        "transferable_lesson": "Use simplified models when they help people make sense of unfamiliar ideas."
+      },
+      {
+        "example_name": "Probability clouds versus planetary model",
+        "what_happened": "The technically accurate explanation of electron probability clouds is less useful to beginners than the simplified planetary analogy.",
+        "why_it_matters": "Accessibility enables learning that would otherwise be impossible.",
+        "concept_demonstrated": "Useful Simplicity",
+        "transferable_lesson": "Provide only as much complexity as the audience can meaningfully use."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Choose usefulness over exhaustive accuracy.",
+        "condition": "When communicating with beginners or non-experts.",
+        "action": "Provide the simplest explanation that enables understanding and action.",
+        "rationale": "An unusable truth provides less value than a useful approximation."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Accessible Approximation",
+        "description": "Introduce a simplified model before revealing deeper complexity.",
+        "steps": [
+          "Identify the essential idea",
+          "Create an accessible analogy",
+          "Teach the simplified model",
+          "Introduce complexity later"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Prioritizing accuracy to the point of uselessness.",
+        "consequence": "Audiences fail to understand or apply the information.",
+        "prevention": "Communicate only the complexity that is currently useful."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Beginner-Friendly Explanation",
+        "when_to_use": "When teaching, onboarding, or presenting specialized knowledge.",
+        "steps": [
+          "Assess audience understanding",
+          "Simplify the concept",
+          "Enable practical use",
+          "Add detail later"
+        ],
+        "adaptation_notes": "Useful in education, leadership, consulting, and technical communication."
+      }
+    ],
+    "when_to_use": [
+      "Teaching",
+      "Leadership",
+      "Technical communication",
+      "Product education"
+    ],
+    "when_not_to_use": [
+      "When precision is legally, medically, or scientifically critical"
+    ],
+    "tradeoffs": [
+      "Accessibility improves understanding but may temporarily sacrifice precision."
+    ],
+    "keywords": [
+      "accuracy",
+      "simplicity",
+      "learning",
+      "communication",
+      "accessibility"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "Accuracy to the point of uselessness is a symptom of the Curse of Knowledge.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_037",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_018.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_023",
+      "concept_019"
+    ],
+    "problem_ids": [
+      "problem_001"
+    ],
+    "title": "Analogies compress complex ideas into memorable pitches",
+    "knowledge_type": "communication pattern",
+    "what_it_says": "Analogies allow communicators to express complex ideas quickly by linking them to concepts the audience already understands.",
+    "why_it_matters": "A strong analogy can communicate meaning, structure, and expectations with very few words.",
+    "examples_from_source": [
+      {
+        "example_name": "Hollywood high-concept pitches",
+        "what_happened": "Movies were pitched using familiar references such as 'Die Hard on a bus' or 'Jaws on a spaceship.'",
+        "why_it_matters": "The audience immediately understands the concept by combining existing schemas.",
+        "concept_demonstrated": "High-Concept Pitch",
+        "transferable_lesson": "Use familiar reference points to explain unfamiliar ideas quickly."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Use analogies to communicate complexity quickly.",
+        "condition": "When explaining a new or abstract idea.",
+        "action": "Combine the new idea with familiar concepts.",
+        "rationale": "Existing schemas dramatically reduce explanation time."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "High-Concept Compression",
+        "description": "Reduce a complex idea to a combination of familiar concepts.",
+        "steps": [
+          "Identify the core idea",
+          "Find familiar references",
+          "Combine them into a compact statement",
+          "Use the analogy as a communication shortcut"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Analogy Pitching",
+        "when_to_use": "When presenting products, stories, strategies, or new concepts.",
+        "steps": [
+          "Identify the core concept",
+          "Select familiar analogies",
+          "Compress the explanation",
+          "Validate audience understanding"
+        ],
+        "adaptation_notes": "Useful in marketing, product development, fundraising, and storytelling."
+      }
+    ],
+    "when_to_use": [
+      "Pitching",
+      "Marketing",
+      "Storytelling",
+      "Product communication"
+    ],
+    "when_not_to_use": [
+      "When the analogy introduces misleading assumptions"
+    ],
+    "tradeoffs": [
+      "Analogies improve comprehension but may omit nuance."
+    ],
+    "keywords": [
+      "analogy",
+      "pitching",
+      "communication",
+      "schemas",
+      "storytelling"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "A great way to avoid useless accuracy, and to dodge the Curse of Knowledge, is to use analogies.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_038",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_019.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_023",
+      "concept_019"
+    ],
+    "problem_ids": [
+      "problem_017"
+    ],
+    "title": "High-concept pitches compress large amounts of meaning into familiar schemas",
+    "knowledge_type": "communication pattern",
+    "what_it_says": "A strong pitch communicates a new idea by combining familiar concepts, allowing people to rapidly understand implications that would otherwise require extensive explanation.",
+    "why_it_matters": "People can make decisions about unfamiliar ideas more quickly when those ideas are connected to existing mental models.",
+    "examples_from_source": [
+      {
+        "example_name": "Speed as Die Hard on a bus",
+        "what_happened": "A five-word description communicated the tone, budget, audience, style, and expectations of the movie.",
+        "why_it_matters": "The pitch transferred large amounts of understanding through a familiar reference.",
+        "concept_demonstrated": "High-Concept Pitch",
+        "transferable_lesson": "Describe unfamiliar ideas through combinations of concepts people already understand."
+      },
+      {
+        "example_name": "Alien as Jaws on a spaceship",
+        "what_happened": "The pitch immediately influenced design decisions about the setting, atmosphere, and characters.",
+        "why_it_matters": "The analogy guided creative decisions throughout development.",
+        "concept_demonstrated": "High-Concept Pitch",
+        "transferable_lesson": "A powerful analogy can align many decisions without detailed instructions."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Explain new ideas through familiar concepts.",
+        "condition": "When introducing unfamiliar products, stories, or strategies.",
+        "action": "Combine the new concept with recognizable references.",
+        "rationale": "Existing schemas accelerate understanding."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Schema Compression",
+        "description": "Communicate a new concept through a compact combination of familiar ideas.",
+        "steps": [
+          "Identify the new concept",
+          "Find familiar reference points",
+          "Combine them into a short phrase",
+          "Use the phrase to guide decisions"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "High-Concept Positioning",
+        "when_to_use": "When pitching products, businesses, stories, or strategic initiatives.",
+        "steps": [
+          "Define the core concept",
+          "Identify familiar analogies",
+          "Compress the explanation",
+          "Test whether people understand the implications"
+        ],
+        "adaptation_notes": "Useful in marketing, fundraising, product strategy, and storytelling."
+      }
+    ],
+    "when_to_use": [
+      "Pitching",
+      "Marketing",
+      "Storytelling",
+      "Product communication"
+    ],
+    "when_not_to_use": [
+      "When no meaningful analogy exists"
+    ],
+    "tradeoffs": [
+      "Compression improves understanding but may omit nuance."
+    ],
+    "keywords": [
+      "pitching",
+      "analogy",
+      "schemas",
+      "communication",
+      "storytelling"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "The compact, five-word phrase 'Die Hard on a bus' pours a breathtaking amount of meaning into the previously nonexistent concept of Speed.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_039",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_019.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_024"
+    ],
+    "problem_ids": [
+      "problem_017"
+    ],
+    "title": "Generative metaphors create new ways of thinking",
+    "knowledge_type": "framework",
+    "what_it_says": "Some metaphors do more than explain existing ideas. They become platforms that generate new insights, explanations, and innovations.",
+    "why_it_matters": "Generative metaphors help people explore unfamiliar domains by borrowing structures from well-understood domains.",
+    "examples_from_source": [
+      {
+        "example_name": "Brain as a computer",
+        "what_happened": "Psychologists used concepts such as memory, processors, and buffers from computing to develop theories about cognition.",
+        "why_it_matters": "The metaphor produced new questions and discoveries rather than merely explaining existing knowledge.",
+        "concept_demonstrated": "Generative Metaphor",
+        "transferable_lesson": "Use metaphors that generate new possibilities, not just explanations."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Prefer metaphors that generate useful questions.",
+        "condition": "When exploring complex or unfamiliar domains.",
+        "action": "Choose analogies that reveal new possibilities and insights.",
+        "rationale": "The best metaphors support both understanding and discovery."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Generative Mapping",
+        "description": "Transfer structures from a familiar domain to generate insights in a new domain.",
+        "steps": [
+          "Identify a complex problem",
+          "Select a familiar system",
+          "Map similarities",
+          "Explore implications",
+          "Generate new ideas"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Innovation Through Analogy",
+        "when_to_use": "When solving problems, creating frameworks, or teaching abstract concepts.",
+        "steps": [
+          "Choose a familiar metaphor",
+          "Map relationships",
+          "Generate predictions",
+          "Test new insights"
+        ],
+        "adaptation_notes": "Useful in strategy, product design, education, and research."
+      }
+    ],
+    "when_to_use": [
+      "Innovation",
+      "Research",
+      "Education",
+      "Strategy"
+    ],
+    "when_not_to_use": [
+      "When the metaphor creates misleading assumptions"
+    ],
+    "tradeoffs": [
+      "Generative metaphors stimulate insight but can oversimplify reality."
+    ],
+    "keywords": [
+      "metaphor",
+      "innovation",
+      "thinking",
+      "analogy",
+      "mental models"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "Good metaphors are generative.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_040",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_019.txt",
+    "chapter_or_section": "Simple",
+    "concept_ids": [
+      "concept_025",
+      "concept_006"
+    ],
+    "problem_ids": [
+      "problem_018",
+      "problem_004"
+    ],
+    "title": "The best metaphors provide behavioral guidance",
+    "knowledge_type": "application_pattern",
+    "what_it_says": "A useful metaphor helps people predict how they should behave in situations that were never explicitly described.",
+    "why_it_matters": "Organizations scale more effectively when employees can derive behavior from shared principles rather than detailed instructions.",
+    "examples_from_source": [
+      {
+        "example_name": "Disney cast members",
+        "what_happened": "Disney consistently framed employees as cast members in a performance, shaping expectations about service, behavior, and customer interactions.",
+        "why_it_matters": "Employees could infer correct behavior without extensive rulebooks.",
+        "concept_demonstrated": "Behavior-Shaping Metaphor",
+        "transferable_lesson": "Choose metaphors that naturally imply desired behaviors."
+      },
+      {
+        "example_name": "Subway sandwich artists",
+        "what_happened": "The metaphor did not meaningfully guide employee behavior because artistry was not actually encouraged.",
+        "why_it_matters": "A metaphor without behavioral implications becomes an empty label.",
+        "concept_demonstrated": "Behavior-Shaping Metaphor",
+        "transferable_lesson": "Avoid metaphors that sound appealing but do not influence decisions."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Use metaphors that imply actionable behavior.",
+        "condition": "When creating organizational values or cultural principles.",
+        "action": "Select metaphors that naturally guide decisions and conduct.",
+        "rationale": "Behavioral clarity creates consistency."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Behavioral Metaphor Design",
+        "description": "Create a metaphor that employees can use as a decision filter.",
+        "steps": [
+          "Define desired behaviors",
+          "Choose a fitting metaphor",
+          "Apply it consistently",
+          "Allow employees to infer behavior"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Using symbolic labels that do not influence behavior.",
+        "consequence": "The metaphor becomes decorative rather than useful.",
+        "prevention": "Test whether people can derive decisions from the metaphor."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Culture Through Metaphor",
+        "when_to_use": "When building organizational culture or customer experience standards.",
+        "steps": [
+          "Identify desired behaviors",
+          "Select a generative metaphor",
+          "Embed it in language and systems",
+          "Reinforce it consistently"
+        ],
+        "adaptation_notes": "Useful in leadership, customer service, culture design, and change management."
+      }
+    ],
+    "when_to_use": [
+      "Leadership",
+      "Culture building",
+      "Customer service",
+      "Organizational design"
+    ],
+    "when_not_to_use": [
+      "When the metaphor does not align with actual expectations"
+    ],
+    "tradeoffs": [
+      "Strong metaphors improve alignment but may constrain alternative interpretations."
+    ],
+    "keywords": [
+      "culture",
+      "behavior",
+      "metaphor",
+      "alignment",
+      "leadership"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "This metaphor of employees as cast members in a theatrical production is communicated consistently throughout the organization.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_041",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_020.txt",
+    "chapter_or_section": "Unexpected",
+    "concept_ids": [
+      "concept_026",
+      "concept_027"
+    ],
+    "problem_ids": [
+      "problem_019"
+    ],
+    "title": "Attention is captured by breaking expected patterns",
+    "knowledge_type": "psychological pattern",
+    "what_it_says": "People quickly adapt to familiar stimuli and stop noticing them. Unexpected changes force attention because the brain is highly sensitive to deviations from established patterns.",
+    "why_it_matters": "Messages must disrupt expectations if they are to stand out in environments filled with repetitive communication.",
+    "examples_from_source": [
+      {
+        "example_name": "Karen Wood airline announcement",
+        "what_happened": "A flight attendant replaced the standard safety announcement with humor and unexpected language, causing passengers to pay attention and applaud.",
+        "why_it_matters": "Breaking expectations transformed a routinely ignored message into an engaging one.",
+        "concept_demonstrated": "Attention Pattern Interrupt",
+        "transferable_lesson": "Interrupt familiar patterns when communicating important information."
+      },
+      {
+        "example_name": "Warning lights and sirens",
+        "what_happened": "Designers use blinking lights and changing siren patterns because constant signals are eventually ignored.",
+        "why_it_matters": "Variation keeps attention focused on important information.",
+        "concept_demonstrated": "Attention Pattern Interrupt",
+        "transferable_lesson": "Introduce change whenever sustained attention is required."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Break a pattern to gain attention.",
+        "condition": "When audiences are likely to ignore a familiar message.",
+        "action": "Introduce an unexpected element that violates expectations.",
+        "rationale": "Unexpected changes trigger attention automatically."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Pattern Interrupt",
+        "description": "Capture attention by disrupting a familiar expectation.",
+        "steps": [
+          "Identify an expected pattern",
+          "Introduce an unexpected variation",
+          "Create curiosity",
+          "Deliver the message"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Using familiar communication formats repeatedly.",
+        "consequence": "Audiences stop noticing the message.",
+        "prevention": "Introduce novelty or surprise."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Attention Reset",
+        "when_to_use": "When communicating in cluttered, repetitive, or low-interest environments.",
+        "steps": [
+          "Identify audience expectations",
+          "Break the expected pattern",
+          "Capture attention",
+          "Transition into the message"
+        ],
+        "adaptation_notes": "Useful in presentations, marketing, teaching, leadership, and safety communication."
+      }
+    ],
+    "when_to_use": [
+      "Presentations",
+      "Marketing",
+      "Teaching",
+      "Safety communication"
+    ],
+    "when_not_to_use": [
+      "When surprise would undermine trust or credibility"
+    ],
+    "tradeoffs": [
+      "Unexpectedness captures attention but can distract if unrelated to the message."
+    ],
+    "keywords": [
+      "attention",
+      "surprise",
+      "unexpectedness",
+      "communication",
+      "engagement"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 5,
+    "evidence": "The most basic way to get someone's attention is this: Break a pattern.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_042",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_020.txt",
+    "chapter_or_section": "Unexpected",
+    "concept_ids": [
+      "concept_027",
+      "concept_028"
+    ],
+    "problem_ids": [
+      "problem_020"
+    ],
+    "title": "Surprise gets attention while interest keeps it",
+    "knowledge_type": "framework",
+    "what_it_says": "Unexpectedness and interest serve different functions. Surprise captures attention initially, while interest sustains engagement over time.",
+    "why_it_matters": "Effective communication requires both gaining attention and maintaining it long enough for the audience to absorb the message.",
+    "examples_from_source": [
+      {
+        "example_name": "Karen Wood safety briefing",
+        "what_happened": "Humor and surprise initially attracted attention, while the entertaining delivery kept passengers engaged through the announcement.",
+        "why_it_matters": "Both surprise and interest were necessary for success.",
+        "concept_demonstrated": "Attention Retention",
+        "transferable_lesson": "Plan for both attention capture and attention maintenance."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Use surprise to gain attention and interest to sustain it.",
+        "condition": "When communicating ideas that require audience engagement.",
+        "action": "Design messages with both an unexpected hook and a compelling continuation.",
+        "rationale": "Attention alone is insufficient without continued engagement."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Attention Funnel",
+        "description": "Move audiences from surprise into sustained interest.",
+        "steps": [
+          "Introduce an unexpected element",
+          "Capture attention",
+          "Provide engaging content",
+          "Maintain curiosity"
+        ]
+      }
+    ],
+    "warnings": [
+      {
+        "warning": "Focusing only on attention-grabbing tactics.",
+        "consequence": "Audiences notice the message but fail to stay engaged.",
+        "prevention": "Build sustained interest after capturing attention."
+      }
+    ],
+    "application_patterns": [
+      {
+        "pattern_name": "Hook and Hold",
+        "when_to_use": "When teaching, presenting, marketing, or storytelling.",
+        "steps": [
+          "Start with surprise",
+          "Create curiosity",
+          "Deliver meaningful content",
+          "Maintain engagement"
+        ],
+        "adaptation_notes": "Useful for presentations, writing, marketing, and education."
+      }
+    ],
+    "when_to_use": [
+      "Presentations",
+      "Marketing",
+      "Storytelling",
+      "Education"
+    ],
+    "when_not_to_use": [
+      "When audiences are already highly motivated and attentive"
+    ],
+    "tradeoffs": [
+      "Surprise improves attention but can become gimmicky if overused."
+    ],
+    "keywords": [
+      "surprise",
+      "interest",
+      "engagement",
+      "attention",
+      "communication"
+    ],
+    "confidence_score": 5,
+    "importance_score": 5,
+    "novelty_score": 4,
+    "evidence": "Surprise gets our attention. Interest keeps our attention.",
+    "extraction_date": "2026-06-01"
+  },
+  {
+    "id": "insight_043",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "chunk_020.txt",
+    "chapter_or_section": "Unexpected",
+    "concept_ids": [
+      "concept_027"
+    ],
+    "problem_ids": [
+      "problem_019"
+    ],
+    "title": "Unexpectedness can be deliberately designed",
+    "knowledge_type": "operating principle",
+    "what_it_says": "Unexpectedness is not purely accidental. Communicators can intentionally create surprise by violating audience expectations.",
+    "why_it_matters": "Attention can be engineered rather than left to chance.",
+    "examples_from_source": [
+      {
+        "example_name": "Alternative safety announcement approaches",
+        "what_happened": "The authors note that even pausing unexpectedly or suddenly switching languages would have captured attention.",
+        "why_it_matters": "The mechanism is not entertainment itself but the disruption of expectations.",
+        "concept_demonstrated": "Unexpectedness",
+        "transferable_lesson": "Design moments that violate audience assumptions."
+      }
+    ],
+    "decision_rules": [
+      {
+        "rule": "Create surprise by violating expectations.",
+        "condition": "When attention is difficult to obtain.",
+        "action": "Introduce a deliberate mismatch between expectation and reality.",
+        "rationale": "The brain prioritizes unexpected information."
+      }
+    ],
+    "patterns": [
+      {
+        "pattern_name": "Expectation Violation",
+        "description": "Create surprise through a controlled break from expectations.",
+        "steps": [
+          "Identify audience expectations",
+          "Create a deviation",
+          "Reveal the difference",
+          "Deliver the message"
+        ]
+      }
+    ],
+    "warnings": [],
+    "application_patterns": [
+      {
+        "pattern_name": "Designed Surprise",
+        "when_to_use": "When competing for attention in crowded environments.",
+        "steps": [
+          "Determine the expected pattern",
+          "Introduce a deliberate violation",
+          "Capture attention",
+          "Connect the surprise to the message"
+        ],
+        "adaptation_notes": "Useful in advertising, teaching, presentations, and product launches."
+      }
+    ],
+    "when_to_use": [
+      "Advertising",
+      "Teaching",
+      "Presentations",
+      "Product launches"
+    ],
+    "when_not_to_use": [
+      "When surprise creates confusion unrelated to the message"
+    ],
+    "tradeoffs": [
+      "Designed surprise improves attention but may distract if poorly connected to the message."
+    ],
+    "keywords": [
+      "surprise",
+      "attention",
+      "expectations",
+      "communication",
+      "engagement"
+    ],
+    "confidence_score": 5,
+    "importance_score": 4,
+    "novelty_score": 5,
+    "evidence": "Our brain is designed to be keenly aware of changes.",
+    "extraction_date": "2026-06-01"
+  }
+]

@@ -1,0 +1,519 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  },
+  {
+    "id": "concept_006",
+    "name": "Strategic Decision Filter",
+    "description": "A simple guiding principle that allows individuals and teams to evaluate decisions consistently without requiring detailed instructions for every situation.",
+    "keywords": [
+      "decision making",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "guiding principle"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  },
+  {
+    "id": "problem_006",
+    "name": "Loss of message focus",
+    "description": "Communicators become absorbed in details and lose sight of the central idea that matters most to the audience."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_011.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+says, "I've always been a believer that if I've got two hours in which to write a story, the best investment I can make is to spend the first hour and forty-five minutes of it getting a good lead, because after that everything will come easily." So if finding a good lead makes everything else easy, why would a journalist ever fail to come up with one? A common mistake re- porters make is that they get so steeped in the details that they fail to see the message's core —what readers will find impo rtant or interest- ing. The longtime newspaper writer Ed Cray, a professor of commu- nications at the University of Southern California, has spent almost thirty years teaching journalism. He says, "The lon ger you work on a story, the more you can find yourself losing direction. No detail is too small. You just don't know what your story is anymore." This problem of losing direction, of missing the central story, is so common that journalists have given it its own name: Burying the lead. "Burying the lead" occurs when the journalist lets the most im- portant element of the story slip too far down in the story structure. The process of writing a lead —and avoiding the tem ptation to bury it—is a helpful metaphor for the process of finding the core. Finding the core and writing the lead both involve forced prioritiza- tion. Suppose you're a wartime reporter and you can telegraph only one thing before the line gets cut, what would it be? There's only one lead, and there's only one core. You must choose. Forced prioritization is really painful. Smart people recognize the value of all the material. They see nuance, multiple perspectives — and because they fully appreciate the complexities of a situation, they're often tempted to linger there. This tendency to gravitate SIMPLE 33 toward complexity is perpetually at war with the need to prioritize. This difficult quest—the need to wrestle priorities out of complexity— was exactly the situation that James Carville faced in the Clinton cam- paign of 1992. "If You Say Three Things, You Don't Say Anything." A political campaign is a breeding ground of decision angst. If you think your organization has problems, imagine this challenge: You must build a nationwide organization from scratch, using primarily unpaid and largely unskilled workers. You've got about a year to pull the team together and line up an endless supply of doughnuts. Every- one in the organization needs to sing from the same hymnal, but you don't have much time to rehearse the choir. And the media prod you to sing a new song every day. To make matters worse, you must con- stantly contend with opponents who will seize on every errant word. Bill Clinton's 1992 campaign was a classic example of sticky ideas at work in a difficult environment. Not only did the campaign have the normal set of complexities, Clinton himself added a few new wrinkles. First, there were the "bimbo eruptions," which need not be reexamined here. Second, Clinton was a policy wonk by nature, which meant that he was inclined to pontificate on virtually every issue that he was asked about, instead of staying focused on a few key principles. As his key political adviser, James Carville had to cope with this complexity. One day, struggling to maintain his-focus, he wrote three phrases on a whiteboard for all the campaign workers to see. One of the phrases on the impromptu list was "It's the economy, stupid." This message would become the core of Clinton's successful cam- paign. The word "stupid" was added as a taunt to the campaign workers 34 MADE TO STICK themselves, reminding them not to lose focus on what was important. "It was simple and it was self-effacing," Carville explained. "I was try- ing to say, 'Let's don't be too clever here, don't come down here thinking we're too smart. Let's just remember the basics.'" The need for focus extended to Bill Clinton himself, perhaps es- pecially to Clinton himself. At one point, Clinton was frustrated that he'd been advised to stop talking about balanced budgets despite the fact that Ross Perot, the third-party candidate for president in 1992, was getting positive attention for his stand on the balanced budget. Clinton said, "I've been talking about these things for two years, why should I stop talking about them now because Perot is in?" Clinton's advisers had to tell him, "There has to be message triage. If you say three things, you don't say anything." "It's the economy, stupid" was the lead of the Clinton story—and it was a good one, because in 1992 the U.S. economy was mired in a recession. But if "It's the economy, stupid" is the lead, then the need for a balanced budget can't also be the lead. Carville had to stop Clinton from burying the lead. Decision Paralysis Why is prioritizing so difficult? In the abstract, it doesn't sound so tough. You prioritize important goals over less important goals. You prioritize goals that are "critical" ahead of goals that are "beneficial." But what if we can't tell what's "critical" and what's "beneficial"? Sometimes it's not obvious. We often have to make decisions between one "unknown" and another. This kind of complexity can be paralyz- ing. In fact, psychologists have found that people can be driven to ir- rational decisions by too much complexity and uncertainty. In 1954, the economist L. J. Savage described what he perceived as a basic rule of human decision-making. He called it the "sure- thing principle." He illustrated it with this example: A businessman is SIMPLE 35 thinking about buying a piece of property. There's an election com- ing up soon, and he initially thinks that its outcome could be relevant to the attractiveness of the purchase. So, to clarify his decision, he thinks through both scenarios. If the Republican wins, he decides, he'll buy. If the Democrat wins, he'll do the same. Seeing that he'd buy in either scenario, he goes forward with the purchase, despite not knowing the outcome. This decision seems sensible—n ot many peo- ple would quibble with Savage's logic. Two psychologists quibbled. Amos Tversky and Eldar Shafir later published a paper proving that the "sure-thing principle" wasn't always a sure thing. They uncovered situations where the mere exis- tence of uncertainty seemed to alter how people made decisions — even when the uncertainty was irrelevant to the outcome, as with the businessman's purchase. For instance, imagine that you're in college and you've just completed an important final exam a couple of weeks before the Christmas holidays. You'd been studying for this exam for weeks, because it's in a subject that's important to your fu- ture career. You've got to wait two days to get the exam results back. Mean- while, you see an opportunity to purchase a vacation during the holi- days to Hawaii at a bargain-basement price. Here ar e your three options: You can buy the vacation today, pass on it today, or pay a five- dollar fee to lock in the price for two days, which would allow you to make your decision after you
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

@@ -1,0 +1,1616 @@
+[
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_001",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_001",
+    "relationship": "supports",
+    "to": "concept_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_001",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_003",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_003",
+    "relationship": "addresses",
+    "to": "problem_002",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_002",
+    "evidence": ""
+  },
+  {
+    "from": "concept_002",
+    "relationship": "helps_solve",
+    "to": "problem_002",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_004",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_004",
+    "relationship": "addresses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_004",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_005",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_005",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_002",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_006",
+    "relationship": "supports",
+    "to": "concept_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_006",
+    "relationship": "supports",
+    "to": "concept_005",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_006",
+    "relationship": "addresses",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_004",
+    "relationship": "helps_solve",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_005",
+    "relationship": "helps_solve",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_005",
+    "relationship": "supports",
+    "to": "concept_004",
+    "evidence": "The inverted pyramid operationalizes message prioritization."
+  },
+  {
+    "from": "insight_001",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": "Southwest demonstrates Commander's Intent in practice."
+  },
+  {
+    "from": "insight_006",
+    "relationship": "supports",
+    "to": "concept_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_006",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_009",
+    "evidence": ""
+  },
+  {
+    "from": "insight_009",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_009",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_009",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_006",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_010",
+    "evidence": ""
+  },
+  {
+    "from": "insight_010",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_010",
+    "relationship": "addresses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_011",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "supports",
+    "to": "concept_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "supports",
+    "to": "concept_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "addresses",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "addresses",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_004",
+    "relationship": "helps_solve",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_005",
+    "relationship": "helps_solve",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_006",
+    "relationship": "related_to",
+    "to": "concept_002",
+    "evidence": "Both provide guidance for decentralized decision making."
+  },
+  {
+    "from": "insight_010",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": "The Southwest example demonstrates commander's intent."
+  },
+  {
+    "from": "insight_011",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": "Simplicity is defined as prioritization and finding the core."
+  },
+  {
+    "from": "insight_009",
+    "relationship": "supports",
+    "to": "concept_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_009",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_010",
+    "relationship": "addresses",
+    "to": "problem_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "addresses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_011",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_015",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "supports",
+    "to": "concept_007",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_007",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "supports",
+    "to": "concept_008",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_008",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "addresses",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "addresses",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_015",
+    "relationship": "addresses",
+    "to": "problem_008",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_008",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_008",
+    "evidence": ""
+  },
+  {
+    "from": "concept_007",
+    "relationship": "helps_solve",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_007",
+    "relationship": "helps_solve",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_007",
+    "relationship": "helps_solve",
+    "to": "problem_008",
+    "evidence": ""
+  },
+  {
+    "from": "concept_008",
+    "relationship": "helps_solve",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "concept_008",
+    "relationship": "helps_solve",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "concept_008",
+    "relationship": "helps_solve",
+    "to": "problem_008",
+    "evidence": ""
+  },
+  {
+    "from": "concept_007",
+    "relationship": "related_to",
+    "to": "concept_003",
+    "evidence": "Finding the core and writing the lead both involve forced prioritization."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_016",
+    "evidence": ""
+  },
+  {
+    "from": "insight_016",
+    "relationship": "supports",
+    "to": "concept_010",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_010",
+    "evidence": ""
+  },
+  {
+    "from": "insight_016",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_016",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_016",
+    "relationship": "addresses",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "concept_010",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_010",
+    "relationship": "helps_solve",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "concept_002",
+    "relationship": "helps_solve",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_017",
+    "evidence": ""
+  },
+  {
+    "from": "insight_017",
+    "relationship": "supports",
+    "to": "concept_011",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_011",
+    "evidence": ""
+  },
+  {
+    "from": "insight_017",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_017",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_011",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_018",
+    "evidence": ""
+  },
+  {
+    "from": "insight_018",
+    "relationship": "supports",
+    "to": "concept_012",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_012",
+    "evidence": ""
+  },
+  {
+    "from": "insight_018",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_018",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_012",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_010",
+    "relationship": "related_to",
+    "to": "concept_003",
+    "evidence": "Finding the core isn't synonymous with communicating the core."
+  },
+  {
+    "from": "concept_011",
+    "relationship": "related_to",
+    "to": "concept_006",
+    "evidence": "\"Names, names, and names\" guided thousands of decisions."
+  },
+  {
+    "from": "insight_020",
+    "relationship": "addresses",
+    "to": "problem_009",
+    "evidence": "Finding the core isn't synonymous with communicating the core."
+  },
+  {
+    "from": "insight_021",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": "\"Names, names, and names\" functioned as a decision filter."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_019",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "supports",
+    "to": "concept_013",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_013",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "addresses",
+    "to": "problem_011",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_011",
+    "evidence": ""
+  },
+  {
+    "from": "concept_013",
+    "relationship": "helps_solve",
+    "to": "problem_011",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_011",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_020",
+    "evidence": ""
+  },
+  {
+    "from": "insight_020",
+    "relationship": "supports",
+    "to": "concept_014",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_014",
+    "evidence": ""
+  },
+  {
+    "from": "insight_020",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_020",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_014",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_021",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "supports",
+    "to": "concept_015",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_015",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "addresses",
+    "to": "problem_010",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_010",
+    "evidence": ""
+  },
+  {
+    "from": "concept_015",
+    "relationship": "helps_solve",
+    "to": "problem_010",
+    "evidence": ""
+  },
+  {
+    "from": "concept_013",
+    "relationship": "related_to",
+    "to": "concept_003",
+    "evidence": "Simple messages are core and compact."
+  },
+  {
+    "from": "concept_014",
+    "relationship": "related_to",
+    "to": "concept_006",
+    "evidence": "Proverbs offer rules of thumb for the behavior of individuals."
+  },
+  {
+    "from": "insight_016",
+    "relationship": "supports",
+    "to": "concept_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_016",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "insight_017",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_017",
+    "relationship": "addresses",
+    "to": "problem_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_018",
+    "relationship": "addresses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "supports",
+    "to": "concept_002",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_019",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_020",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_020",
+    "relationship": "addresses",
+    "to": "problem_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "supports",
+    "to": "concept_004",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "supports",
+    "to": "concept_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "addresses",
+    "to": "problem_005",
+    "evidence": ""
+  },
+  {
+    "from": "insight_021",
+    "relationship": "addresses",
+    "to": "problem_006",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_029",
+    "evidence": ""
+  },
+  {
+    "from": "insight_029",
+    "relationship": "supports",
+    "to": "concept_016",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_016",
+    "evidence": ""
+  },
+  {
+    "from": "insight_029",
+    "relationship": "supports",
+    "to": "concept_003",
+    "evidence": ""
+  },
+  {
+    "from": "insight_029",
+    "relationship": "addresses",
+    "to": "problem_012",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_012",
+    "evidence": ""
+  },
+  {
+    "from": "concept_016",
+    "relationship": "helps_solve",
+    "to": "problem_012",
+    "evidence": ""
+  },
+  {
+    "from": "concept_003",
+    "relationship": "helps_solve",
+    "to": "problem_012",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_030",
+    "evidence": ""
+  },
+  {
+    "from": "insight_030",
+    "relationship": "supports",
+    "to": "concept_017",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_017",
+    "evidence": ""
+  },
+  {
+    "from": "insight_030",
+    "relationship": "supports",
+    "to": "concept_010",
+    "evidence": ""
+  },
+  {
+    "from": "insight_030",
+    "relationship": "addresses",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "concept_017",
+    "relationship": "helps_solve",
+    "to": "problem_009",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_031",
+    "evidence": ""
+  },
+  {
+    "from": "insight_031",
+    "relationship": "supports",
+    "to": "concept_018",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_018",
+    "evidence": ""
+  },
+  {
+    "from": "insight_031",
+    "relationship": "addresses",
+    "to": "problem_013",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_013",
+    "evidence": ""
+  },
+  {
+    "from": "insight_031",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_018",
+    "relationship": "helps_solve",
+    "to": "problem_013",
+    "evidence": ""
+  },
+  {
+    "from": "concept_018",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_017",
+    "relationship": "related_to",
+    "to": "concept_010",
+    "evidence": "The wooden block reinforced the core idea throughout the team."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_032",
+    "evidence": ""
+  },
+  {
+    "from": "insight_032",
+    "relationship": "supports",
+    "to": "concept_020",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_020",
+    "evidence": ""
+  },
+  {
+    "from": "insight_032",
+    "relationship": "supports",
+    "to": "concept_018",
+    "evidence": ""
+  },
+  {
+    "from": "insight_032",
+    "relationship": "addresses",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "insight_032",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_020",
+    "relationship": "helps_solve",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "concept_020",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_018",
+    "relationship": "helps_solve",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_033",
+    "evidence": ""
+  },
+  {
+    "from": "insight_033",
+    "relationship": "supports",
+    "to": "concept_019",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_019",
+    "evidence": ""
+  },
+  {
+    "from": "insight_033",
+    "relationship": "addresses",
+    "to": "problem_014",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_014",
+    "evidence": ""
+  },
+  {
+    "from": "insight_033",
+    "relationship": "addresses",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "concept_019",
+    "relationship": "helps_solve",
+    "to": "problem_014",
+    "evidence": ""
+  },
+  {
+    "from": "concept_019",
+    "relationship": "helps_solve",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_034",
+    "evidence": ""
+  },
+  {
+    "from": "insight_034",
+    "relationship": "supports",
+    "to": "concept_021",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_021",
+    "evidence": ""
+  },
+  {
+    "from": "insight_034",
+    "relationship": "addresses",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "concept_021",
+    "relationship": "helps_solve",
+    "to": "problem_015",
+    "evidence": ""
+  },
+  {
+    "from": "concept_019",
+    "relationship": "related_to",
+    "to": "concept_018",
+    "evidence": "Schemas make information easier to remember by connecting it to existing knowledge."
+  },
+  {
+    "from": "insight_029",
+    "relationship": "supports",
+    "to": "concept_020",
+    "evidence": "You tap the existing memory terrain of your audience."
+  },
+  {
+    "from": "insight_030",
+    "relationship": "supports",
+    "to": "concept_019",
+    "evidence": "We've made it easier for you to learn a new concept by tying it to a concept that you already know."
+  },
+  {
+    "from": "insight_031",
+    "relationship": "supports",
+    "to": "concept_021",
+    "evidence": "It is possible to create complexity through the artful use of simplicity."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_035",
+    "evidence": ""
+  },
+  {
+    "from": "insight_035",
+    "relationship": "supports",
+    "to": "concept_019",
+    "evidence": ""
+  },
+  {
+    "from": "insight_035",
+    "relationship": "supports",
+    "to": "concept_021",
+    "evidence": ""
+  },
+  {
+    "from": "insight_035",
+    "relationship": "addresses",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "concept_019",
+    "relationship": "helps_solve",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "concept_021",
+    "relationship": "helps_solve",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_036",
+    "evidence": ""
+  },
+  {
+    "from": "insight_036",
+    "relationship": "supports",
+    "to": "concept_022",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_022",
+    "evidence": ""
+  },
+  {
+    "from": "insight_036",
+    "relationship": "supports",
+    "to": "concept_015",
+    "evidence": ""
+  },
+  {
+    "from": "insight_036",
+    "relationship": "addresses",
+    "to": "problem_016",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_016",
+    "evidence": ""
+  },
+  {
+    "from": "insight_036",
+    "relationship": "addresses",
+    "to": "problem_010",
+    "evidence": ""
+  },
+  {
+    "from": "concept_022",
+    "relationship": "helps_solve",
+    "to": "problem_016",
+    "evidence": ""
+  },
+  {
+    "from": "concept_022",
+    "relationship": "helps_solve",
+    "to": "problem_010",
+    "evidence": ""
+  },
+  {
+    "from": "concept_015",
+    "relationship": "helps_solve",
+    "to": "problem_016",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_037",
+    "evidence": ""
+  },
+  {
+    "from": "insight_037",
+    "relationship": "supports",
+    "to": "concept_023",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_023",
+    "evidence": ""
+  },
+  {
+    "from": "insight_037",
+    "relationship": "supports",
+    "to": "concept_019",
+    "evidence": ""
+  },
+  {
+    "from": "insight_037",
+    "relationship": "addresses",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_023",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_019",
+    "relationship": "helps_solve",
+    "to": "problem_001",
+    "evidence": ""
+  },
+  {
+    "from": "concept_023",
+    "relationship": "related_to",
+    "to": "concept_019",
+    "evidence": "Analogies derive their power from schemas."
+  },
+  {
+    "from": "insight_032",
+    "relationship": "supports",
+    "to": "concept_021",
+    "evidence": "Schemas help us create complex messages from simple materials."
+  },
+  {
+    "from": "insight_033",
+    "relationship": "addresses",
+    "to": "problem_016",
+    "evidence": "Accuracy to the point of uselessness is a symptom of the Curse of Knowledge."
+  },
+  {
+    "from": "insight_034",
+    "relationship": "supports",
+    "to": "concept_023",
+    "evidence": "A great way to avoid useless accuracy, and to dodge the Curse of Knowledge, is to use analogies."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_038",
+    "evidence": ""
+  },
+  {
+    "from": "insight_038",
+    "relationship": "supports",
+    "to": "concept_023",
+    "evidence": ""
+  },
+  {
+    "from": "insight_038",
+    "relationship": "supports",
+    "to": "concept_019",
+    "evidence": ""
+  },
+  {
+    "from": "insight_038",
+    "relationship": "addresses",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "concept_023",
+    "relationship": "helps_solve",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_039",
+    "evidence": ""
+  },
+  {
+    "from": "insight_039",
+    "relationship": "supports",
+    "to": "concept_024",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_024",
+    "evidence": ""
+  },
+  {
+    "from": "insight_039",
+    "relationship": "addresses",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "concept_024",
+    "relationship": "helps_solve",
+    "to": "problem_017",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_040",
+    "evidence": ""
+  },
+  {
+    "from": "insight_040",
+    "relationship": "supports",
+    "to": "concept_025",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_025",
+    "evidence": ""
+  },
+  {
+    "from": "insight_040",
+    "relationship": "supports",
+    "to": "concept_006",
+    "evidence": ""
+  },
+  {
+    "from": "insight_040",
+    "relationship": "addresses",
+    "to": "problem_018",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_018",
+    "evidence": ""
+  },
+  {
+    "from": "insight_040",
+    "relationship": "addresses",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_025",
+    "relationship": "helps_solve",
+    "to": "problem_018",
+    "evidence": ""
+  },
+  {
+    "from": "concept_025",
+    "relationship": "helps_solve",
+    "to": "problem_004",
+    "evidence": ""
+  },
+  {
+    "from": "concept_006",
+    "relationship": "helps_solve",
+    "to": "problem_018",
+    "evidence": ""
+  },
+  {
+    "from": "concept_024",
+    "relationship": "related_to",
+    "to": "concept_019",
+    "evidence": "Generative metaphors create new perceptions by leveraging existing schemas."
+  },
+  {
+    "from": "insight_035",
+    "relationship": "supports",
+    "to": "concept_023",
+    "evidence": "Die Hard on a bus pours a breathtaking amount of meaning into the concept of Speed."
+  },
+  {
+    "from": "insight_036",
+    "relationship": "supports",
+    "to": "concept_024",
+    "evidence": "Good metaphors are generative."
+  },
+  {
+    "from": "insight_037",
+    "relationship": "supports",
+    "to": "concept_025",
+    "evidence": "Employees as cast members shaped behavior throughout Disney."
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_041",
+    "evidence": ""
+  },
+  {
+    "from": "insight_041",
+    "relationship": "supports",
+    "to": "concept_026",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_026",
+    "evidence": ""
+  },
+  {
+    "from": "insight_041",
+    "relationship": "supports",
+    "to": "concept_027",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_027",
+    "evidence": ""
+  },
+  {
+    "from": "insight_041",
+    "relationship": "addresses",
+    "to": "problem_019",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_019",
+    "evidence": ""
+  },
+  {
+    "from": "concept_026",
+    "relationship": "helps_solve",
+    "to": "problem_019",
+    "evidence": ""
+  },
+  {
+    "from": "concept_027",
+    "relationship": "helps_solve",
+    "to": "problem_019",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_042",
+    "evidence": ""
+  },
+  {
+    "from": "insight_042",
+    "relationship": "supports",
+    "to": "concept_027",
+    "evidence": ""
+  },
+  {
+    "from": "insight_042",
+    "relationship": "supports",
+    "to": "concept_028",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "concept_028",
+    "evidence": ""
+  },
+  {
+    "from": "insight_042",
+    "relationship": "addresses",
+    "to": "problem_020",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "discusses",
+    "to": "problem_020",
+    "evidence": ""
+  },
+  {
+    "from": "concept_027",
+    "relationship": "helps_solve",
+    "to": "problem_020",
+    "evidence": ""
+  },
+  {
+    "from": "concept_028",
+    "relationship": "helps_solve",
+    "to": "problem_020",
+    "evidence": ""
+  },
+  {
+    "from": "source_001",
+    "relationship": "contains",
+    "to": "insight_043",
+    "evidence": ""
+  },
+  {
+    "from": "insight_043",
+    "relationship": "supports",
+    "to": "concept_027",
+    "evidence": ""
+  },
+  {
+    "from": "insight_043",
+    "relationship": "addresses",
+    "to": "problem_019",
+    "evidence": ""
+  },
+  {
+    "from": "concept_027",
+    "relationship": "related_to",
+    "to": "concept_028",
+    "evidence": "Surprise gets attention while interest keeps it."
+  },
+  {
+    "from": "insight_038",
+    "relationship": "supports",
+    "to": "concept_026",
+    "evidence": "The most basic way to get someone's attention is this: Break a pattern."
+  },
+  {
+    "from": "insight_039",
+    "relationship": "supports",
+    "to": "concept_028",
+    "evidence": "Surprise gets our attention. Interest keeps our attention."
+  },
+  {
+    "from": "insight_040",
+    "relationship": "supports",
+    "to": "concept_027",
+    "evidence": "Our brain is designed to be keenly aware of changes."
+  }
+]

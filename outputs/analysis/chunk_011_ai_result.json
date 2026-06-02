@@ -1,0 +1,169 @@
+{
+  "concepts": [
+    {
+      "id": "concept_007",
+      "name": "Forced Prioritization",
+      "description": "The practice of deliberately choosing the single most important message, objective, or idea when multiple valid options compete for attention.",
+      "keywords": [
+        "prioritization",
+        "focus",
+        "decision making",
+        "clarity",
+        "simplicity"
+      ]
+    },
+    {
+      "id": "concept_008",
+      "name": "Message Triage",
+      "description": "The process of eliminating secondary messages so that communication remains focused on the highest-priority idea.",
+      "keywords": [
+        "message discipline",
+        "focus",
+        "communication",
+        "prioritization",
+        "strategy"
+      ]
+    },
+    {
+      "id": "concept_009",
+      "name": "Decision Paralysis",
+      "description": "A state where complexity, uncertainty, or competing options make it difficult to choose a course of action.",
+      "keywords": [
+        "uncertainty",
+        "complexity",
+        "decision making",
+        "paralysis",
+        "psychology"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_007",
+      "name": "Decision paralysis under uncertainty",
+      "description": "People struggle to make decisions when faced with uncertainty, complexity, or multiple competing possibilities."
+    },
+    {
+      "id": "problem_008",
+      "name": "Message dilution",
+      "description": "A communication loses impact because too many important messages compete for attention at the same time."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_011",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_011.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_003",
+        "concept_007",
+        "concept_008"
+      ],
+      "problem_ids": [
+        "problem_005",
+        "problem_006",
+        "problem_008"
+      ],
+      "title": "Finding the core requires forced prioritization",
+      "knowledge_type": "operating principle",
+      "what_it_says": "Communicators often lose sight of the core message because they become immersed in details and complexity. Finding the core requires choosing one central idea and resisting the temptation to communicate everything at once.",
+      "why_it_matters": "People cannot easily remember or act on multiple competing priorities. Clear communication depends on identifying and emphasizing the single most important message.",
+      "examples_from_source": [
+        {
+          "example_name": "Journalists writing leads",
+          "what_happened": "Journalists often become immersed in details and lose track of the most important element of a story, leading to buried leads.",
+          "why_it_matters": "The example shows how expertise and information abundance can obscure what audiences actually need to know.",
+          "concept_demonstrated": "Forced Prioritization",
+          "transferable_lesson": "When communicating, identify the one thing the audience must remember before adding supporting details."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Choose one core message.",
+          "condition": "When multiple important ideas compete for attention.",
+          "action": "Identify the single most important message and communicate it first.",
+          "rationale": "A message with one clear priority is easier to understand and remember."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Core Extraction",
+          "description": "Reduce complexity by selecting one dominant idea.",
+          "steps": [
+            "Gather available information",
+            "Identify what matters most",
+            "Select one core message",
+            "Organize supporting details around it"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Do not allow details to overshadow the core message.",
+          "consequence": "The audience may miss the most important point.",
+          "prevention": "Continually evaluate whether each detail supports the central idea."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Single Message Communication",
+          "when_to_use": "When explaining complex topics, strategies, products, or initiatives.",
+          "steps": [
+            "Determine the core idea",
+            "State it first",
+            "Add supporting information afterward",
+            "Remove competing priorities"
+          ],
+          "adaptation_notes": "Applicable to writing, presentations, marketing, leadership, and teaching."
+        }
+      ],
+      "when_to_use": [
+        "Creating presentations",
+        "Writing articles",
+        "Developing product messaging",
+        "Communicating strategy"
+      ],
+      "when_not_to_use": [
+        "When the objective is comprehensive reference documentation"
+      ],
+      "tradeoffs": [
+        "Simplicity may omit nuance, but improves clarity and memorability."
+      ],
+      "keywords": [
+        "core message",
+        "lead",
+        "simplicity",
+        "prioritization",
+        "focus"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 3,
+      "evidence": "There's only one lead, and there's only one core. You must choose.",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "concept_007",
+      "relationship": "related_to",
+      "to": "concept_003",
+      "evidence": "Finding the core and writing the lead both involve forced prioritization."
+    },
+    {
+      "from": "concept_008",
+      "relationship": "helps_solve",
+      "to": "problem_008",
+      "evidence": "There has to be message triage."
+    },
+    {
+      "from": "concept_007",
+      "relationship": "helps_solve",
+      "to": "problem_005",
+      "evidence": "There's only one lead, and there's only one core."
+    }
+  ]
+}

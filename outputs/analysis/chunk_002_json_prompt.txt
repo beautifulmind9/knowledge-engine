@@ -1,0 +1,237 @@
+
+You are a knowledge extraction assistant.
+
+Your task is not to summarize the text.
+Your task is to extract reusable knowledge objects for a knowledge graph.
+
+Use the schema, knowledge types, and source list below.
+
+====================
+KNOWLEDGE SCHEMA
+====================
+
+# Knowledge Schema
+
+## Purpose
+
+The goal is not to summarize content.
+
+The goal is to extract reusable knowledge that can be applied across different contexts, audiences, industries, and decision-making situations.
+
+---
+
+## Knowledge Object
+
+### Source
+Name of the book, PDF, article, report, or document.
+
+### Author
+Who created the source.
+
+### Chapter / Section
+Where the idea came from.
+
+### Knowledge Type
+Choose one:
+
+- Principle
+- Framework
+- Mental Model
+- Process
+- Heuristic
+- Observation
+
+### Principle
+The main reusable idea.
+
+### Problem Solved
+What issue, confusion, challenge, or decision this knowledge helps with.
+
+### Core Insight
+The deeper takeaway in simple language.
+
+### Why It Works
+The reasoning behind why this idea is useful.
+
+### Framework / Steps
+Any repeatable process, checklist, structure, or sequence.
+
+### Examples
+Examples from the source.
+
+### Applications
+Where this can be applied, such as writing, marketing, product, business, research, leadership, or decision-making.
+
+### When To Use
+Situations where this knowledge is helpful.
+
+### When Not To Use
+Situations where this knowledge may be inappropriate, weak, risky, or unnecessary.
+
+### Tradeoffs
+What you gain and what you may lose by using this idea.
+
+### Related Concepts
+Other connected ideas or themes.
+
+### Keywords
+Searchable words or phrases.
+
+### Confidence Score
+A rating from 1 to 5 based on how clearly the source supports the extraction.
+
+### Importance Score
+A rating from 1 to 5 indicating how useful this knowledge is across multiple situations.
+
+1 = niche or minor insight
+
+5 = broadly useful and highly applicable
+
+### Novelty Score
+A rating from 1 to 5 indicating how unique, non-obvious, or distinctive the idea is.
+
+1 = common knowledge
+
+5 = uncommon insight that changes how people think
+
+### Supporting Evidence
+A short quote or passage from the source that supports the knowledge object.
+
+### Extraction Date
+Date the knowledge object was created.
+
+====================
+KNOWLEDGE TYPES
+====================
+
+# Knowledge Types
+
+## Principle
+A broad reusable idea that explains what tends to work.
+
+Example:
+Simple ideas are easier to remember.
+
+## Framework
+A structured model, checklist, or set of parts.
+
+Example:
+Simple, Unexpected, Concrete, Credible, Emotional, Stories.
+
+## Mental Model
+A way of understanding how something works.
+
+Example:
+The curse of knowledge makes it hard to explain things clearly once you already understand them.
+
+## Process
+A sequence of actions someone can follow.
+
+Example:
+Identify the core message, remove unnecessary details, test whether the idea is memorable.
+
+## Heuristic
+A practical rule of thumb that helps with decisions.
+
+Example:
+When a message feels too complex, ask: what is the one thing people must remember?
+
+## Observation
+A useful insight or pattern noticed by the author, but not necessarily a full principle or framework.
+
+Example:
+People often assume more information makes communication better, but too much information can make an idea harder to remember.
+
+====================
+SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf"
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_002.txt
+
+Extraction date:
+2026-05-31
+
+====================
+TEXT TO ANALYZE
+====================
+
+from a prostitute he has invited to his room in Las Vegas. It's a morality play with kidneys. Imagine that you closed the book right now, took an hourlong break, then called a friend and told the story, without rereading it. Chances are you could tell it almost perfectly. You might forget that the traveler was in Atlantic City for "an important meeting with clients"—who cares about that? But you'd remember a ll the impor- tant stuff. The Kidney Heist is a story that sticks. We understand it, we re- member it, and we can retell it later. And if we believe it's true, it might change our behavior permanently—at least in t erms of accept- ing drinks from attractive strangers. Contrast the Kidney Heist story with this passage, drawn from a paper distributed by a nonprofit organization. "Comprehensive com- munity building naturally lends itself to a return-on-investment ra- INTRODUCTION 5 tionale that can be modeled, drawing on existing practice," it begins, going on to argue that "[a] factor constraining the flow of resources to CCIs is that funders must often resort to targeting or categorical re- quirements in grant making to ensure accountability." Imagine that you closed the book right now and took an hourlong break. In fact, don't even take a break; just call up a friend and retell that passage without rereading it. Good luck. Is this a fair comparison —an urban legend to a che rry-picked bad passage? Of course not. But here's where things get interesting: Think of our two examples as two poles on a spectrum of memorability. Which sounds closer to the communications you encou nter at work? If you're like most people, your workplace gravitates toward the non- profit pole as though it were the North Star. Maybe this is perfectly natural; some ideas are inherently interesting and some are inherently uninteresting. A gang of or gan thieves—inher- ently interesting! Nonprofit financial strategy—inh erently uninterest- ing! It's the nature versus nurture debate applied to ideas: Are ideas born interesting or made interesting? Well, this is a nurture book. So how do we nurture our ideas so they'll succeed in the world? Many of us struggle with how to communicate ideas effectively, how to get our ideas to make a difference. A biology teacher spends an hour explaining mitosis, and a week later only three kids remember what it is. A manager makes a speech unveiling a ne w strategy as the staffers nod their heads enthusiastically, and the next day the front- line employees are observed cheerfully implementing the old one. Good ideas often have a hard time succeeding in the world. Yet the ridiculous Kidney Heist tale keeps circulating, with no resources whatsoever to support it. Why? Is it simply because hijacked kidneys sell better than other topics? Or is it possible to make a true, worthwhile idea circulate as ef- fectively as this false idea? 6 MADE TO STICK The Truth About Movie Popcorn Art Silverman stared at a bag of movie popcorn. It looked out of place sitting on his desk. His office had long since filled up with fake-butter fumes. Silverman knew, because of his organization's research, that the popcorn on his desk was unhealthy. Shockingly unhealthy, in fact. His job was to figure out a way to communicate this message to the unsuspecting moviegoers of America. Silverman worked for the Center for Science in the Public Inter- est (CSPI), a nonprofit group that educates the public about nutri- tion. The CSPI sent bags of movie popcorn from a dozen theaters in three major cities to a lab for nutritional analysis. The results sur- prised everyone. The United States Department of Agriculture (USDA) recom- mends that a normal diet contain no more than 20 grams of saturated fat each day. According to the lab results, the typical bag of popcorn had 37 grams. The culprit was coconut oil, which theaters used to pop their pop- corn. Coconut oil had some big advantages over other oils. It gave the popcorn a nice, silky texture, and released a more pleasant and natu- ral aroma than the alternative oils. Unfortunately, as the lab results showed, coconut oil was also brimming with saturated fat. The single serving of popcorn on Silverman's desk—a snack someone might scarf down between meals—had nearly t wo days' worth of saturated fat. And those 37 grams of saturated fat were packed into a medium-sized serving of popcorn. No doubt a decent- sized bucket could have cleared triple digits. The challenge, Silverman realized, was that few people know what "37 grams of saturated fat" means. Most of us don't memorize the USDA's daily nutrition recommendations. Is 37 grams good or bad? And even if we have an intuition that it's bad, we'd wonder if it was "bad bad" (like cigarettes) or "normal bad" (like a cookie or a milk shake). INTRODUCTION 7 Even the phrase "37 grams of saturated fat" by itself was enough to cause most people's eyes to glaze over. "Saturated fat has zero ap- peal," Silverman says. "It's dry, it's academic, who cares?" Silverman could have created some kind of visual co mparison— perhaps an advertisement comparing the amount of saturated fat in the popcorn with the USDA's recommended daily allowance. Think of a bar graph, with one of the bars stretching twice as high as the other. But that was too scientific somehow. Too rational. The amount of fat in this popcorn was, in some sense, not rational. It was ludicrous. The CSPI needed a way to shape the message in a way that fully com- municated this ludicrousness. Silverman came up with a solution. CSPI called a press conference on September 27, 199 2. Here's the message it presented: "A medium-sized 'butter' popcorn at a typical neighborhood movie theater contains more artery-clogging fat than a bacon-and-eggs breakfast, a Big Mac and fries for lunch, and a steak dinner with all the trimmings —combined!" The folks at CSPI didn't neglect the visuals—they l aid out the full buffet of greasy food for the television cameras. An entire day's worth of unhealthy eating, displayed on a table. All that saturated fat- stuffed into a single bag of popcorn. The story was an immediate sensation, featured on CBS, NBC, ABC, and CNN. It made the front pages of USA Today, the Los An- geles Times, and The Washington Post's Style section. Leno and Let- terman cracked jokes about fat-soaked popcorn, and headline writers trotted out some doozies: "Popcorn Gets an 'R' Rating," "Lights, Ac- tion, Cholesterol!" "Theater Popcorn is Double Feature of Fat." The idea stuck. Moviegoers, repulsed by these findings, avoided popcorn in droves. Sales plunged. The service staff at movie houses grew accustomed to fielding questions about whether the popcorn 8 MADE TO STICK was popped in the "bad" oil. Soon after, most of the nation's big- gest theater chains —including United Artists, AMC, and Loews — announced that they would stop using coconut oil. On Stickiness This is an idea success story. Even better, it's a truthful idea success story. The people at CSPI knew something about the world that they needed to share. They figured out a way to communicate the idea
+
+====================
+INSTRUCTIONS
+====================
+
+Extract up to 3 knowledge objects from this chunk.
+
+Only extract a knowledge object if the text clearly supports it.
+
+If the chunk is mostly front matter, copyright information, table of contents, acknowledgements, or incomplete context, return an empty JSON array:
+
+[]
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+Do not include explanations outside the JSON.
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+[
+  {
+    "id": "",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_002.txt",
+    "chapter_or_section": "",
+    "knowledge_type": "",
+    "name": "",
+    "principle": "",
+    "problem_solved": "",
+    "core_insight": "",
+    "why_it_works": "",
+    "framework_steps": [],
+    "examples": [],
+    "applications": [],
+    "when_to_use": [],
+    "when_not_to_use": [],
+    "tradeoffs": [],
+    "related_concepts": [],
+    "keywords": [],
+    "confidence_score": 0,
+    "importance_score": 0,
+    "novelty_score": 0,
+    "supporting_evidence": "",
+    "extraction_date": "2026-05-31"
+  }
+]
+
+SCORING GUIDE
+
+confidence_score:
+1 = weak evidence
+5 = directly supported by the text
+
+importance_score:
+1 = useful only in narrow situations
+5 = broadly useful across industries and contexts
+
+novelty_score:
+1 = obvious or widely known
+5 = surprising insight or distinctive mental model

@@ -1,0 +1,336 @@
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  },
+  {
+    "id": "concept_006",
+    "name": "Strategic Decision Filter",
+    "description": "A simple guiding principle that allows individuals and teams to evaluate decisions consistently without requiring detailed instructions for every situation.",
+    "keywords": [
+      "decision making",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "guiding principle"
+    ]
+  },
+  {
+    "id": "concept_007",
+    "name": "Forced Prioritization",
+    "description": "The practice of deliberately choosing the single most important message, objective, or idea when multiple valid options compete for attention.",
+    "keywords": [
+      "prioritization",
+      "focus",
+      "decision making",
+      "clarity",
+      "simplicity"
+    ]
+  },
+  {
+    "id": "concept_008",
+    "name": "Message Triage",
+    "description": "The process of eliminating secondary messages so that communication remains focused on the highest-priority idea.",
+    "keywords": [
+      "message discipline",
+      "focus",
+      "communication",
+      "prioritization",
+      "strategy"
+    ]
+  },
+  {
+    "id": "concept_009",
+    "name": "Decision Paralysis",
+    "description": "A state where complexity, uncertainty, or competing options make it difficult to choose a course of action.",
+    "keywords": [
+      "uncertainty",
+      "complexity",
+      "decision making",
+      "paralysis",
+      "psychology"
+    ]
+  },
+  {
+    "id": "concept_010",
+    "name": "Core Message Transmission",
+    "description": "The process of translating a strategic priority into a memorable and actionable message that guides decisions throughout an organization.",
+    "keywords": [
+      "communication",
+      "alignment",
+      "leadership",
+      "message",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_011",
+    "name": "Concrete Decision Heuristic",
+    "description": "A simple, tangible phrase that helps people make consistent decisions without requiring detailed instructions.",
+    "keywords": [
+      "heuristic",
+      "decision making",
+      "simplicity",
+      "concrete",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_012",
+    "name": "Compact Communication",
+    "description": "Reducing an idea to a concise form that preserves its core meaning while increasing memorability and usability.",
+    "keywords": [
+      "brevity",
+      "simplicity",
+      "memorability",
+      "communication",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_013",
+    "name": "Core and Compact Messaging",
+    "description": "The combination of a meaningful core idea and concise expression that makes a message memorable, actionable, and durable.",
+    "keywords": [
+      "simplicity",
+      "brevity",
+      "core message",
+      "memorability",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_014",
+    "name": "Proverb-Based Communication",
+    "description": "The use of short, experience-based statements that encode practical wisdom and guide decisions across situations.",
+    "keywords": [
+      "proverbs",
+      "wisdom",
+      "heuristics",
+      "decision making",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_015",
+    "name": "Curse of Knowledge",
+    "description": "The tendency of experts to forget what it is like not to know what they know, causing them to resist simplification and communicate with unnecessary complexity.",
+    "keywords": [
+      "expertise",
+      "complexity",
+      "communication",
+      "knowledge",
+      "simplicity"
+    ]
+  },
+  {
+    "id": "concept_016",
+    "name": "Feature Creep",
+    "description": "The tendency for products, systems, or ideas to become progressively more complex as additional features are added over time.",
+    "keywords": [
+      "complexity",
+      "product design",
+      "features",
+      "simplicity",
+      "scope"
+    ]
+  },
+  {
+    "id": "concept_017",
+    "name": "Visual Proverb",
+    "description": "A physical object or visual reminder that communicates a core principle and reinforces decision making.",
+    "keywords": [
+      "visual communication",
+      "symbol",
+      "heuristic",
+      "decision making",
+      "simplicity"
+    ]
+  },
+  {
+    "id": "concept_018",
+    "name": "Memory Chunking",
+    "description": "The process of organizing information into meaningful concepts that reduce cognitive load and improve recall.",
+    "keywords": [
+      "memory",
+      "chunking",
+      "learning",
+      "cognitive load",
+      "recall"
+    ]
+  },
+  {
+    "id": "concept_019",
+    "name": "Schema-Based Learning",
+    "description": "The practice of connecting new information to existing mental models so that it can be understood, remembered, and applied more easily.",
+    "keywords": [
+      "schema",
+      "learning",
+      "memory",
+      "mental models",
+      "understanding"
+    ]
+  },
+  {
+    "id": "concept_020",
+    "name": "Memory Flagging",
+    "description": "Using compact cues that point to large bodies of existing knowledge stored in memory.",
+    "keywords": [
+      "memory",
+      "retrieval",
+      "association",
+      "learning",
+      "compression"
+    ]
+  },
+  {
+    "id": "concept_021",
+    "name": "Layered Complexity",
+    "description": "Building complex understanding by starting with simple concepts and progressively adding additional layers of knowledge.",
+    "keywords": [
+      "learning",
+      "complexity",
+      "teaching",
+      "scaffolding",
+      "education"
+    ]
+  },
+  {
+    "id": "concept_022",
+    "name": "Useful Simplicity",
+    "description": "The principle that information should be simplified enough to guide decisions and actions, even if it is not perfectly complete or precise.",
+    "keywords": [
+      "simplicity",
+      "utility",
+      "decision making",
+      "communication",
+      "accessibility"
+    ]
+  },
+  {
+    "id": "concept_023",
+    "name": "High-Concept Pitch",
+    "description": "A compact description that communicates a complex idea by connecting it to familiar concepts or stories.",
+    "keywords": [
+      "analogy",
+      "pitching",
+      "communication",
+      "storytelling",
+      "marketing"
+    ]
+  },
+  {
+    "id": "concept_024",
+    "name": "Generative Metaphor",
+    "description": "A metaphor that not only explains an idea but also generates new insights, decisions, behaviors, and applications.",
+    "keywords": [
+      "metaphor",
+      "analogy",
+      "innovation",
+      "mental models",
+      "thinking"
+    ]
+  },
+  {
+    "id": "concept_025",
+    "name": "Behavior-Shaping Metaphor",
+    "description": "A metaphor that provides practical guidance for how people should think, behave, and make decisions within a system.",
+    "keywords": [
+      "behavior",
+      "culture",
+      "leadership",
+      "metaphor",
+      "decision making"
+    ]
+  },
+  {
+    "id": "concept_026",
+    "name": "Attention Pattern Interrupt",
+    "description": "A communication technique that gains attention by breaking an expected pattern or routine.",
+    "keywords": [
+      "attention",
+      "surprise",
+      "pattern interrupt",
+      "communication",
+      "unexpectedness"
+    ]
+  },
+  {
+    "id": "concept_027",
+    "name": "Unexpectedness",
+    "description": "The deliberate introduction of surprise or novelty to capture and sustain attention.",
+    "keywords": [
+      "surprise",
+      "attention",
+      "novelty",
+      "communication",
+      "engagement"
+    ]
+  },
+  {
+    "id": "concept_028",
+    "name": "Attention Retention",
+    "description": "The practice of maintaining audience engagement after initial attention has been captured.",
+    "keywords": [
+      "engagement",
+      "attention",
+      "interest",
+      "communication",
+      "retention"
+    ]
+  }
+]

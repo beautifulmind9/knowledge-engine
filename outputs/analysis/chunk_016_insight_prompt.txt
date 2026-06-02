@@ -1,0 +1,652 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  },
+  {
+    "id": "concept_006",
+    "name": "Strategic Decision Filter",
+    "description": "A simple guiding principle that allows individuals and teams to evaluate decisions consistently without requiring detailed instructions for every situation.",
+    "keywords": [
+      "decision making",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "guiding principle"
+    ]
+  },
+  {
+    "id": "concept_007",
+    "name": "Forced Prioritization",
+    "description": "The practice of deliberately choosing the single most important message, objective, or idea when multiple valid options compete for attention.",
+    "keywords": [
+      "prioritization",
+      "focus",
+      "decision making",
+      "clarity",
+      "simplicity"
+    ]
+  },
+  {
+    "id": "concept_008",
+    "name": "Message Triage",
+    "description": "The process of eliminating secondary messages so that communication remains focused on the highest-priority idea.",
+    "keywords": [
+      "message discipline",
+      "focus",
+      "communication",
+      "prioritization",
+      "strategy"
+    ]
+  },
+  {
+    "id": "concept_009",
+    "name": "Decision Paralysis",
+    "description": "A state where complexity, uncertainty, or competing options make it difficult to choose a course of action.",
+    "keywords": [
+      "uncertainty",
+      "complexity",
+      "decision making",
+      "paralysis",
+      "psychology"
+    ]
+  },
+  {
+    "id": "concept_010",
+    "name": "Core Message Transmission",
+    "description": "The process of translating a strategic priority into a memorable and actionable message that guides decisions throughout an organization.",
+    "keywords": [
+      "communication",
+      "alignment",
+      "leadership",
+      "message",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_011",
+    "name": "Concrete Decision Heuristic",
+    "description": "A simple, tangible phrase that helps people make consistent decisions without requiring detailed instructions.",
+    "keywords": [
+      "heuristic",
+      "decision making",
+      "simplicity",
+      "concrete",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_012",
+    "name": "Compact Communication",
+    "description": "Reducing an idea to a concise form that preserves its core meaning while increasing memorability and usability.",
+    "keywords": [
+      "brevity",
+      "simplicity",
+      "memorability",
+      "communication",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_013",
+    "name": "Core and Compact Messaging",
+    "description": "The combination of a meaningful core idea and concise expression that makes a message memorable, actionable, and durable.",
+    "keywords": [
+      "simplicity",
+      "brevity",
+      "core message",
+      "memorability",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_014",
+    "name": "Proverb-Based Communication",
+    "description": "The use of short, experience-based statements that encode practical wisdom and guide decisions across situations.",
+    "keywords": [
+      "proverbs",
+      "wisdom",
+      "heuristics",
+      "decision making",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_015",
+    "name": "Curse of Knowledge",
+    "description": "The tendency of experts to forget what it is like not to know what they know, causing them to resist simplification and communicate with unnecessary complexity.",
+    "keywords": [
+      "expertise",
+      "complexity",
+      "communication",
+      "knowledge",
+      "simplicity"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  },
+  {
+    "id": "problem_006",
+    "name": "Loss of message focus",
+    "description": "Communicators become absorbed in details and lose sight of the central idea that matters most to the audience."
+  },
+  {
+    "id": "problem_007",
+    "name": "Decision paralysis under uncertainty",
+    "description": "People struggle to make decisions when faced with uncertainty, complexity, or multiple competing possibilities."
+  },
+  {
+    "id": "problem_008",
+    "name": "Message dilution",
+    "description": "A communication loses impact because too many important messages compete for attention at the same time."
+  },
+  {
+    "id": "problem_009",
+    "name": "Strategic priorities fail to influence behavior",
+    "description": "Organizations know what matters but fail to communicate priorities in a way that consistently guides day-to-day decisions."
+  },
+  {
+    "id": "problem_010",
+    "name": "Experts resist simplification",
+    "description": "People with deep expertise often avoid simplifying ideas because they fear losing nuance or appearing superficial."
+  },
+  {
+    "id": "problem_011",
+    "name": "Compact messages without substance",
+    "description": "Messages become memorable but unhelpful when they are concise without reflecting an important core truth."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_016.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+the specific actions taken by specific members of the local com- munity—that knowledge informs the kinds of photo op s you look for. Do you shoot the boring committee deliberations or the gorgeous sunset over the park? Answer: the boring committee deliberations. Palm Pilot and the Visual Proverb Compact ideas help people learn and remember a core message. But they may be even more important when it comes time to help people act properly, particularly in an environment where they have to make lots of choices. Why do remote controls have more buttons than we ever use? The answer starts with the noble intentions of engineers. Most tech- nology and product-design projects must combat "feature creep," the SIMPLE 49 tendency for things to become incrementally more co mplex until they no longer perform their original functions ver y well. A VCR is a case in point. Feature creep is an innocent process. An engineer looking at a prototype of a remote control might think to herself, "Hey, there's some extra real estate here on the face of the control. And there's some extra processing capacity on the chip. Rather than let it go to waste, what if we give people the ability to toggle between the Julian and Gregorian calendars?" The engineer is just trying to help—to add another gee-whiz fea- ture that will improve the remote control. The other engineers on the team, meanwhile, don't particularly care about the calendar-toggle. Even if they think it's lame, they probably don't care enough to stage a protest: "Either the calendar-toggle button goes or I quit!" In this way, slowly and quietly, remote controls—and, by ex tension, other types of technologies — are featured to death. The Palm Pilot team, aware of this danger, took a hard line against feature creep. When the team began its work, in the early 1990s, per- sonal digital assistants (PDAs) had an unblemished record of failure. Apple's famous debacle with its Newton PDA had made other com- petitors gun-shy. One of the competitors on the PDA market in 1994 lo oked like a malnourished computer. It was a bulky device with a keyboard and multiple ports for peripherals. Jeff Hawkins, the Palm Pilot team leader, was determined that his product would avoid this fate. He wanted the Palm Pilot to be simple. It would handle four things: cal- endars, contacts, memos, and task lists. The Palm P ilot would do only four things, but it would do them well. Hawkins fought feature creep by carrying around a wooden block the size of the Palm. Trae Vassallo, a member of the Palm V design team, says, "The block was dumb, which resonated with the simple technological goals of the product, but it was also small, which made 50 MADE TO STICK the product elegant and different." Hawkins would pull out the wooden block to "take notes" during a meeting or "c heck his calen- dar" in the hallway. Whenever someone suggested another feature, Hawkins would pull out the wooden block and ask the m where it would fit. Vassallo said that the Palm Pilot became a successful product "al- most because it was defined more in terms of what it was not than in terms of what it was." Tom Kelley, from IDEO, a pro minent Silicon Valley design firm, made a similar point: "The real barrier to the ini- tial PDAs . . . was the idea that the machine had to do nearly every- thing." Hawkins knew that the core idea of his project need ed to be ele- gance and simplicity (and a tenacious avoidance of feature creep). In sharing this core idea, Hawkins and his team used what was, in essence, a visual proverb. The block of wood became a visual re- minder to do a few things and do them well. There is a striking parallel between the development of the Palm Pilot and the Clinton campaign led by James Carville. In both cases, the teams were composed of people who were knowledgeable and passionate about their work. Both teams boasted ple nty of people who had the capability and the desire to do a lot of different things—argue every issue and engineer every feature. Yet in both cases the team needed a simple reminder to fight the temptation to do too much. When you say three things, you say nothing. When yo ur remote con- trol has fifty buttons, you can't change the channel anymore. SIMPLE 51 Using What's There Our messages have to be compact, because we can learn and re- member only so much information at once. But suppos e we've as- sessed the core of our message and we have too much information to aspire to the compactness of a proverb. How do we convey lots of in- formation when we need to? The following exercise i s designed to re- inforce the need for compactness and to provide a hint about how to cram more information into a compact message. Here are the rules of this exercise: Spend ten to fifteen seconds, no more, studying the letters below. Then close the book, pull out a sheet of paper, and write down as many letters as you can remember. Spoiler alert: Don't turn the page until you've finished the exercise. J FKFB INAT OUP SNA SAI RS If you're like most people, you probably remembered about seven to ten letters. That's not much information. Compactness is essential, because there's a limit to the amount of information we can juggle at once. Now turn the page and try the exercise again. 52 MADE TO STICK. There's a twist this time. We haven't changed the letters or the se- quence. All we've done is change the way the letters are grouped. Once again, study the letters for ten to fifteen seconds, then close the book and test your recall. JFK FBI NATO UPS NASA IRS Chances are you did much better the second time. Suddenly the letters meant something, which made them easier to remember. In Round 1, you were trying to remember raw data. In Round 2, you were remembering concepts: John F. Kennedy, the FBI, the North Atlantic Treaty Organization, UPS, NASA, the IRS. But wait a second. Why is it easier to remember "Jo hn F. Kennedy" than the random letters F, J, K? Surely John F. Kennedy is a bigger bundle of information than the three random letters! Think of all the associations with JFK—politics, relationships, his assassination, and his famous family. If remembering was like weight lifting, it would be ridiculous to think we could "lift" JFK easier than three little letters! The secret, of course, is that we're not "lifting" JFK. All the re- membering work related to JFK has already been done. We've already built those muscles—the concept of JFK, and all its associations, is al- ready embedded in our memories. What we're remembering is sim- ply a pointer to this information—we're posting a l ittle flag on the terrain of our memory. With the raw letters, we're posting three sepa- rate flags. In the end, it's one bit of information (or one flag) versus three, and it's no surprise that one is
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

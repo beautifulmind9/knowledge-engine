@@ -1,0 +1,519 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  },
+  {
+    "id": "concept_006",
+    "name": "Strategic Decision Filter",
+    "description": "A simple guiding principle that allows individuals and teams to evaluate decisions consistently without requiring detailed instructions for every situation.",
+    "keywords": [
+      "decision making",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "guiding principle"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  },
+  {
+    "id": "problem_006",
+    "name": "Loss of message focus",
+    "description": "Communicators become absorbed in details and lose sight of the central idea that matters most to the audience."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_014.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+from outside Dunn—perhaps people commuting to jobs in Dunn—are buying the pap er; or (2) some households are buying more than one paper. Maybe it's hard for some couples in Dunn to share. What's the explanation for this remarkable success? The people of Dunn certainly have plenty of options for their news: USA Today, the Raleigh News & Observer, CNN, the Internet, and hundreds of other outlets. So why is the Daily Record so popular? The Dunn Daily Record was founded in 1950 by Hoover Adams. Adams was born with ink in his blood. He got his first byline by sending dispatches from his Boy Scout camp. By the time he was in high school he was serving as a stringer—a freelanc e reporter—for the Raleigh paper. After World War II, Adams became the editor of the Dunn Dispatch. Eventually, he grew restless at the Dispatch and decided to start his own paper, the Daily Record. In 1978, after twenty-eight years of head-to-head competition, the Dispatch finally gave up and sold out to him. SIMPLE 43 Across the fifty-five years of his tenure as publisher, Adams has had a remarkably consistent editorial philosophy. He believes that news- papers should be relentlessly local in their coverage. In fact, he's a zealot about community coverage. In 1978, frustrated by what he felt was insufficient focus on local issues in the paper, he wrote a memo to his staff, explaining his views: "All of us know that the main reason anybody reads a local news- paper is for local names and pictures. That's the one thing we can do better than anybody else. And that's the thing our readers can't get anywhere else. Always remember, the mayor of Angier and the mayor of Lillington are just as important to those towns as the mayor of New York is to his people." Let's be clear: Adams's focus on local coverage is not a revolution- ary sentiment. In fact, among publishers of small newspapers it would be utterly uncontroversial. Yet it's easy enough to see that the idea has not become a reality at most papers. The average local news- paper is loaded with wire stories, analyses of pro sports teams, and spot photos with nary a person in sight. In other words, finding the core isn't synonymous with communi- cating the core. Top management can know what the priorities are but be completely ineffective in sharing and achieving those priorities. Adams has managed to find and share the core. How did he do it? Sharing the Core Adams found the core of his newspaper operations: lo cal focus. Then he turned his attention to sharing his core message—making it stick with his staff. For the rest of the chapter—in fact , the rest of the book—we will discuss ways to get core messages to s tick. And we will start by studying the way Adams has made his "local focus" message stick. While many publishers pay lip service to the value of local focus, 44 MADE TO STICK Adams is an extremist about it. He's willing to hurt the bottom line for local focus: The fact is, a local newspaper can never get enough local names. I'd happily hire two more typesetters and add two more pages in every edition of each paper if we had the names to fill them up. He's willing to be boring for local focus: I'll bet that if the Daily Record reprinted the entire Dunn tele- phone directory tonight, half the people would sit down and check it to be sure their name was included.... When somebody tells you, "Aw, you don't want all those names," pl ease assure them that's exactly what we want, most of all! He gleefully exaggerates in order to emphasize the value of local focus, quoting a saying of a friend, Ralph Delano, who runs the local paper in Benson: If an atomic bomb fell on Raleigh, it wouldn't be news in Benson unless some of the debris and ashes fell on Benson. In fact, asked why the Daily Record has been so successful, Adams replies, "It's because of three things: Names, names, and names." What's going on here? Adams has found the core idea that he wants to communicate —that local focus is the key t o his newspaper's success. That's Step 1. Step 2 is to communicate the core to others. And he does that brilliantly. Look at the techniques Adams uses to communicate hi s serious- ness about local focus. He uses an analogy: comparing the mayor of Angier to the mayor of New York. (We'll have more to say about anal- ogy later in this chapter.) He says he'd hire more typesetters if the re- SIMPLE 45 porters could generate enough names. This is forced prioritization: Local focus is more important than minimizing costs! (Not a com- mon sentiment among small-town papers. See the "Une xpected" chapter.) He also speaks in clear, tangible language. What do es he want? Names. He wants lots of individual names in the newspaper every day. (See the "Concrete" chapter.) This idea is concrete enough that everyone in the organization can comprehend and use it. Is there any room for misunderstanding? Is there a staffer who won't understand what Adams means by "names"? "Names, names, and names" is a simple statement that is sym- bolic of a core truth. It's not just that names are helpful. In Adams's mind, names trump costs. Names trump well-written prose. Names trump nuclear explosions in neighboring communities. For fifty-five years, since Adams founded the paper , his core value of community focus has helped hundreds of people at the paper, in thousands of circumstances, make good decisions. As a publisher, Adams has presided over close to 20,000 issues. And each of those is- sues involved countless decisions: Which stories do we cover? What's important in the stories? Which photos do we run? W hich do we cut out to save space? Adams can't possibly be personally involved in the vast majority of these hundreds of small decisions. But his employees don't suffer from decision paralysis, because Adams's Commander' s Intent is clear: "Names, names, and names." Adams can't be everywhere. But by finding the core and communicating it clearly, he has made him- self everywhere. That's the power of a sticky idea. Simple = Core + Compact Adams is a clever wordsmith, but his most useful bit of wordplay is probably his least clever: "Names, names, and names." This phrase is 46 MADE TO STICK useful and memorable because it is highly concrete, but also because it is highly succinct. This example illustrates a second aspect of sim- plicity: Simple messages are core and compact. At one level, the idea of compactness is uncontroversial. Rarely will you get advice to make your communications lengthy and con- voluted, unless you write interest-rate disclosures for a credit card company. We know that sentences are better than par agraphs. Two bullet points are better than five. Easy words are better than hard words. It's a bandwidth issue: The more we reduce the amount of in- formation in an idea, the stickier it will be. But let's be clear: Compactness alone isn't
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

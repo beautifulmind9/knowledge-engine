@@ -1,0 +1,519 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  },
+  {
+    "id": "concept_006",
+    "name": "Strategic Decision Filter",
+    "description": "A simple guiding principle that allows individuals and teams to evaluate decisions consistently without requiring detailed instructions for every situation.",
+    "keywords": [
+      "decision making",
+      "alignment",
+      "strategy",
+      "prioritization",
+      "guiding principle"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  },
+  {
+    "id": "problem_006",
+    "name": "Loss of message focus",
+    "description": "Communicators become absorbed in details and lose sight of the central idea that matters most to the audience."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_012.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+Seeing that he'd buy in either scenario, he goes forward with the purchase, despite not knowing the outcome. This decision seems sensible—n ot many peo- ple would quibble with Savage's logic. Two psychologists quibbled. Amos Tversky and Eldar Shafir later published a paper proving that the "sure-thing principle" wasn't always a sure thing. They uncovered situations where the mere exis- tence of uncertainty seemed to alter how people made decisions — even when the uncertainty was irrelevant to the outcome, as with the businessman's purchase. For instance, imagine that you're in college and you've just completed an important final exam a couple of weeks before the Christmas holidays. You'd been studying for this exam for weeks, because it's in a subject that's important to your fu- ture career. You've got to wait two days to get the exam results back. Mean- while, you see an opportunity to purchase a vacation during the holi- days to Hawaii at a bargain-basement price. Here ar e your three options: You can buy the vacation today, pass on it today, or pay a five- dollar fee to lock in the price for two days, which would allow you to make your decision after you got your grade. What would you do? You may feel some desire to know the outcome of your exam before you decide, as did the students who faced this choice in the original ex- periment. So Tversky and Shafir simply removed this uncertainty for two groups of participants. These groups were told up front how they did on the exam. Some students were told that they passed the exam, and 57 percent of them chose to go on the trip (after all, it makes for a good celebration). Other students were told that they failed the exam, and 54 percent of them chose to go on the trip (after all, it makes for 36 good recuperation). Both those who passed and those who failed wanted to go to Hawaii, pronto. Here's the twist: The group of students who, like you, didn't know their final exam results behaved completely differently. The majority of them (61 percent) paid five dollars to wait for two days. Think about that! If you pass, you want to go to Hawaii. If you fail, you want to go to Hawaii. If you don't know whether you passed or failed, you . . . wait and see? This is not the way the "sure-thing principle" is supposed to behave. It's as if our businessman had decided to wait until after the election to buy his property, despite being willing to make the pur- chase regardless of the outcome. Tversky and Shafir's study shows us that uncertaint y—even irrele- vant uncertainty—can paralyze us. Another study, co nducted by Shafir and a colleague, Donald Redelmeier, demonstrates that paral- ysis can also be caused by choice. Imagine, for example, that you are in college and you face the following choice one evening. What would you do? 1. Attend a lecture by an author you admire who is visiting just for the evening, or 2. Go to the library and study. Studying doesn't look so attractive compared with a once in a life- time lecture. When this choice was given to actual college students, only 21 percent decided to study. Suppose, instead, you had been given three choices: 1. Attend the lecture. 2. Go to the library and study. 3. Watch a foreign film that you've been wanting to see. Does your answer differ? Remarkably, when a different group of students were given the three choices, 40 percent d ecided to study— SIMPLE 37 double the number who did before. Giving students t wo good alter- natives to studying, rather than one, paradoxically makes them less likely to choose either. This behavior isn't "rational," but it is human. Prioritization rescues people from the quicksand of decision angst, and that's why finding the core is so valuable. The people who listen to us will be constantly making decisions in an environment of uncertainty. They will suffer anxiety from the need to choose —even when the choice is between two good options, like t he lecture and the foreign film. Core messages help people avoid bad choices by reminding them of what's important. In Herb Kelleher's parable, for instance, some- one had to choose between chicken salad and no chic ken salad—and the message "THE low-fare airline" led her to aband on the chicken salad. Idea Clinics The goal of this book is to help you make your idea s stick. So, period- ically throughout the book, we will present "Idea C linics," which il- lustrate, in practical terms, how an idea can be made stickier. The Clinics were inspired by the classic "before and after" photos used by weight-loss centers—visible evidence that the diet works. Like patients trying a new diet, the initial ideas in the Clinics vary in their need for change; some need dramatic help, like a stomach-stapling and lipo- suction, and some only need to lose a few pounds around the waist- line. The point of the Clinics is not to wow you with our creative ge- nius, and it's fortunate for readers and authors alike that this is not the goal, because we are not creative geniuses. The poin t is simply to model the process of making ideas stickier. In contrast to traditional disclaimers, this is something you should try at home. Think about each message and consider how you would improve it using the prin- ciples in the book. 38 MADE TO STICK You can safely skip the Clinics—they are intended a s sidebars to the text, rather than as building blocks—but we hop e you'll find them useful. Warning: Sun Exposure Is Dangerous the situation: Health educators at Ohio State University want to in- form the academic community about the risks of sun exposure. message 1: Here's a Web page with facts about sun exposure from Ohio State University. We've added numbers to each paragraph so that we can analyze the message later: Sun Exposure: Precautions and Protection (1) A golden, bronze tan is often considered a status symbol. Per- haps this supports the idea that people who have time to lie in the sun long enough to develop a deep tan, or who can travel to warm climates during winter, have more money or leisure time than "com- mon folk." Nevertheless, the goal of many is a deep tan early in spring or to return from vacation with that hearty, healthy glow. Whether a tan suggests status or not, careless exposure to the sun can be harmful. Ultraviolet rays from the sun will damage skin but can also create vision problems, allergic reactions, and depressed immune systems. SIMPLE 39 (2) Tanning and burning are caused by ultraviolet rays from the sun. These rays cannot be seen or felt, but penetrate the skin and stimulate cells containing a brownish pigment called melanin. Melanin protects the skin by absorbing and scattering ultraviolet rays. People with dark skins have high amounts of melanin, have greater natural protection from ultraviolet rays, and tan more easily. Blondes, redheads, and people with fair skins have less melanin and, there- fore,
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

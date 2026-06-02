@@ -1,0 +1,368 @@
+{
+  "concepts": [
+    {
+      "id": "concept_026",
+      "name": "Attention Pattern Interrupt",
+      "description": "A communication technique that gains attention by breaking an expected pattern or routine.",
+      "keywords": [
+        "attention",
+        "surprise",
+        "pattern interrupt",
+        "communication",
+        "unexpectedness"
+      ]
+    },
+    {
+      "id": "concept_027",
+      "name": "Unexpectedness",
+      "description": "The deliberate introduction of surprise or novelty to capture and sustain attention.",
+      "keywords": [
+        "surprise",
+        "attention",
+        "novelty",
+        "communication",
+        "engagement"
+      ]
+    },
+    {
+      "id": "concept_028",
+      "name": "Attention Retention",
+      "description": "The practice of maintaining audience engagement after initial attention has been captured.",
+      "keywords": [
+        "engagement",
+        "attention",
+        "interest",
+        "communication",
+        "retention"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_021",
+      "name": "People ignore familiar messages",
+      "description": "Audiences tune out communications that follow predictable patterns they have encountered repeatedly."
+    },
+    {
+      "id": "problem_022",
+      "name": "Failure to sustain attention",
+      "description": "Messages briefly capture attention but fail to keep audiences engaged long enough to communicate their ideas."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_038",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_020.txt",
+      "chapter_or_section": "Unexpected",
+      "concept_ids": [
+        "concept_026",
+        "concept_027"
+      ],
+      "problem_ids": [
+        "problem_021"
+      ],
+      "title": "Attention is captured by breaking expected patterns",
+      "knowledge_type": "psychological pattern",
+      "what_it_says": "People quickly adapt to familiar stimuli and stop noticing them. Unexpected changes force attention because the brain is highly sensitive to deviations from established patterns.",
+      "why_it_matters": "Messages must disrupt expectations if they are to stand out in environments filled with repetitive communication.",
+      "examples_from_source": [
+        {
+          "example_name": "Karen Wood airline announcement",
+          "what_happened": "A flight attendant replaced the standard safety announcement with humor and unexpected language, causing passengers to pay attention and applaud.",
+          "why_it_matters": "Breaking expectations transformed a routinely ignored message into an engaging one.",
+          "concept_demonstrated": "Attention Pattern Interrupt",
+          "transferable_lesson": "Interrupt familiar patterns when communicating important information."
+        },
+        {
+          "example_name": "Warning lights and sirens",
+          "what_happened": "Designers use blinking lights and changing siren patterns because constant signals are eventually ignored.",
+          "why_it_matters": "Variation keeps attention focused on important information.",
+          "concept_demonstrated": "Attention Pattern Interrupt",
+          "transferable_lesson": "Introduce change whenever sustained attention is required."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Break a pattern to gain attention.",
+          "condition": "When audiences are likely to ignore a familiar message.",
+          "action": "Introduce an unexpected element that violates expectations.",
+          "rationale": "Unexpected changes trigger attention automatically."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Pattern Interrupt",
+          "description": "Capture attention by disrupting a familiar expectation.",
+          "steps": [
+            "Identify an expected pattern",
+            "Introduce an unexpected variation",
+            "Create curiosity",
+            "Deliver the message"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Using familiar communication formats repeatedly.",
+          "consequence": "Audiences stop noticing the message.",
+          "prevention": "Introduce novelty or surprise."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Attention Reset",
+          "when_to_use": "When communicating in cluttered, repetitive, or low-interest environments.",
+          "steps": [
+            "Identify audience expectations",
+            "Break the expected pattern",
+            "Capture attention",
+            "Transition into the message"
+          ],
+          "adaptation_notes": "Useful in presentations, marketing, teaching, leadership, and safety communication."
+        }
+      ],
+      "when_to_use": [
+        "Presentations",
+        "Marketing",
+        "Teaching",
+        "Safety communication"
+      ],
+      "when_not_to_use": [
+        "When surprise would undermine trust or credibility"
+      ],
+      "tradeoffs": [
+        "Unexpectedness captures attention but can distract if unrelated to the message."
+      ],
+      "keywords": [
+        "attention",
+        "surprise",
+        "unexpectedness",
+        "communication",
+        "engagement"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 5,
+      "evidence": "The most basic way to get someone's attention is this: Break a pattern.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_039",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_020.txt",
+      "chapter_or_section": "Unexpected",
+      "concept_ids": [
+        "concept_027",
+        "concept_028"
+      ],
+      "problem_ids": [
+        "problem_022"
+      ],
+      "title": "Surprise gets attention while interest keeps it",
+      "knowledge_type": "framework",
+      "what_it_says": "Unexpectedness and interest serve different functions. Surprise captures attention initially, while interest sustains engagement over time.",
+      "why_it_matters": "Effective communication requires both gaining attention and maintaining it long enough for the audience to absorb the message.",
+      "examples_from_source": [
+        {
+          "example_name": "Karen Wood safety briefing",
+          "what_happened": "Humor and surprise initially attracted attention, while the entertaining delivery kept passengers engaged through the announcement.",
+          "why_it_matters": "Both surprise and interest were necessary for success.",
+          "concept_demonstrated": "Attention Retention",
+          "transferable_lesson": "Plan for both attention capture and attention maintenance."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Use surprise to gain attention and interest to sustain it.",
+          "condition": "When communicating ideas that require audience engagement.",
+          "action": "Design messages with both an unexpected hook and a compelling continuation.",
+          "rationale": "Attention alone is insufficient without continued engagement."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Attention Funnel",
+          "description": "Move audiences from surprise into sustained interest.",
+          "steps": [
+            "Introduce an unexpected element",
+            "Capture attention",
+            "Provide engaging content",
+            "Maintain curiosity"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Focusing only on attention-grabbing tactics.",
+          "consequence": "Audiences notice the message but fail to stay engaged.",
+          "prevention": "Build sustained interest after capturing attention."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Hook and Hold",
+          "when_to_use": "When teaching, presenting, marketing, or storytelling.",
+          "steps": [
+            "Start with surprise",
+            "Create curiosity",
+            "Deliver meaningful content",
+            "Maintain engagement"
+          ],
+          "adaptation_notes": "Useful for presentations, writing, marketing, and education."
+        }
+      ],
+      "when_to_use": [
+        "Presentations",
+        "Marketing",
+        "Storytelling",
+        "Education"
+      ],
+      "when_not_to_use": [
+        "When audiences are already highly motivated and attentive"
+      ],
+      "tradeoffs": [
+        "Surprise improves attention but can become gimmicky if overused."
+      ],
+      "keywords": [
+        "surprise",
+        "interest",
+        "engagement",
+        "attention",
+        "communication"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "Surprise gets our attention. Interest keeps our attention.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_040",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_020.txt",
+      "chapter_or_section": "Unexpected",
+      "concept_ids": [
+        "concept_027"
+      ],
+      "problem_ids": [
+        "problem_021"
+      ],
+      "title": "Unexpectedness can be deliberately designed",
+      "knowledge_type": "operating principle",
+      "what_it_says": "Unexpectedness is not purely accidental. Communicators can intentionally create surprise by violating audience expectations.",
+      "why_it_matters": "Attention can be engineered rather than left to chance.",
+      "examples_from_source": [
+        {
+          "example_name": "Alternative safety announcement approaches",
+          "what_happened": "The authors note that even pausing unexpectedly or suddenly switching languages would have captured attention.",
+          "why_it_matters": "The mechanism is not entertainment itself but the disruption of expectations.",
+          "concept_demonstrated": "Unexpectedness",
+          "transferable_lesson": "Design moments that violate audience assumptions."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Create surprise by violating expectations.",
+          "condition": "When attention is difficult to obtain.",
+          "action": "Introduce a deliberate mismatch between expectation and reality.",
+          "rationale": "The brain prioritizes unexpected information."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Expectation Violation",
+          "description": "Create surprise through a controlled break from expectations.",
+          "steps": [
+            "Identify audience expectations",
+            "Create a deviation",
+            "Reveal the difference",
+            "Deliver the message"
+          ]
+        }
+      ],
+      "warnings": [],
+      "application_patterns": [
+        {
+          "pattern_name": "Designed Surprise",
+          "when_to_use": "When competing for attention in crowded environments.",
+          "steps": [
+            "Determine the expected pattern",
+            "Introduce a deliberate violation",
+            "Capture attention",
+            "Connect the surprise to the message"
+          ],
+          "adaptation_notes": "Useful in advertising, teaching, presentations, and product launches."
+        }
+      ],
+      "when_to_use": [
+        "Advertising",
+        "Teaching",
+        "Presentations",
+        "Product launches"
+      ],
+      "when_not_to_use": [
+        "When surprise creates confusion unrelated to the message"
+      ],
+      "tradeoffs": [
+        "Designed surprise improves attention but may distract if poorly connected to the message."
+      ],
+      "keywords": [
+        "surprise",
+        "attention",
+        "expectations",
+        "communication",
+        "engagement"
+      ],
+      "confidence_score": 5,
+      "importance_score": 4,
+      "novelty_score": 5,
+      "evidence": "Our brain is designed to be keenly aware of changes.",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "concept_026",
+      "relationship": "helps_solve",
+      "to": "problem_021",
+      "evidence": "Breaking a pattern forces audiences to notice the message."
+    },
+    {
+      "from": "concept_027",
+      "relationship": "related_to",
+      "to": "concept_028",
+      "evidence": "Surprise gets attention while interest keeps it."
+    },
+    {
+      "from": "concept_028",
+      "relationship": "helps_solve",
+      "to": "problem_022",
+      "evidence": "Interest maintains engagement after attention is captured."
+    },
+    {
+      "from": "insight_038",
+      "relationship": "supports",
+      "to": "concept_026",
+      "evidence": "The most basic way to get someone's attention is this: Break a pattern."
+    },
+    {
+      "from": "insight_039",
+      "relationship": "supports",
+      "to": "concept_028",
+      "evidence": "Surprise gets our attention. Interest keeps our attention."
+    },
+    {
+      "from": "insight_040",
+      "relationship": "supports",
+      "to": "concept_027",
+      "evidence": "Our brain is designed to be keenly aware of changes."
+    }
+  ]
+}

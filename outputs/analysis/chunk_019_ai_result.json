@@ -1,0 +1,371 @@
+{
+  "concepts": [
+    {
+      "id": "concept_023",
+      "name": "High-Concept Pitch",
+      "description": "A compact description that communicates a complex idea by connecting it to familiar concepts or stories.",
+      "keywords": [
+        "analogy",
+        "pitching",
+        "communication",
+        "storytelling",
+        "marketing"
+      ]
+    },
+    {
+      "id": "concept_024",
+      "name": "Generative Metaphor",
+      "description": "A metaphor that not only explains an idea but also generates new insights, decisions, behaviors, and applications.",
+      "keywords": [
+        "metaphor",
+        "analogy",
+        "innovation",
+        "mental models",
+        "thinking"
+      ]
+    },
+    {
+      "id": "concept_025",
+      "name": "Behavior-Shaping Metaphor",
+      "description": "A metaphor that provides practical guidance for how people should think, behave, and make decisions within a system.",
+      "keywords": [
+        "behavior",
+        "culture",
+        "leadership",
+        "metaphor",
+        "decision making"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_019",
+      "name": "New ideas are difficult to communicate",
+      "description": "People struggle to understand unfamiliar concepts because they lack existing mental models for interpreting them."
+    },
+    {
+      "id": "problem_020",
+      "name": "Organizational values fail to guide behavior",
+      "description": "Companies create slogans or labels that do not provide actionable guidance for employee decisions and behavior."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_035",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_019.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_023",
+        "concept_019"
+      ],
+      "problem_ids": [
+        "problem_019"
+      ],
+      "title": "High-concept pitches compress large amounts of meaning into familiar schemas",
+      "knowledge_type": "communication pattern",
+      "what_it_says": "A strong pitch communicates a new idea by combining familiar concepts, allowing people to rapidly understand implications that would otherwise require extensive explanation.",
+      "why_it_matters": "People can make decisions about unfamiliar ideas more quickly when those ideas are connected to existing mental models.",
+      "examples_from_source": [
+        {
+          "example_name": "Speed as Die Hard on a bus",
+          "what_happened": "A five-word description communicated the tone, budget, audience, style, and expectations of the movie.",
+          "why_it_matters": "The pitch transferred large amounts of understanding through a familiar reference.",
+          "concept_demonstrated": "High-Concept Pitch",
+          "transferable_lesson": "Describe unfamiliar ideas through combinations of concepts people already understand."
+        },
+        {
+          "example_name": "Alien as Jaws on a spaceship",
+          "what_happened": "The pitch immediately influenced design decisions about the setting, atmosphere, and characters.",
+          "why_it_matters": "The analogy guided creative decisions throughout development.",
+          "concept_demonstrated": "High-Concept Pitch",
+          "transferable_lesson": "A powerful analogy can align many decisions without detailed instructions."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Explain new ideas through familiar concepts.",
+          "condition": "When introducing unfamiliar products, stories, or strategies.",
+          "action": "Combine the new concept with recognizable references.",
+          "rationale": "Existing schemas accelerate understanding."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Schema Compression",
+          "description": "Communicate a new concept through a compact combination of familiar ideas.",
+          "steps": [
+            "Identify the new concept",
+            "Find familiar reference points",
+            "Combine them into a short phrase",
+            "Use the phrase to guide decisions"
+          ]
+        }
+      ],
+      "warnings": [],
+      "application_patterns": [
+        {
+          "pattern_name": "High-Concept Positioning",
+          "when_to_use": "When pitching products, businesses, stories, or strategic initiatives.",
+          "steps": [
+            "Define the core concept",
+            "Identify familiar analogies",
+            "Compress the explanation",
+            "Test whether people understand the implications"
+          ],
+          "adaptation_notes": "Useful in marketing, fundraising, product strategy, and storytelling."
+        }
+      ],
+      "when_to_use": [
+        "Pitching",
+        "Marketing",
+        "Storytelling",
+        "Product communication"
+      ],
+      "when_not_to_use": [
+        "When no meaningful analogy exists"
+      ],
+      "tradeoffs": [
+        "Compression improves understanding but may omit nuance."
+      ],
+      "keywords": [
+        "pitching",
+        "analogy",
+        "schemas",
+        "communication",
+        "storytelling"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "The compact, five-word phrase 'Die Hard on a bus' pours a breathtaking amount of meaning into the previously nonexistent concept of Speed.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_036",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_019.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_024"
+      ],
+      "problem_ids": [
+        "problem_019"
+      ],
+      "title": "Generative metaphors create new ways of thinking",
+      "knowledge_type": "framework",
+      "what_it_says": "Some metaphors do more than explain existing ideas. They become platforms that generate new insights, explanations, and innovations.",
+      "why_it_matters": "Generative metaphors help people explore unfamiliar domains by borrowing structures from well-understood domains.",
+      "examples_from_source": [
+        {
+          "example_name": "Brain as a computer",
+          "what_happened": "Psychologists used concepts such as memory, processors, and buffers from computing to develop theories about cognition.",
+          "why_it_matters": "The metaphor produced new questions and discoveries rather than merely explaining existing knowledge.",
+          "concept_demonstrated": "Generative Metaphor",
+          "transferable_lesson": "Use metaphors that generate new possibilities, not just explanations."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Prefer metaphors that generate useful questions.",
+          "condition": "When exploring complex or unfamiliar domains.",
+          "action": "Choose analogies that reveal new possibilities and insights.",
+          "rationale": "The best metaphors support both understanding and discovery."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Generative Mapping",
+          "description": "Transfer structures from a familiar domain to generate insights in a new domain.",
+          "steps": [
+            "Identify a complex problem",
+            "Select a familiar system",
+            "Map similarities",
+            "Explore implications",
+            "Generate new ideas"
+          ]
+        }
+      ],
+      "warnings": [],
+      "application_patterns": [
+        {
+          "pattern_name": "Innovation Through Analogy",
+          "when_to_use": "When solving problems, creating frameworks, or teaching abstract concepts.",
+          "steps": [
+            "Choose a familiar metaphor",
+            "Map relationships",
+            "Generate predictions",
+            "Test new insights"
+          ],
+          "adaptation_notes": "Useful in strategy, product design, education, and research."
+        }
+      ],
+      "when_to_use": [
+        "Innovation",
+        "Research",
+        "Education",
+        "Strategy"
+      ],
+      "when_not_to_use": [
+        "When the metaphor creates misleading assumptions"
+      ],
+      "tradeoffs": [
+        "Generative metaphors stimulate insight but can oversimplify reality."
+      ],
+      "keywords": [
+        "metaphor",
+        "innovation",
+        "thinking",
+        "analogy",
+        "mental models"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 5,
+      "evidence": "Good metaphors are generative.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_037",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_019.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_025",
+        "concept_006"
+      ],
+      "problem_ids": [
+        "problem_020",
+        "problem_004"
+      ],
+      "title": "The best metaphors provide behavioral guidance",
+      "knowledge_type": "application_pattern",
+      "what_it_says": "A useful metaphor helps people predict how they should behave in situations that were never explicitly described.",
+      "why_it_matters": "Organizations scale more effectively when employees can derive behavior from shared principles rather than detailed instructions.",
+      "examples_from_source": [
+        {
+          "example_name": "Disney cast members",
+          "what_happened": "Disney consistently framed employees as cast members in a performance, shaping expectations about service, behavior, and customer interactions.",
+          "why_it_matters": "Employees could infer correct behavior without extensive rulebooks.",
+          "concept_demonstrated": "Behavior-Shaping Metaphor",
+          "transferable_lesson": "Choose metaphors that naturally imply desired behaviors."
+        },
+        {
+          "example_name": "Subway sandwich artists",
+          "what_happened": "The metaphor did not meaningfully guide employee behavior because artistry was not actually encouraged.",
+          "why_it_matters": "A metaphor without behavioral implications becomes an empty label.",
+          "concept_demonstrated": "Behavior-Shaping Metaphor",
+          "transferable_lesson": "Avoid metaphors that sound appealing but do not influence decisions."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Use metaphors that imply actionable behavior.",
+          "condition": "When creating organizational values or cultural principles.",
+          "action": "Select metaphors that naturally guide decisions and conduct.",
+          "rationale": "Behavioral clarity creates consistency."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Behavioral Metaphor Design",
+          "description": "Create a metaphor that employees can use as a decision filter.",
+          "steps": [
+            "Define desired behaviors",
+            "Choose a fitting metaphor",
+            "Apply it consistently",
+            "Allow employees to infer behavior"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Using symbolic labels that do not influence behavior.",
+          "consequence": "The metaphor becomes decorative rather than useful.",
+          "prevention": "Test whether people can derive decisions from the metaphor."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Culture Through Metaphor",
+          "when_to_use": "When building organizational culture or customer experience standards.",
+          "steps": [
+            "Identify desired behaviors",
+            "Select a generative metaphor",
+            "Embed it in language and systems",
+            "Reinforce it consistently"
+          ],
+          "adaptation_notes": "Useful in leadership, customer service, culture design, and change management."
+        }
+      ],
+      "when_to_use": [
+        "Leadership",
+        "Culture building",
+        "Customer service",
+        "Organizational design"
+      ],
+      "when_not_to_use": [
+        "When the metaphor does not align with actual expectations"
+      ],
+      "tradeoffs": [
+        "Strong metaphors improve alignment but may constrain alternative interpretations."
+      ],
+      "keywords": [
+        "culture",
+        "behavior",
+        "metaphor",
+        "alignment",
+        "leadership"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 5,
+      "evidence": "This metaphor of employees as cast members in a theatrical production is communicated consistently throughout the organization.",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "concept_023",
+      "relationship": "related_to",
+      "to": "concept_019",
+      "evidence": "High-concept pitches tap the power of analogy and schemas."
+    },
+    {
+      "from": "concept_024",
+      "relationship": "related_to",
+      "to": "concept_019",
+      "evidence": "Generative metaphors create new perceptions by leveraging existing schemas."
+    },
+    {
+      "from": "concept_025",
+      "relationship": "helps_solve",
+      "to": "problem_020",
+      "evidence": "The Disney metaphor guided behavior across many situations."
+    },
+    {
+      "from": "insight_035",
+      "relationship": "supports",
+      "to": "concept_023",
+      "evidence": "Die Hard on a bus pours a breathtaking amount of meaning into the concept of Speed."
+    },
+    {
+      "from": "insight_036",
+      "relationship": "supports",
+      "to": "concept_024",
+      "evidence": "Good metaphors are generative."
+    },
+    {
+      "from": "insight_037",
+      "relationship": "supports",
+      "to": "concept_025",
+      "evidence": "Employees as cast members shaped behavior throughout Disney."
+    }
+  ]
+}

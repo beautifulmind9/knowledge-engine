@@ -1,0 +1,148 @@
+
+You are a knowledge extraction assistant.
+
+Your task is to extract reusable knowledge for a hybrid knowledge graph.
+
+The graph has five parts:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Knowledge Objects
+5. Relationships
+
+A source can contain many concepts.
+A concept can appear in many sources.
+A problem can be solved by many concepts.
+A knowledge object stores what this specific source says about a concept.
+Relationships connect concepts, problems, and knowledge objects.
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf"
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_001.txt
+
+Extraction date:
+2026-05-31
+
+====================
+TEXT TO ANALYZE
+====================
+
+Made to stick : why some ideas survive and others die Chip Heath & Dan Heath Copyright © 2007 by Chip Heath and Dan Heath All rights reserved. Published in the United States by Random House, an imprint of The Random House Publishing Group, a division of Random House, Inc., New York. Random House and colophon are registered trademarks of Random House, Inc. ISBN 978-1-4000-6428-1 Library of Congress Cataloging-in-Publication Data Heath, Chip. Made to stick : why some ideas survive and others die / Chip Heath & Dan Heath p. cm. Includes index. ISBN-13: 978-1-4000-6428-1 1. Social psychology. 2. Contagion (Social psychology). 3. Context effects (Psychology). I. Heath, Dan.' II. Title. HM1033.H43 2007 3O2'.13-dc22 2006046467 Printed in the United States of America on acid-free paper www.atrandom.com 6 8 9 7 Designed by Stephanie Huntwork To Dad, for driving an old tan Chevette while putting us through college. To Mom, for making us breakfast every day for eighteen years. Each. INTRODUCTION WHAT STICKS? 3 Kidney heist. Movie popcorn. Sticky = understandable, memorable, and ef- fective in changing thought or behavior. Halloween candy. Six principles: SUCCESs. The villain: Curse of Knowledge. It's hard to be a tapper. Creativity starts with templates. CHAPTER 1 SIMPLE 25 Commander's Intent. THE low-fare airline. Burying the lead and the inverted pyramid. It's the economy, stupid. Decision paralysis. Clinic: Sun exposure. Names, names, and names. Simple = core + compact. P roverbs. The Palm Pilot wood block. Using what's there. The pomelo schema. High concept: Jaws on a spaceship. Generative analogies: Disney's "cast members." CHAPTER 2 UNEXPECTED 63 The successful flight safety announcement. The surp rise brow. Gimmicky sur- prise and "postdictability." Breaking the guessing machine. "The Nordie who . . ." "No school next Thursday." Clinic: Too much on foreign aid? Saturn's rings. Movie turning points. Gap theory of curiosit y. Clinic: Fund-raising. Prim- ing the gap: NCAA football. Pocketable radio. Man on the moon. CHAPTER 3 CONCRETE 98 Sour grapes. Landscapes as eco-celebrities. Teaching subtraction with less ab- straction. Soap-opera accounting. Velcro theory of memory. Brown eyes, blue eyes. Engineers vs. manufacturers. The Ferraris go to Disney World. White things. The leather computer. Clinic: Oral rehydration therapy. Hamburger Helper and Saddleback Sam. CHAPTER 4 CREDIBLE 130 The Nobel-winning scientist no one believed. Flesh-eating bananas. Authority and antiauthority. Pam Laffin, smoker. Powerful details. Jurors and the Darth Vader toothbrush. The dancing seventy-three year old. Statistics: Nuclear war- heads as BBs. The human-scale principle. Officemate s as a soccer team. Clinic: Shark attack hysteria. The Sinatra Test. Tr ansporting Bollywood movies. Edible fabric. Where's the beef? Testable credentials. The Emotional Tank. Clinic: Our flawed intuition. NBA rookie camp. CHAPTER 5 EMOTIONAL 165 The Mother Teresa principle: If I look at the one, I will act. Beating smoking with the Truth. Semantic stretch and why unique isn't unique. Reclaiming "sports- manship." Schlocky but masterful mail-order ads. WI IFY. Cable television in Tempe. Avoiding Maslow's basement. Dining in Iraq. The popcorn popper and political science. Clinic: Why study algebra? Don't mess with Texas. Who cares about duo piano? Creating empathy. CHAPTER 6 STORIES 204 The day the heart monitor lied. Shop talk at Xerox. Helpful and unhelpful visu- alizations. Stories as flight simulators. Clinic: Dealing with problem students. Jared, the 425-pound fast-food dieter. Spotting inspiring stories. The Chal- lenge Plot. The Connection Plot. The Creativity Plot. Springboard stories at the World Bank: A health worker in Zambia. How to make presenters angry with stories. EPILOGUE WHAT STICKS 238 Nice guys finish last. Elementary, my dear Watson. The power of spotting. Curse of Knowledge again. Pay attention, understand, believe, care, and act. Sticky problems: symptoms and solutions. John F. Kennedy versus Floyd Lee. MAKING IDEAS STICK: THE EASY REFERENCE GUIDE 253 NOTES 259 ACKNOWLEDGMENTS 277 INDEX 281 WHAT STICKS? A friend of a friend of ours is a frequent business traveler. Let's call him Dave. Dave was recently in Atlantic City for an im- portant meeting with clients. Afterward, he had some time to kill before his flight, so he went to a local bar for a drink. He'd just finished one drink when an attractive woman ap- proached and asked if she could buy him another. He was surprised but flattered. Sure, he said. The woman walked to the bar and brought back two more drinks —one for her and one f or him. He thanked her and took a sip. And that was the last thing he remem- bered. Rather, that was the last thing he remembered until he woke up, disoriented, lying in a hotel bathtub, his body sub merged in ice. He looked around frantically, trying to figure out where he was and how he got there. Then he spotted the note: DON'T MOVE. CALL 911. A cell phone rested on a small table beside the bathtub. He picked it up and called 911, his fingers numb and clumsy from the ice. The operator seemed oddly familiar with his situation. She said, "Sir, I want you to reach behind you, slowly and carefully. Is there a tube protruding from your lower back?" MADE TO STICK Anxious, he felt around behind him. Sure enough, there was a tube. The operator said, "Sir, don't panic, but one of your kidneys has been harvested. There's a ring of organ thieves operating in this city, and they got to you. Paramedics are on their way. Don't move until they arrive." You've just read one of the most successful urban legends of the past fifteen years. The first clue is the classic urban-legend open- ing: "A friend of a friend . . ." Have you ever noticed that our friends' friends have much more interesting lives than our friends them- selves? You've probably heard the Kidney Heist tale before. There are hundreds of versions in circulation, and all of them share a core of three elements: (1) the drugged drink, (2) the ice-filled bathtub, and (3) the kidney-theft punch line. One version features a married man who receives the drugged drink from a prostitute he has invited to his room in Las Vegas. It's a morality play with kidneys. Imagine that you closed the book right now, took an hourlong break, then called a friend and told the story, without rereading it. Chances are you could tell it almost perfectly. You might forget that the traveler was in Atlantic City for "an important meeting with clients"—who cares about that? But you'd remember a ll the impor- tant stuff. The Kidney Heist is a story that sticks. We understand it, we re- member it, and we can retell it later. And if we believe it's true, it might change our behavior permanently—at least in t erms of accept- ing drinks from attractive strangers. Contrast the Kidney Heist story with this passage, drawn from a paper distributed by a nonprofit organization. "Comprehensive com- munity building naturally lends itself to a return-on-investment ra- INTRODUCTION 5 tionale that can be modeled, drawing on existing practice," it begins, going on to argue that "[a] factor constraining the flow of resources to CCIs is that funders must often resort to targeting or categorical re- quirements in grant making to ensure accountability." Imagine that you closed the book
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly front matter, copyright information, table of contents, acknowledgements, or incomplete context, return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "knowledge_objects": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+Do not include markdown.
+Do not include explanations outside the JSON.
+Do not invent unsupported ideas.
+
+Use this exact structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "knowledge_objects": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_001.txt",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "knowledge_type": "",
+      "name": "",
+      "what_it_says": "",
+      "how_to_apply": [],
+      "examples": [],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "supporting_evidence": "",
+      "extraction_date": "2026-05-31"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+- Concepts should be reusable ideas, such as Storytelling, Simplicity, Curiosity, Credibility, or Curse of Knowledge.
+- Problems should be reusable challenges, such as People forget abstract information or Audiences do not trust unsupported claims.
+- Knowledge objects should explain what this specific source says about the concept.
+- how_to_apply should be practical steps someone can follow.
+- Use existing concepts/problems if they already match.
+- Create new concepts/problems only when needed.
+- Supporting evidence must come from the text.
+- Scores must be from 1 to 5.
+
+Relationship examples:
+- concept_001 helps_solve problem_001
+- ko_000001 supports concept_001
+- source_001 contains concept_001

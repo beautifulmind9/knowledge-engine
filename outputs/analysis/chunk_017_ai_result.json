@@ -1,0 +1,362 @@
+{
+  "concepts": [
+    {
+      "id": "concept_019",
+      "name": "Schema-Based Learning",
+      "description": "The practice of connecting new information to existing mental models so that it can be understood, remembered, and applied more easily.",
+      "keywords": [
+        "schema",
+        "learning",
+        "memory",
+        "mental models",
+        "understanding"
+      ]
+    },
+    {
+      "id": "concept_020",
+      "name": "Memory Flagging",
+      "description": "Using compact cues that point to large bodies of existing knowledge stored in memory.",
+      "keywords": [
+        "memory",
+        "retrieval",
+        "association",
+        "learning",
+        "compression"
+      ]
+    },
+    {
+      "id": "concept_021",
+      "name": "Layered Complexity",
+      "description": "Building complex understanding by starting with simple concepts and progressively adding additional layers of knowledge.",
+      "keywords": [
+        "learning",
+        "complexity",
+        "teaching",
+        "scaffolding",
+        "education"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_016",
+      "name": "Difficulty understanding unfamiliar concepts",
+      "description": "People struggle to learn new ideas when they cannot connect them to existing knowledge."
+    },
+    {
+      "id": "problem_017",
+      "name": "Complex information overwhelms learners",
+      "description": "Large amounts of information become difficult to understand or remember when presented without structure."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_029",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_017.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_020",
+        "concept_018"
+      ],
+      "problem_ids": [
+        "problem_015",
+        "problem_001"
+      ],
+      "title": "Compact messages work by activating existing knowledge",
+      "knowledge_type": "psychological pattern",
+      "what_it_says": "People remember compact ideas because they function as pointers to knowledge that is already stored in memory rather than requiring entirely new information to be remembered.",
+      "why_it_matters": "Communication becomes more efficient when it leverages what audiences already know.",
+      "examples_from_source": [
+        {
+          "example_name": "JFK memory exercise",
+          "what_happened": "Participants remembered JFK more easily than random letters because the concept already contained many stored associations.",
+          "why_it_matters": "Existing knowledge reduces memory load.",
+          "concept_demonstrated": "Memory Flagging",
+          "transferable_lesson": "Anchor new communication to familiar concepts whenever possible."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Use existing knowledge whenever possible.",
+          "condition": "When communicating complex ideas.",
+          "action": "Connect new information to concepts the audience already understands.",
+          "rationale": "Existing mental structures reduce cognitive effort."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Memory Flagging",
+          "description": "Use a small cue to activate a larger body of existing knowledge.",
+          "steps": [
+            "Identify existing audience knowledge",
+            "Create a compact cue",
+            "Link the cue to the concept",
+            "Allow existing associations to fill in detail"
+          ]
+        }
+      ],
+      "warnings": [],
+      "application_patterns": [
+        {
+          "pattern_name": "Knowledge Activation",
+          "when_to_use": "When teaching, persuading, or explaining unfamiliar ideas.",
+          "steps": [
+            "Identify a familiar concept",
+            "Use it as a reference point",
+            "Attach new information",
+            "Reinforce the connection"
+          ],
+          "adaptation_notes": "Useful in education, marketing, onboarding, and communication."
+        }
+      ],
+      "when_to_use": [
+        "Teaching",
+        "Training",
+        "Marketing",
+        "Knowledge transfer"
+      ],
+      "when_not_to_use": [
+        "When audiences lack the prerequisite knowledge"
+      ],
+      "tradeoffs": [
+        "Leveraging existing knowledge improves comprehension but may create inaccurate assumptions if the analogy is weak."
+      ],
+      "keywords": [
+        "memory",
+        "association",
+        "knowledge",
+        "learning",
+        "communication"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "You tap the existing memory terrain of your audience.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_030",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_017.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_019"
+      ],
+      "problem_ids": [
+        "problem_016",
+        "problem_017"
+      ],
+      "title": "Schemas accelerate learning by connecting new ideas to known concepts",
+      "knowledge_type": "framework",
+      "what_it_says": "New concepts become easier to understand when they are explained through concepts that people already know.",
+      "why_it_matters": "Schemas provide prebuilt mental structures that reduce the effort required to learn new information.",
+      "examples_from_source": [
+        {
+          "example_name": "Pomelo explanation",
+          "what_happened": "A pomelo was explained as a supersized grapefruit rather than through a detailed list of attributes.",
+          "why_it_matters": "The grapefruit schema enabled faster understanding and recall.",
+          "concept_demonstrated": "Schema-Based Learning",
+          "transferable_lesson": "Introduce unfamiliar concepts through familiar reference points."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Teach new ideas through existing schemas.",
+          "condition": "When introducing unfamiliar concepts.",
+          "action": "Link the new concept to a familiar category or example.",
+          "rationale": "People learn faster when they can build on existing knowledge."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Schema Mapping",
+          "description": "Connect unfamiliar concepts to familiar concepts.",
+          "steps": [
+            "Identify the new concept",
+            "Find a familiar analogy or category",
+            "Explain similarities",
+            "Highlight key differences"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Explaining new concepts only through isolated attributes.",
+          "consequence": "Learning becomes slower and less memorable.",
+          "prevention": "Anchor explanations to familiar schemas."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Schema-Based Teaching",
+          "when_to_use": "When educating, onboarding, or introducing complex topics.",
+          "steps": [
+            "Identify audience knowledge",
+            "Select a familiar schema",
+            "Map the new idea onto it",
+            "Clarify distinctions"
+          ],
+          "adaptation_notes": "Useful in education, consulting, training, and product adoption."
+        }
+      ],
+      "when_to_use": [
+        "Education",
+        "Training",
+        "Onboarding",
+        "Consulting"
+      ],
+      "when_not_to_use": [
+        "When no relevant schema exists"
+      ],
+      "tradeoffs": [
+        "Schemas improve learning speed but may oversimplify important distinctions."
+      ],
+      "keywords": [
+        "schema",
+        "learning",
+        "teaching",
+        "mental models",
+        "understanding"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 5,
+      "evidence": "We've made it easier for you to learn a new concept by tying it to a concept that you already know.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_031",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_017.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_021"
+      ],
+      "problem_ids": [
+        "problem_017"
+      ],
+      "title": "Complexity can be built from layers of simple ideas",
+      "knowledge_type": "operating principle",
+      "what_it_says": "Complex knowledge does not require starting with complexity. It can emerge from a sequence of simple concepts introduced in the right order.",
+      "why_it_matters": "People learn and retain complicated subjects more effectively when knowledge is layered progressively.",
+      "examples_from_source": [
+        {
+          "example_name": "Economics trade example",
+          "what_happened": "Teachers begin with a simple trade scenario involving apples and oranges before introducing more advanced economic concepts.",
+          "why_it_matters": "Students develop foundational schemas that support future learning.",
+          "concept_demonstrated": "Layered Complexity",
+          "transferable_lesson": "Teach difficult subjects by progressively building on simple foundations."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Build complexity gradually.",
+          "condition": "When teaching complicated subjects.",
+          "action": "Introduce simple foundational concepts before advanced ones.",
+          "rationale": "Foundational schemas support deeper understanding."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Progressive Layering",
+          "description": "Develop complex understanding through staged learning.",
+          "steps": [
+            "Introduce a simple concept",
+            "Ensure understanding",
+            "Add a new layer",
+            "Repeat until complexity emerges"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Starting with full complexity.",
+          "consequence": "Learners become overwhelmed and retain less information.",
+          "prevention": "Create foundational schemas first."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Scaffolded Learning",
+          "when_to_use": "When teaching, onboarding, or explaining sophisticated topics.",
+          "steps": [
+            "Start simple",
+            "Build foundational understanding",
+            "Add complexity incrementally",
+            "Connect new layers to existing schemas"
+          ],
+          "adaptation_notes": "Useful in education, consulting, product training, and documentation."
+        }
+      ],
+      "when_to_use": [
+        "Education",
+        "Training",
+        "Documentation",
+        "Knowledge management"
+      ],
+      "when_not_to_use": [
+        "When learners already possess advanced schemas"
+      ],
+      "tradeoffs": [
+        "Layering improves comprehension but may require more time than direct explanation."
+      ],
+      "keywords": [
+        "learning",
+        "complexity",
+        "scaffolding",
+        "education",
+        "schemas"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "It is possible to create complexity through the artful use of simplicity.",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "concept_019",
+      "relationship": "related_to",
+      "to": "concept_018",
+      "evidence": "Schemas make information easier to remember by connecting it to existing knowledge."
+    },
+    {
+      "from": "concept_020",
+      "relationship": "helps_solve",
+      "to": "problem_015",
+      "evidence": "Compact cues reduce the amount of new information that must be remembered."
+    },
+    {
+      "from": "concept_021",
+      "relationship": "helps_solve",
+      "to": "problem_017",
+      "evidence": "Complexity can emerge from staged layers of simple ideas."
+    },
+    {
+      "from": "insight_029",
+      "relationship": "supports",
+      "to": "concept_020",
+      "evidence": "You tap the existing memory terrain of your audience."
+    },
+    {
+      "from": "insight_030",
+      "relationship": "supports",
+      "to": "concept_019",
+      "evidence": "We've made it easier for you to learn a new concept by tying it to a concept that you already know."
+    },
+    {
+      "from": "insight_031",
+      "relationship": "supports",
+      "to": "concept_021",
+      "evidence": "It is possible to create complexity through the artful use of simplicity."
+    }
+  ]
+}

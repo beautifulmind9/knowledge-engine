@@ -1,0 +1,340 @@
+{
+  "concepts": [
+    {
+      "id": "concept_012",
+      "name": "Lead Unburying",
+      "description": "The practice of restructuring communication so the most important message appears first and receives the greatest emphasis.",
+      "keywords": [
+        "lead",
+        "communication",
+        "focus",
+        "message hierarchy",
+        "clarity"
+      ]
+    },
+    {
+      "id": "concept_013",
+      "name": "Core Reinforcement",
+      "description": "Using supporting devices such as analogies, examples, and concrete imagery to strengthen and clarify a core message.",
+      "keywords": [
+        "analogy",
+        "reinforcement",
+        "communication",
+        "memory",
+        "clarity"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_010",
+      "name": "Interesting but irrelevant information",
+      "description": "Communicators include information that attracts attention but distracts audiences from the central message."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_017",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_013.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_003",
+        "concept_012"
+      ],
+      "problem_ids": [
+        "problem_005",
+        "problem_010"
+      ],
+      "title": "Place the core message first",
+      "knowledge_type": "communication pattern",
+      "what_it_says": "The most important message should appear at the beginning of a communication rather than being hidden beneath supporting details.",
+      "why_it_matters": "Audiences are more likely to understand, remember, and act on a message when its core idea is immediately visible.",
+      "examples_from_source": [
+        {
+          "example_name": "Sun exposure article rewrite",
+          "what_happened": "The original article buried the key point about irreversible skin damage beneath background information. The revised version moved the core message to the beginning.",
+          "why_it_matters": "The revision made the message clearer and more memorable.",
+          "concept_demonstrated": "Lead Unburying",
+          "transferable_lesson": "Start communication with the most important idea rather than supporting details."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Lead with the core message.",
+          "condition": "When communicating important information.",
+          "action": "Place the most important idea at the beginning.",
+          "rationale": "People should encounter the key message before supporting details."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Lead Unburying Process",
+          "description": "Restructure communication so the core message becomes immediately visible.",
+          "steps": [
+            "Identify the core message",
+            "Move it to the beginning",
+            "Remove distractions",
+            "Use supporting details afterward"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Starting with interesting but secondary information.",
+          "consequence": "The audience may miss the most important point.",
+          "prevention": "Identify the core message before organizing content."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Core-First Communication",
+          "when_to_use": "When creating articles, presentations, reports, campaigns, or educational materials.",
+          "steps": [
+            "Determine the key takeaway",
+            "Present it immediately",
+            "Support it with evidence",
+            "Remove unnecessary details"
+          ],
+          "adaptation_notes": "Works across writing, teaching, leadership, and marketing."
+        }
+      ],
+      "when_to_use": [
+        "Articles",
+        "Presentations",
+        "Marketing messages",
+        "Executive communication"
+      ],
+      "when_not_to_use": [
+        "Narrative storytelling where suspense is intentionally created"
+      ],
+      "tradeoffs": [
+        "Leading with the core improves clarity but may reduce narrative buildup."
+      ],
+      "keywords": [
+        "lead",
+        "core message",
+        "clarity",
+        "communication",
+        "prioritization"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 3,
+      "evidence": "Avoid burying the lead. Don't start with something interesting but irrelevant.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_018",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_013.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_013"
+      ],
+      "problem_ids": [
+        "problem_001"
+      ],
+      "title": "Analogies make core ideas more memorable",
+      "knowledge_type": "application_pattern",
+      "what_it_says": "A core message becomes more understandable and memorable when reinforced with familiar analogies and concrete imagery.",
+      "why_it_matters": "People understand abstract concepts more easily when they can connect them to existing mental models.",
+      "examples_from_source": [
+        {
+          "example_name": "Skin damage and aging analogy",
+          "what_happened": "The revised article compared sun damage to aging, emphasizing that both are cumulative and irreversible.",
+          "why_it_matters": "The analogy made the abstract concept of long-term skin damage easier to understand.",
+          "concept_demonstrated": "Core Reinforcement",
+          "transferable_lesson": "Use familiar experiences to explain unfamiliar or abstract concepts."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Reinforce abstract ideas with analogies.",
+          "condition": "When a core message is difficult to visualize or understand.",
+          "action": "Connect the idea to a familiar experience.",
+          "rationale": "Familiar concepts improve comprehension and recall."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Analogy Reinforcement",
+          "description": "Use a familiar comparison to strengthen a core idea.",
+          "steps": [
+            "Identify the core idea",
+            "Find a familiar comparison",
+            "Highlight the shared characteristic",
+            "Link the analogy back to the message"
+          ]
+        }
+      ],
+      "warnings": [],
+      "application_patterns": [
+        {
+          "pattern_name": "Analogy-Based Communication",
+          "when_to_use": "When teaching, persuading, or simplifying complex ideas.",
+          "steps": [
+            "Define the key concept",
+            "Select a familiar analogy",
+            "Explain the connection",
+            "Reinforce the core message"
+          ],
+          "adaptation_notes": "Particularly effective for educational, marketing, and leadership communication."
+        }
+      ],
+      "when_to_use": [
+        "Education",
+        "Training",
+        "Marketing",
+        "Change management"
+      ],
+      "when_not_to_use": [
+        "When no accurate analogy exists"
+      ],
+      "tradeoffs": [
+        "Analogies improve understanding but may oversimplify complex realities."
+      ],
+      "keywords": [
+        "analogy",
+        "memory",
+        "communication",
+        "learning",
+        "clarity"
+      ],
+      "confidence_score": 5,
+      "importance_score": 4,
+      "novelty_score": 3,
+      "evidence": "We've added the analogy to aging to hammer home the idea that damage is irreversible.",
+      "extraction_date": "2026-06-01"
+    },
+    {
+      "id": "insight_019",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "chunk_013.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_003",
+        "concept_004"
+      ],
+      "problem_ids": [
+        "problem_010",
+        "problem_006"
+      ],
+      "title": "Remove information that does not support the core",
+      "knowledge_type": "decision_rule",
+      "what_it_says": "Interesting information should be removed when it distracts from the central message, even if it is factually useful or engaging.",
+      "why_it_matters": "Every additional detail competes with the core message for attention.",
+      "examples_from_source": [
+        {
+          "example_name": "Removing melanin discussion",
+          "what_happened": "The revised sun exposure article removed information about melanin so the irreversible damage message could stand out.",
+          "why_it_matters": "The elimination of supporting mechanics increased focus on the key takeaway.",
+          "concept_demonstrated": "Finding the Core",
+          "transferable_lesson": "Not all useful information deserves inclusion if it weakens the main point."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Cut information that does not strengthen the core message.",
+          "condition": "When evaluating supporting content.",
+          "action": "Remove details that are interesting but unnecessary.",
+          "rationale": "Focus improves memorability and impact."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Core Protection",
+          "description": "Preserve the prominence of the central message by removing competing details.",
+          "steps": [
+            "Identify the core",
+            "Review supporting information",
+            "Remove distractions",
+            "Retain only reinforcing content"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Including information solely because it is interesting.",
+          "consequence": "The audience may remember the detail rather than the main message.",
+          "prevention": "Evaluate every detail against the core objective."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Message Simplification",
+          "when_to_use": "When clarity and memorability are more important than completeness.",
+          "steps": [
+            "Define the key takeaway",
+            "List supporting details",
+            "Remove nonessential items",
+            "Emphasize reinforcing information"
+          ],
+          "adaptation_notes": "Useful for content creation, presentations, leadership communication, and product messaging."
+        }
+      ],
+      "when_to_use": [
+        "Content strategy",
+        "Product messaging",
+        "Training materials",
+        "Presentations"
+      ],
+      "when_not_to_use": [
+        "Reference documentation requiring comprehensive coverage"
+      ],
+      "tradeoffs": [
+        "Removing details increases clarity but may reduce depth and nuance."
+      ],
+      "keywords": [
+        "simplicity",
+        "focus",
+        "editing",
+        "communication",
+        "prioritization"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "We've had to eliminate some interesting stuff in order to let the core shine through.",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "concept_012",
+      "relationship": "related_to",
+      "to": "concept_003",
+      "evidence": "The revised message moved the core message to the beginning."
+    },
+    {
+      "from": "concept_013",
+      "relationship": "helps_solve",
+      "to": "problem_001",
+      "evidence": "The analogy to aging reinforced the idea that damage is irreversible."
+    },
+    {
+      "from": "insight_017",
+      "relationship": "addresses",
+      "to": "problem_005",
+      "evidence": "Avoid burying the lead."
+    },
+    {
+      "from": "insight_018",
+      "relationship": "supports",
+      "to": "concept_013",
+      "evidence": "We've added the analogy to aging to hammer home the idea that damage is irreversible."
+    },
+    {
+      "from": "insight_019",
+      "relationship": "supports",
+      "to": "concept_003",
+      "evidence": "We've had to eliminate some interesting stuff in order to let the core shine through."
+    }
+  ]
+}

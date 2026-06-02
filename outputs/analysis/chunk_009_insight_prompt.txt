@@ -1,0 +1,502 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_009.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+instructions for a friend to play chess on your behalf. You know a lot about the rules of the game, and you may know a lot about your friend and the opponent. But if you try to write move-by-move instructions you'll fail. You can't possi- bly foresee more than a few moves. The first time t he opponent makes a surprise move, your friend will have to throw out your care- fully designed plans and rely on her instincts. Colonel Kolditz says, "Over time we've come to unde rstand more and more about what makes people successful in complex opera- tions." He believes that plans are useful, in the sense that they are proof that planning has taken place. The planning process forces peo- ple to think through the right issues. But as for the plans themselves, Kolditz says, "They just don't work on the battlefield." So, in the 1980s the Army adapted its planning process, inventing a concept called Commander's Intent (CI). CI is a crisp, plain-talk statement that appears at the top of every order, specifying the plan's goal, the desired end-state of an opera- tion. At high levels of the Army, the CI may be relatively abstract: "Break the will of the enemy in the Southeast region." At the tactical level, for colonels and captains, it is much more concrete: "My intent is to have Third Battalion on Hill 4305, to have the hill cleared of enemy, with only ineffective remnants remaining, so we can protect the flank of Third Brigade as they pass through the lines." The CI never specifies so much detail that it risks being rendered obsolete by unpredictable events. 'You can lose the ability to execute the original plan, but you never lose the responsibility of executing the intent," says Kolditz. In other words, if there's one soldier left in the Third Battalion on Hill 4305, he'd better be doing something to protect the flank of the Third Brigade. Commander's Intent manages to align the behavior of soldiers at SIMPLE 27 all levels without requiring play-by-play instructions from their lead- ers. When people know the desired destination, they're free to impro- vise, as needed, in arriving there. Colonel Kolditz gives an example: "Suppose I'm commanding an artillery battalion and I say, 'We're going to pass this infantry unit through our lines forward.' That means something different to different groups. The mechanics know that they'll need lots of repair support along the roads, because if a tank breaks down on a bridge the whole operation will co me to a screech- ing halt. The artillery knows they'll need to fire smoke or have engi- neers generate smoke in the breech area where the infantry unit moves forward, so it won't get shot up as it passes through. As a com- mander, I could spend a lot of time enumerating every specific task, but as soon as people know what the intent is they begin generating their own solutions." The Combat Maneuver Training Center, the unit in charge of military simulations, recommends that officers arrive at the Com- mander's Intent by asking themselves two questions: If we do nothing else during tomorrow's mission, we must The single, most important thing that we must do to morrow is No plan survives contact with the enemy. No doubt this principle has resonance for people who have no military experience whatsoever. No sales plan survives contact with the customer. No lesson plan sur- vives contact with teenagers. It's hard to make ideas stick in a noisy, unpredictable, chaotic en- vironment. If we're to succeed, the first step is this: Be simple. Not simple in terms of "dumbing down" or "sound bites." You don't have to speak in monosyllables to be simple. What we mea n by "simple" is finding the core of the idea. 28 MADE TO STICK "Finding the core" means stripping an idea down to its most criti- cal essence. To get to the core, we've got to weed out superfluous and tangential elements. But that's the easy part. The hard part is weeding out ideas that may be really important but just aren't the most impor- tant idea. The Army's Commander's Intent forces its officers to high- light the most important goal of an operation. The value of the Intent comes from its singularity. You can't have five North Stars, you can't have five "most important goals," and you can't have five Comman- der's Intents. Finding the core is analogous to writing the Comman- der's Intent—it's about discarding a lot of great i nsights in order to let the most important insight shine.The French aviator and author An- toine de Saint-Exupery once offered a definition of engineering ele- gance: "A designer knows he has achieved perfection not when there is nothing left to add, but when there is nothing left to take away." A designer of simple ideas should aspire to the same goal: knowing how much can be wrung out of an idea before it begins to lose its essence. In fact, we'll follow our own advice and strip this book down to its core. Here it is: There are two steps in making your ideas sticky- Step 1 is to find the core, and Step 2 is to translate the core using the SUCCESs checklist. That's it. We'll spend the next half chapter on Step 1, and the remainder of the book on Step 2. The first step in un- packing these ideas is to explore why Southwest Airlines deliberately ignores the food preferences of its customers. Finding the Core at Southwest Airlines It's common knowledge that Southwest is a successful company, but there is a shocking performance gap between Southwest and its com- petitors. Although the airlines industry as a whole has only a passing acquaintance with profitability, Southwest has been consistently profitable for more than thirty years. The reasons for Southwest's success could (and do) fill up books, but perhaps the single greatest factor in the company's success is its SIMPLE 29 dogged focus on reducing costs. Every airline would like to reduce costs, but Southwest has been doing it for decades. For this effort to succeed, the company must coordinate thousands of e mployees, ranging from marketers to baggage handlers. Southwest has a Commander's Intent, a core, that helps to guide this coordination. As related by James Carville and Paul Begala: Herb Kelleher [the longest-serving CEO of Southwest] once told someone, "I can teach you the secret to running this airline in thirty seconds. This is it: We are THE low-fare airline. Once you understand that fact, you can make any decision about this com- pany's future as well as I can. "Here's an example," he said. "Tracy from marketing comes into your office. She says her surveys indicate that the passengers might enjoy a light entree on the Houston to Las Vegas flight. All we offer is peanuts, and she thinks a nice chicken Caesar salad would be popular. What do you say?" The person stammered for a moment, so Kelleher resp onded: "You say, 'Tracy, will adding that chicken Caesar salad make us THE low-fare airline from Houston to Las Vegas? Bec ause if it doesn't help us
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

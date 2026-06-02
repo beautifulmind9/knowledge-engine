@@ -1,0 +1,102 @@
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  },
+  {
+    "id": "problem_006",
+    "name": "Loss of message focus",
+    "description": "Communicators become absorbed in details and lose sight of the central idea that matters most to the audience."
+  },
+  {
+    "id": "problem_007",
+    "name": "Decision paralysis under uncertainty",
+    "description": "People struggle to make decisions when faced with uncertainty, complexity, or multiple competing possibilities."
+  },
+  {
+    "id": "problem_008",
+    "name": "Message dilution",
+    "description": "A communication loses impact because too many important messages compete for attention at the same time."
+  },
+  {
+    "id": "problem_009",
+    "name": "Strategic priorities fail to influence behavior",
+    "description": "Organizations know what matters but fail to communicate priorities in a way that consistently guides day-to-day decisions."
+  },
+  {
+    "id": "problem_010",
+    "name": "Experts resist simplification",
+    "description": "People with deep expertise often avoid simplifying ideas because they fear losing nuance or appearing superficial."
+  },
+  {
+    "id": "problem_011",
+    "name": "Compact messages without substance",
+    "description": "Messages become memorable but unhelpful when they are concise without reflecting an important core truth."
+  },
+  {
+    "id": "problem_012",
+    "name": "Feature overload",
+    "description": "Products become difficult to use because additional features accumulate and dilute the original purpose."
+  },
+  {
+    "id": "problem_013",
+    "name": "Information exceeds memory capacity",
+    "description": "People struggle to remember information when it is presented as disconnected data rather than meaningful concepts."
+  },
+  {
+    "id": "problem_014",
+    "name": "Difficulty understanding unfamiliar concepts",
+    "description": "People struggle to learn new ideas when they cannot connect them to existing knowledge."
+  },
+  {
+    "id": "problem_015",
+    "name": "Complex information overwhelms learners",
+    "description": "Large amounts of information become difficult to understand or remember when presented without structure."
+  },
+  {
+    "id": "problem_016",
+    "name": "Accurate but unusable communication",
+    "description": "Information is technically correct but too abstract, complex, or detailed to help people make decisions."
+  },
+  {
+    "id": "problem_017",
+    "name": "New ideas are difficult to communicate",
+    "description": "People struggle to understand unfamiliar concepts because they lack existing mental models for interpreting them."
+  },
+  {
+    "id": "problem_018",
+    "name": "Organizational values fail to guide behavior",
+    "description": "Companies create slogans or labels that do not provide actionable guidance for employee decisions and behavior."
+  },
+  {
+    "id": "problem_019",
+    "name": "People ignore familiar messages",
+    "description": "Audiences tune out communications that follow predictable patterns they have encountered repeatedly."
+  },
+  {
+    "id": "problem_020",
+    "name": "Failure to sustain attention",
+    "description": "Messages briefly capture attention but fail to keep audiences engaged long enough to communicate their ideas."
+  }
+]

@@ -1,0 +1,222 @@
+{
+  "concepts": [
+    {
+      "id": "concept_002",
+      "name": "Commander's Intent",
+      "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+      "keywords": [
+        "intent",
+        "alignment",
+        "decentralization",
+        "leadership",
+        "execution"
+      ]
+    },
+    {
+      "id": "concept_003",
+      "name": "Finding the Core",
+      "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+      "keywords": [
+        "simplicity",
+        "focus",
+        "prioritization",
+        "core message"
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "problem_002",
+      "name": "Plans fail in unpredictable environments",
+      "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+    },
+    {
+      "id": "problem_003",
+      "name": "Too many competing priorities",
+      "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+    }
+  ],
+  "insights": [
+    {
+      "id": "insight_002",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_009.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_002"
+      ],
+      "problem_ids": [
+        "problem_002"
+      ],
+      "title": "Use intent instead of detailed plans",
+      "knowledge_type": "principle",
+      "what_it_says": "In complex and unpredictable situations, detailed plans quickly become obsolete. A clear statement of intent allows people to adapt while remaining aligned with the desired outcome.",
+      "why_it_matters": "Teams can respond to changing conditions without waiting for new instructions.",
+      "examples_from_source": [
+        {
+          "example_name": "Military Commander's Intent",
+          "what_happened": "Army leaders replaced rigid plans with concise statements describing the desired end state.",
+          "why_it_matters": "Soldiers could improvise when circumstances changed.",
+          "concept_demonstrated": "Commander's Intent",
+          "transferable_lesson": "Communicate outcomes rather than prescribing every action."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "State the desired outcome rather than every step.",
+          "condition": "When operating in uncertain environments.",
+          "action": "Communicate intent and allow local adaptation.",
+          "rationale": "Unexpected events will invalidate detailed plans."
+        }
+      ],
+      "patterns": [],
+      "warnings": [
+        {
+          "warning": "Overly detailed plans become obsolete.",
+          "consequence": "People cannot adapt effectively.",
+          "prevention": "Define intent and empower execution."
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "Intent-Based Leadership",
+          "when_to_use": "When teams face uncertainty.",
+          "steps": [
+            "Define desired outcome",
+            "Communicate intent",
+            "Allow local decisions",
+            "Measure against outcome"
+          ],
+          "adaptation_notes": "Works in business, education, product development, and military operations."
+        }
+      ],
+      "when_to_use": [
+        "Complex environments",
+        "Rapid change",
+        "Decentralized teams"
+      ],
+      "when_not_to_use": [
+        "Highly predictable repetitive tasks"
+      ],
+      "tradeoffs": [
+        "Less control over specific actions in exchange for greater adaptability."
+      ],
+      "keywords": [
+        "intent",
+        "adaptability",
+        "leadership"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "You can lose the ability to execute the original plan, but you never lose the responsibility of executing the intent.",
+      "extraction_date": "2026-05-31"
+    },
+    {
+      "id": "insight_003",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_009.txt",
+      "chapter_or_section": "Simple",
+      "concept_ids": [
+        "concept_003"
+      ],
+      "problem_ids": [
+        "problem_003",
+        "problem_001"
+      ],
+      "title": "Simplicity comes from identifying the core",
+      "knowledge_type": "principle",
+      "what_it_says": "Making ideas stick requires identifying the single most important idea and removing competing messages.",
+      "why_it_matters": "People remember and act on focused ideas more effectively.",
+      "examples_from_source": [
+        {
+          "example_name": "Commander's Intent as a single objective",
+          "what_happened": "Military leaders identify one overriding objective.",
+          "why_it_matters": "Everyone can align around the same goal.",
+          "concept_demonstrated": "Finding the Core",
+          "transferable_lesson": "Choose one primary message."
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "Prioritize one core message.",
+          "condition": "When communicating an idea.",
+          "action": "Remove secondary messages that compete with the main point.",
+          "rationale": "People cannot focus on several 'most important' ideas simultaneously."
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "Core Extraction",
+          "description": "Reduce information until only the essential idea remains.",
+          "steps": [
+            "List important ideas",
+            "Rank them",
+            "Select the most important",
+            "Remove competing priorities"
+          ]
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "Too many priorities dilute the message.",
+          "consequence": "People struggle to remember or act.",
+          "prevention": "Choose one core objective."
+        }
+      ],
+      "application_patterns": [],
+      "when_to_use": [
+        "Strategy communication",
+        "Marketing",
+        "Teaching",
+        "Leadership"
+      ],
+      "when_not_to_use": [
+        "When detailed technical reference material is required"
+      ],
+      "tradeoffs": [
+        "Some nuance is sacrificed for clarity."
+      ],
+      "keywords": [
+        "simplicity",
+        "focus",
+        "core message"
+      ],
+      "confidence_score": 5,
+      "importance_score": 5,
+      "novelty_score": 4,
+      "evidence": "You can't have five most important goals.",
+      "extraction_date": "2026-05-31"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "source_001",
+      "relationship": "contains",
+      "to": "concept_002",
+      "evidence": "inventing a concept called Commander's Intent"
+    },
+    {
+      "from": "source_001",
+      "relationship": "contains",
+      "to": "concept_003",
+      "evidence": "Finding the core means stripping an idea down to its most critical essence"
+    },
+    {
+      "from": "concept_002",
+      "relationship": "helps_solve",
+      "to": "problem_002",
+      "evidence": "Plans themselves just don't work on the battlefield"
+    },
+    {
+      "from": "concept_003",
+      "relationship": "helps_solve",
+      "to": "problem_001",
+      "evidence": "finding the core"
+    }
+  ]
+}

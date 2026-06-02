@@ -1,0 +1,502 @@
+
+You are a knowledge extraction assistant.
+
+Extract reusable knowledge for a hybrid knowledge graph.
+
+The graph contains:
+
+1. Sources
+2. Concepts
+3. Problems
+4. Insights
+5. Relationships
+
+Definitions:
+
+- A source is where information comes from.
+- A concept is a reusable idea that can appear across many sources.
+- A problem is a reusable challenge, obstacle, question, or decision.
+- An insight is what a source says about a concept and/or problem.
+- A relationship connects sources, concepts, problems, and insights.
+
+====================
+SOURCE CLASSIFICATION
+====================
+
+{
+  "form": "nonfiction book",
+  "domain": [
+    "communication",
+    "business",
+    "psychology"
+  ],
+  "subdomain": [
+    "message design",
+    "persuasion",
+    "organizational communication",
+    "idea transmission"
+  ],
+  "purpose": [
+    "teach a framework",
+    "improve communication",
+    "improve decision making",
+    "make ideas memorable and actionable"
+  ],
+  "audience": [
+    "writers",
+    "marketers",
+    "leaders",
+    "teachers",
+    "founders",
+    "product builders"
+  ],
+  "library_classification": {
+    "system": "DDC",
+    "code": "",
+    "label": ""
+  }
+}
+
+====================
+EXTRACTION LENSES
+====================
+
+Use these lenses to decide what to pay attention to:
+
+[
+  "universal",
+  "writing_communication",
+  "strategy_business",
+  "psychology_behavior",
+  "leadership"
+]
+
+====================
+KNOWLEDGE PRIORITY
+====================
+
+Prioritize extracting these knowledge types when clearly present:
+
+[
+  "frameworks",
+  "decision_rules",
+  "examples",
+  "patterns",
+  "warnings",
+  "application_patterns",
+  "analogies",
+  "tradeoffs",
+  "concepts",
+  "problems"
+]
+
+====================
+MONETIZATION USE CASES
+====================
+
+This knowledge may later support these products or use cases:
+
+[
+  "writing assistant",
+  "content strategy assistant",
+  "business decision support",
+  "product messaging assistant",
+  "founder storytelling assistant",
+  "training material generator",
+  "research and learning engine"
+]
+
+====================
+EXISTING SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf",
+    "classification": {
+      "form": "nonfiction book",
+      "domain": [
+        "communication",
+        "business",
+        "psychology"
+      ],
+      "subdomain": [
+        "message design",
+        "persuasion",
+        "organizational communication",
+        "idea transmission"
+      ],
+      "purpose": [
+        "teach a framework",
+        "improve communication",
+        "improve decision making",
+        "make ideas memorable and actionable"
+      ],
+      "audience": [
+        "writers",
+        "marketers",
+        "leaders",
+        "teachers",
+        "founders",
+        "product builders"
+      ],
+      "library_classification": {
+        "system": "DDC",
+        "code": "",
+        "label": ""
+      }
+    },
+    "extraction_lenses": [
+      "universal",
+      "writing_communication",
+      "strategy_business",
+      "psychology_behavior",
+      "leadership"
+    ],
+    "knowledge_priority": [
+      "frameworks",
+      "decision_rules",
+      "examples",
+      "patterns",
+      "warnings",
+      "application_patterns",
+      "analogies",
+      "tradeoffs",
+      "concepts",
+      "problems"
+    ],
+    "monetization_use_cases": [
+      "writing assistant",
+      "content strategy assistant",
+      "business decision support",
+      "product messaging assistant",
+      "founder storytelling assistant",
+      "training material generator",
+      "research and learning engine"
+    ],
+    "metadata": {
+      "language": "English",
+      "publication_year": 2007,
+      "edition": "",
+      "isbn": "",
+      "publisher": "",
+      "country": "",
+      "status": "active"
+    },
+    "processing": {
+      "text_extracted": true,
+      "chunked": true,
+      "chunks_created": 91,
+      "extraction_started": true,
+      "extraction_complete": false,
+      "review_status": "in_progress"
+    },
+    "notes": [
+      "Introduces the SUCCESs framework.",
+      "Focuses on making ideas understandable, memorable, and actionable.",
+      "Useful beyond writing because it provides communication, leadership, and decision-making patterns."
+    ]
+  }
+]
+
+====================
+EXISTING CONCEPTS
+====================
+
+[
+  {
+    "id": "concept_001",
+    "name": "Storytelling",
+    "description": "Using narrative to make ideas easier to understand, remember, and share.",
+    "keywords": [
+      "stories",
+      "narrative",
+      "memory",
+      "communication"
+    ]
+  },
+  {
+    "id": "concept_002",
+    "name": "Commander's Intent",
+    "description": "A concise statement of the desired end state that guides decentralized decision making in uncertain environments.",
+    "keywords": [
+      "intent",
+      "alignment",
+      "decentralization",
+      "leadership",
+      "execution"
+    ]
+  },
+  {
+    "id": "concept_003",
+    "name": "Finding the Core",
+    "description": "Reducing an idea to its single most important message so that people can understand, remember, and act on it.",
+    "keywords": [
+      "simplicity",
+      "focus",
+      "prioritization",
+      "core message"
+    ]
+  },
+  {
+    "id": "concept_004",
+    "name": "Core Message Prioritization",
+    "description": "Identifying and communicating the most important idea first so that people immediately understand what matters most.",
+    "keywords": [
+      "lead",
+      "prioritization",
+      "communication",
+      "focus",
+      "clarity"
+    ]
+  },
+  {
+    "id": "concept_005",
+    "name": "Inverted Pyramid Structure",
+    "description": "A communication structure that presents the most important information first and progressively adds supporting details.",
+    "keywords": [
+      "journalism",
+      "lead",
+      "information hierarchy",
+      "communication structure",
+      "writing"
+    ]
+  }
+]
+
+====================
+EXISTING PROBLEMS
+====================
+
+[
+  {
+    "id": "problem_001",
+    "name": "People forget abstract information",
+    "description": "Important ideas are not remembered because they are too vague, complex, or disconnected from experience."
+  },
+  {
+    "id": "problem_002",
+    "name": "Plans fail in unpredictable environments",
+    "description": "Detailed instructions become ineffective when circumstances change and unexpected events occur."
+  },
+  {
+    "id": "problem_003",
+    "name": "Too many competing priorities",
+    "description": "Organizations struggle to align decisions when multiple goals compete for attention."
+  },
+  {
+    "id": "problem_004",
+    "name": "Teams struggle to make consistent decisions",
+    "description": "Large groups of people make inconsistent choices when they lack a clear guiding principle for evaluating decisions."
+  },
+  {
+    "id": "problem_005",
+    "name": "Burying the lead",
+    "description": "Communicators obscure the most important idea by placing it too late or allowing details to overshadow the central message."
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_010.txt
+
+Extraction date:
+2026-06-01
+
+====================
+TEXT TO ANALYZE
+====================
+
+29 dogged focus on reducing costs. Every airline would like to reduce costs, but Southwest has been doing it for decades. For this effort to succeed, the company must coordinate thousands of e mployees, ranging from marketers to baggage handlers. Southwest has a Commander's Intent, a core, that helps to guide this coordination. As related by James Carville and Paul Begala: Herb Kelleher [the longest-serving CEO of Southwest] once told someone, "I can teach you the secret to running this airline in thirty seconds. This is it: We are THE low-fare airline. Once you understand that fact, you can make any decision about this com- pany's future as well as I can. "Here's an example," he said. "Tracy from marketing comes into your office. She says her surveys indicate that the passengers might enjoy a light entree on the Houston to Las Vegas flight. All we offer is peanuts, and she thinks a nice chicken Caesar salad would be popular. What do you say?" The person stammered for a moment, so Kelleher resp onded: "You say, 'Tracy, will adding that chicken Caesar salad make us THE low-fare airline from Houston to Las Vegas? Bec ause if it doesn't help us become the unchallenged low-fare airline, we're not serving any damn chicken salad.'" Kelleher's Commander's Intent is "We are THE low-fare airline." This is a simple idea, but it is sufficiently useful that it has guided the actions of Southwest's employees for more than thirty years. Now, this core idea —"THE low-fare airline" —isn't the whole story, of course. For instance, in 1996 Southwest received 124,000 ap- plications for 5,444 openings. It's known as a great place to work, which is surprising. It's not supposed to be fun to work for penny- pinchers. It's hard to imagine Wal-Mart employees giggling their way through the workday. Yet somehow Southwest has pulled it off. Let's think about the 30 MADE TO STICK ideas driving Southwest Airlines as concentric circles. The central circle, the core, is "THE low-fare airline." But the very next circle might be "Have fun at work." Southwest's employees know that it's okay to have fun so long as it doesn't jeopardize the company's status as THE low-fare airline. A new employee can easily put these ideas together to realize how to act in unscripted situations. For instance, is it all right to joke about a flight attendant's birthday over the P.A.? Sure. Is it equally okay to throw confetti in her honor? Probably not— the confetti would create extra work for cleanup crews, and extra clean-up time means higher fares. It's the lighthearted business equivalent of the foot soldier who improvises based on the Comman- der's Intent. A well-thought-out simple idea can be amazingly power- ful in shaping behavior. A warning: In the future, months after you've put down this book, you're going to recall the word "Simple" as an element of the SUC- CESs checklist. And your mental thesaurus will fait hfully go digging for the meaning of "Simple," and it's going to come back with associ- ations like dumbing down, shooting for the lowest common denomi- nator, making things easy, and so on. At that moment, you've got to remind your thesaurus of the examples we've explored. "THE low- fare airline" and the other stories in this chapter aren't simple be- cause they're full of easy words. They're simple because they reflect the Commander's Intent. It's about elegance and prioritization, not dumbing down. Burying the Lead News reporters are taught to start their stories with the most impor- tant information. The first sentence, called the lead, contains the most essential elements of the story. A good lead c an convey a lot of information, as in these two leads from articles that won awards from the American Society of Newspaper Editors: SIMPLE 31 A healthy 17-year-old heart pumped the gift of life through 34- year-old Bruce Murray Friday, following a four-hour transplant operation that doctors said went without a hitch. Jerusalem, Nov. 4—A right-wing Jewish extremist sho t and killed Prime Minister Yitzhak Rabin tonight as he departed a peace rally attended by more than 100,000 in Tel Aviv, throwing Israel's gov- ernment and the Middle East peace process into turmoil. After the lead, information is presented in decreasing order of im- portance. Journalists call this the "inverted pyramid" structure—the most important info (the widest part of the pyramid) is at the top. The inverted pyramid is great for readers. No matter what the reader's attention span—whether she reads only the lead or the entire story—the inverted pyramid maximizes the informatio n she gleans. Think of the alternative: If news stories were written like mysteries, with a dramatic payoff at the end, then readers who broke off in mid- story would miss the point. Imagine waiting until t he last sentence of a story to find out who won the presidential election or the Super Bowl. The inverted pyramid also allows newspapers to get out the door on time. Suppose a late-breaking story forces editors to steal space from other stories. Without the inverted pyramid, they'd be forced to do a slow, careful editing job on all the other articles, trimming a word here or a phrase there. With the inverted pyramid structure, they simply lop off paragraphs from the bottom of the other articles, knowing that those paragraphs are (by construction) the least impor- tant. According to one account, perhaps apocryphal, the inverted pyra- mid arose during the Civil War. All the reporters wanted to use mili- tary telegraphs to transmit their stories back home, but they could be cut off at any moment; they might be bumped by military personnel, 32 MADE TO STICK or the communication line might be lost completely— a common oc- currence during battles. The reporters never knew how much time they would get to send a story, so they had to send the most important information first. Journalists obsess about their leads. Don Wycliff, a winner of prizes for editorial writing, says, "I've always been a believer that if I've got two hours in which to write a story, the best investment I can make is to spend the first hour and forty-five minutes of it getting a good lead, because after that everything will come easily." So if finding a good lead makes everything else easy, why would a journalist ever fail to come up with one? A common mistake re- porters make is that they get so steeped in the details that they fail to see the message's core —what readers will find impo rtant or interest- ing. The longtime newspaper writer Ed Cray, a professor of commu- nications at the University of Southern California, has spent almost thirty years teaching journalism. He says, "The lon ger you work on a story, the more you can find yourself losing direction. No detail is too small. You just don't know what your story is anymore." This problem of losing direction, of missing the central story, is so common that journalists have given it its own name: Burying the lead. "Burying the lead" occurs when the journalist lets the most im- portant element of the story slip too far down in
+
+====================
+INSTRUCTIONS
+====================
+
+Extract reusable knowledge from this chunk.
+
+If this chunk is mostly:
+
+- front matter
+- copyright information
+- table of contents
+- acknowledgements
+- incomplete context
+
+Return:
+
+{
+  "concepts": [],
+  "problems": [],
+  "insights": [],
+  "relationships": []
+}
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+
+Do not include explanations outside the JSON.
+
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+{
+  "concepts": [
+    {
+      "id": "",
+      "name": "",
+      "description": "",
+      "keywords": []
+    }
+  ],
+  "problems": [
+    {
+      "id": "",
+      "name": "",
+      "description": ""
+    }
+  ],
+  "insights": [
+    {
+      "id": "",
+      "source_id": "source_001",
+      "source_title": "Made to Stick",
+      "author": "Chip Heath & Dan Heath",
+      "chunk_file": "",
+      "chapter_or_section": "",
+      "concept_ids": [],
+      "problem_ids": [],
+      "title": "",
+      "knowledge_type": "",
+      "what_it_says": "",
+      "why_it_matters": "",
+      "examples_from_source": [
+        {
+          "example_name": "",
+          "what_happened": "",
+          "why_it_matters": "",
+          "concept_demonstrated": "",
+          "transferable_lesson": ""
+        }
+      ],
+      "decision_rules": [
+        {
+          "rule": "",
+          "condition": "",
+          "action": "",
+          "rationale": ""
+        }
+      ],
+      "patterns": [
+        {
+          "pattern_name": "",
+          "description": "",
+          "steps": []
+        }
+      ],
+      "warnings": [
+        {
+          "warning": "",
+          "consequence": "",
+          "prevention": ""
+        }
+      ],
+      "application_patterns": [
+        {
+          "pattern_name": "",
+          "when_to_use": "",
+          "steps": [],
+          "adaptation_notes": ""
+        }
+      ],
+      "when_to_use": [],
+      "when_not_to_use": [],
+      "tradeoffs": [],
+      "keywords": [],
+      "confidence_score": 0,
+      "importance_score": 0,
+      "novelty_score": 0,
+      "evidence": "",
+      "extraction_date": "2026-06-01"
+    }
+  ],
+  "relationships": [
+    {
+      "from": "",
+      "relationship": "",
+      "to": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Rules:
+
+- Concepts should be reusable ideas.
+- Problems should be reusable challenges.
+- Insights should explain what the source says.
+- Use existing concepts and problems when appropriate.
+- Create new concepts and problems only when needed.
+- Follow the extraction lenses.
+- Prioritize the knowledge types listed in knowledge_priority.
+- Think about how the knowledge could later support the monetization use cases, but do not force commercial relevance if the text does not support it.
+
+Capture examples whenever they help explain an idea.
+
+For examples capture:
+- what happened
+- why it matters
+- concept demonstrated
+- transferable lesson
+
+Capture decision rules whenever the source provides guidance for making choices.
+
+Capture patterns whenever the source provides a repeatable structure or method.
+
+Capture warnings whenever the source identifies a common mistake, misconception, or risk.
+
+Capture application patterns whenever the source provides reusable methods.
+
+Capture analogies if the source uses one domain, story, or comparison to explain another.
+
+If analogies appear, place them under examples_from_source or application_patterns for now.
+
+Do not force examples, decision rules, patterns, warnings, analogies, or application patterns if they are not clearly present.
+
+Also identify if the source contains:
+- Example
+- Counterexample
+- Checklist
+- Exercise
+- Warning
+- Template
+- Decision Rule
+- Analogy
+- Story
+- Framework
+- Method
+- Operating principle
+- Communication pattern
+- Strategic tradeoff
+
+Evidence must come directly from the text.
+
+Scores should be 1-5.
+
+Relationship examples:
+
+- source_001 contains concept_001
+- source_001 discusses problem_001
+- insight_001 supports concept_001
+- insight_001 addresses problem_001
+- concept_001 helps_solve problem_001
+- concept_001 related_to concept_002

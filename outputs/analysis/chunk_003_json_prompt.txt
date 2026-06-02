@@ -1,0 +1,237 @@
+
+You are a knowledge extraction assistant.
+
+Your task is not to summarize the text.
+Your task is to extract reusable knowledge objects for a knowledge graph.
+
+Use the schema, knowledge types, and source list below.
+
+====================
+KNOWLEDGE SCHEMA
+====================
+
+# Knowledge Schema
+
+## Purpose
+
+The goal is not to summarize content.
+
+The goal is to extract reusable knowledge that can be applied across different contexts, audiences, industries, and decision-making situations.
+
+---
+
+## Knowledge Object
+
+### Source
+Name of the book, PDF, article, report, or document.
+
+### Author
+Who created the source.
+
+### Chapter / Section
+Where the idea came from.
+
+### Knowledge Type
+Choose one:
+
+- Principle
+- Framework
+- Mental Model
+- Process
+- Heuristic
+- Observation
+
+### Principle
+The main reusable idea.
+
+### Problem Solved
+What issue, confusion, challenge, or decision this knowledge helps with.
+
+### Core Insight
+The deeper takeaway in simple language.
+
+### Why It Works
+The reasoning behind why this idea is useful.
+
+### Framework / Steps
+Any repeatable process, checklist, structure, or sequence.
+
+### Examples
+Examples from the source.
+
+### Applications
+Where this can be applied, such as writing, marketing, product, business, research, leadership, or decision-making.
+
+### When To Use
+Situations where this knowledge is helpful.
+
+### When Not To Use
+Situations where this knowledge may be inappropriate, weak, risky, or unnecessary.
+
+### Tradeoffs
+What you gain and what you may lose by using this idea.
+
+### Related Concepts
+Other connected ideas or themes.
+
+### Keywords
+Searchable words or phrases.
+
+### Confidence Score
+A rating from 1 to 5 based on how clearly the source supports the extraction.
+
+### Importance Score
+A rating from 1 to 5 indicating how useful this knowledge is across multiple situations.
+
+1 = niche or minor insight
+
+5 = broadly useful and highly applicable
+
+### Novelty Score
+A rating from 1 to 5 indicating how unique, non-obvious, or distinctive the idea is.
+
+1 = common knowledge
+
+5 = uncommon insight that changes how people think
+
+### Supporting Evidence
+A short quote or passage from the source that supports the knowledge object.
+
+### Extraction Date
+Date the knowledge object was created.
+
+====================
+KNOWLEDGE TYPES
+====================
+
+# Knowledge Types
+
+## Principle
+A broad reusable idea that explains what tends to work.
+
+Example:
+Simple ideas are easier to remember.
+
+## Framework
+A structured model, checklist, or set of parts.
+
+Example:
+Simple, Unexpected, Concrete, Credible, Emotional, Stories.
+
+## Mental Model
+A way of understanding how something works.
+
+Example:
+The curse of knowledge makes it hard to explain things clearly once you already understand them.
+
+## Process
+A sequence of actions someone can follow.
+
+Example:
+Identify the core message, remove unnecessary details, test whether the idea is memorable.
+
+## Heuristic
+A practical rule of thumb that helps with decisions.
+
+Example:
+When a message feels too complex, ask: what is the one thing people must remember?
+
+## Observation
+A useful insight or pattern noticed by the author, but not necessarily a full principle or framework.
+
+Example:
+People often assume more information makes communication better, but too much information can make an idea harder to remember.
+
+====================
+SOURCES
+====================
+
+[
+  {
+    "id": "source_001",
+    "title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "source_type": "book",
+    "file_name": "Made to Stick - Chip and Dan Heath.pdf"
+  }
+]
+
+====================
+SOURCE CHUNK
+====================
+
+Chunk file:
+outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_003.txt
+
+Extraction date:
+2026-05-31
+
+====================
+TEXT TO ANALYZE
+====================
+
+out the full buffet of greasy food for the television cameras. An entire day's worth of unhealthy eating, displayed on a table. All that saturated fat- stuffed into a single bag of popcorn. The story was an immediate sensation, featured on CBS, NBC, ABC, and CNN. It made the front pages of USA Today, the Los An- geles Times, and The Washington Post's Style section. Leno and Let- terman cracked jokes about fat-soaked popcorn, and headline writers trotted out some doozies: "Popcorn Gets an 'R' Rating," "Lights, Ac- tion, Cholesterol!" "Theater Popcorn is Double Feature of Fat." The idea stuck. Moviegoers, repulsed by these findings, avoided popcorn in droves. Sales plunged. The service staff at movie houses grew accustomed to fielding questions about whether the popcorn 8 MADE TO STICK was popped in the "bad" oil. Soon after, most of the nation's big- gest theater chains —including United Artists, AMC, and Loews — announced that they would stop using coconut oil. On Stickiness This is an idea success story. Even better, it's a truthful idea success story. The people at CSPI knew something about the world that they needed to share. They figured out a way to communicate the idea so that people would listen and care. And the idea stuck—just like the Kidney Heist tale. And, let's be honest, the odds were stacked against the CSPI. The "movie popcorn is fatty" story lacks the lurid appeal of an organ- thieving gang. No one woke up in an oil-filled bathtub. The story wasn't sensational, and it wasn't even particularly entertaining. Fur- thermore, there was no natural constituency for the news—few of us make an effort to "stay up to date with popcorn news." There were no celebrities, models, or adorable pets involved. In short, the popcorn idea was a lot like the ideas that most of us traffic in every day—ideas that are interesting but not sensational, truthful but not mind-blowing, important but not "l ife-or-death." Un- less you're in advertising or public relations, you probably don't have many resources to back your ideas. You don't have a multimillion- dollar ad budget or a team of professional spinners. Your ideas need to stand on their own merits. We wrote this book to help you make your ideas stick. By "stick," we mean that your ideas are understood and remembered, and have a lasting impact—they change your audience's opinio ns or behavior. At this point, it's worth asking why you'd need to make your ideas stick. After all, the vast majority of our daily communication doesn't require stickiness. "Pass the gravy" doesn't have to be memorable. When we tell our friends about our relationship pro blems, we're not trying to have a "lasting impact." INTRODUCTION 9 So not every idea is stick-worthy. When we ask peop le how often they need to make an idea stick, they tell us that the need arises be- tween once a month and once a week, twelve to fifty-two times per year. For managers, these are "big ideas" about new strategic direc- tions and guidelines for behavior. Teachers try to convey themes and conflicts and trends to their students —the kinds o f themes and ways of thinking that will endure long after the individual factoids have faded. Columnists try to change readers' opinions on policy issues. Religious leaders try to share spiritual wisdom with their congregants. Nonprofit organizations try to persuade volunteers to contribute their time and donors to contribute their money to a worthy cause. Given the importance of making ideas stick, it's surprising how little attention is paid to the subject. When we get advice on commu- nicating, it often concerns our delivery: "Stand up straight, make eye contact, use appropriate hand gestures. Practice, practice, practice (but don't sound canned)." Sometimes we get advice about structure: "Tell 'em what you're going to tell 'em. Tell 'em, then tell 'em what you told 'em." Or "Start by getting their attention—tell a joke or a story." Another genre concerns knowing your audience: "Know what your listeners care about, so you can tailor your communication to them." And, finally, there's the most common refrain in the realm of communication advice: Use repetition, repetition, repetition. All of this advice has obvious merit, except, perhaps, for the em- phasis on repetition. (If you have to tell someone the same thing ten times, the idea probably wasn't very well designed. No urban legend has to be repeated ten times.) But this set of advice has one glaring shortcoming: It doesn't help Art Silverman as he tries to figure out the best way to explain that movie popcorn is really unhealthful. Silverman no doubt knows that he should make eye co ntact and practice. But what message is he supposed to practi ce? He knows his audience—they're people who like popcorn and don't realize how unhealthy it is. So what message does he share with them? Compli- 10 MADE TO STICK cating matters, Silverman knew that he wouldn't have the luxury of repetition —he had only one shot to make the media care about his story. Or think about an elementary-school teacher. She knows her goal: to teach the material mandated by the state curriculum com- mittee. She knows her audience: third graders with a range of knowl- edge and skills. She knows how to speak effectively—she's a virtuoso of posture and diction and eye contact. So the goal is clear, the audi- ence is clear, and the format is clear. But the design of the message itself is far from clear. The biology students need to understand mito- sis—okay, now what? There are an infinite number of ways to teach mitosis. Which way will stick? And how do you know in advance? What Led to Made to Stick The broad question, then, is how do you design an idea that sticks? A few years ago the two of us—brothers Chip and Dan —realized that both of us had been studying how ideas stick for about ten years. Our expertise came from very different fields, but we had zeroed in on the same question: Why do some ideas succeed while others fail? Dan had developed a passion for education. He co-founded a start-up publishing company called Thinkwell that asked a somewhat heretical question: If you were going to build a textbook from scratch, using video and technology instead of text, how would you do it? As the editor in chief of Thinkwell, Dan had to work with his team to de- termine the best ways to teach subjects like economics, biology, cal- culus, and physics. He had an opportunity to work with some of the most effective and best-loved professors in the country: the calculus teacher who was also a stand-up comic; the biology teacher who was named national Teacher of the Year; the economics teacher who was also a chaplain and a playwright. Essentially, Dan enjoyed a crash course in what makes great teachers great. And he found that, while INTRODUCTION 11 each teacher had a unique style, collectively their instructional methodologies were almost identical. Chip, as a professor at Stanford University, had spent about ten years asking why bad ideas sometimes won out in the social market-
+
+====================
+INSTRUCTIONS
+====================
+
+Extract up to 3 knowledge objects from this chunk.
+
+Only extract a knowledge object if the text clearly supports it.
+
+If the chunk is mostly front matter, copyright information, table of contents, acknowledgements, or incomplete context, return an empty JSON array:
+
+[]
+
+Return ONLY valid JSON.
+
+Do not include markdown.
+Do not include explanations outside the JSON.
+Do not invent unsupported ideas.
+
+Use this exact JSON structure:
+
+[
+  {
+    "id": "",
+    "source_id": "source_001",
+    "source_title": "Made to Stick",
+    "author": "Chip Heath & Dan Heath",
+    "chunk_file": "outputs/chunks/Made to Stick - Chip and Dan Heath/chunk_003.txt",
+    "chapter_or_section": "",
+    "knowledge_type": "",
+    "name": "",
+    "principle": "",
+    "problem_solved": "",
+    "core_insight": "",
+    "why_it_works": "",
+    "framework_steps": [],
+    "examples": [],
+    "applications": [],
+    "when_to_use": [],
+    "when_not_to_use": [],
+    "tradeoffs": [],
+    "related_concepts": [],
+    "keywords": [],
+    "confidence_score": 0,
+    "importance_score": 0,
+    "novelty_score": 0,
+    "supporting_evidence": "",
+    "extraction_date": "2026-05-31"
+  }
+]
+
+SCORING GUIDE
+
+confidence_score:
+1 = weak evidence
+5 = directly supported by the text
+
+importance_score:
+1 = useful only in narrow situations
+5 = broadly useful across industries and contexts
+
+novelty_score:
+1 = obvious or widely known
+5 = surprising insight or distinctive mental model

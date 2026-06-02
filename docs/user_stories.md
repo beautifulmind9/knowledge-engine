@@ -14,6 +14,75 @@ Improve a message asking a friend for help.
 
 ---
 
+## Use Knowledge in a Workshop
+
+As a user,
+
+I want to choose what I want to do with gathered knowledge,
+
+So that the system can transform retrieved concepts, insights, examples, patterns, decision rules, and warnings into a useful output.
+
+### Why This Matters
+
+Retrieving knowledge is useful, but users usually want to do something with it.
+
+They may want to write, decide, study, plan, explain, teach, present, or build.
+
+The app should therefore behave less like a static search tool and more like a workspace where gathered knowledge can be shaped into an outcome.
+
+### Example Goal
+
+Create and edit writing.
+
+### Example Use Case
+
+The user is building Ovara and wants to communicate the product clearly on LinkedIn, in website copy, or in a founder story.
+
+The system retrieves relevant knowledge from communication and copywriting sources, then turns that knowledge into a writing brief, draft starter, and revision checklist.
+
+### Input
+
+- Situation
+- Goal
+- Audience
+- Constraints
+- Output type
+- Tone or style preferences
+
+### Possible Output Modes
+
+- Create or edit writing
+- Generate a copywriting brief
+- Make a decision
+- Create a study guide
+- Build a playbook
+- Prepare a presentation
+- Generate product messaging
+- Create a founder narrative
+
+### Output for Writing Mode
+
+- Writing goal
+- Audience
+- Core message
+- Audience problem
+- Relevant concepts
+- Decision rules to apply
+- Examples to learn from
+- Warnings to avoid
+- Draft starter
+- Revision checklist
+
+### Product Insight
+
+The core product is not only knowledge retrieval.
+
+The stronger product is knowledge application.
+
+A user should be able to gather knowledge from books and sources, then enter a workshop mode that helps them turn the knowledge into something they can use.
+
+---
+
 ## Learn Without Reading Every Book
 
 As a user,

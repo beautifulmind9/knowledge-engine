@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 import streamlit as st
 
 DATA_FOLDER = Path("data")
@@ -17,6 +18,224 @@ def load_json(file_path):
         return []
 
     return json.loads(text)
+
+
+def get_source_insights(source_id, insights):
+    return [
+        insight for insight in insights
+        if insight.get("source_id") == source_id
+    ]
+
+
+def get_items_by_ids(items, ids):
+    return [
+        item for item in items
+        if item.get("id") in ids
+    ]
+
+
+def clean_words(text):
+    return [
+        word.strip(".,!?;:()[]{}\"'").lower()
+        for word in text.split()
+        if len(word.strip(".,!?;:()[]{}\"'")) > 3
+    ]
+
+
+def find_matching_insights(search_text, insights):
+    query_words = clean_words(search_text.lower())
+
+    matching_insights = []
+
+    for insight in insights:
+        insight_search_text = " ".join(
+            [
+                insight.get("title", ""),
+                insight.get("what_it_says", ""),
+                insight.get("why_it_matters", ""),
+                " ".join(insight.get("keywords", [])),
+                insight.get("knowledge_type", "")
+            ]
+        ).lower()
+
+        match_count = sum(
+            1 for word in query_words
+            if word in insight_search_text
+        )
+
+        if match_count > 0:
+            matching_insights.append(
+                {
+                    "insight": insight,
+                    "match_count": match_count
+                }
+            )
+
+    return sorted(
+        matching_insights,
+        key=lambda item: (
+            item["match_count"],
+            item["insight"].get("importance_score", 0),
+            item["insight"].get("confidence_score", 0)
+        ),
+        reverse=True
+    )
+
+
+def collect_related_items(top_matches, concepts, problems):
+    concept_ids = sorted(
+        set(
+            concept_id
+            for item in top_matches
+            for concept_id in item["insight"].get("concept_ids", [])
+        )
+    )
+
+    problem_ids = sorted(
+        set(
+            problem_id
+            for item in top_matches
+            for problem_id in item["insight"].get("problem_ids", [])
+        )
+    )
+
+    related_concepts = get_items_by_ids(concepts, concept_ids)
+    related_problems = get_items_by_ids(problems, problem_ids)
+
+    return related_concepts, related_problems
+
+
+def unique_list(items):
+    clean_items = []
+
+    for item in items:
+        if item and item not in clean_items:
+            clean_items.append(item)
+
+    return clean_items
+
+
+def build_writing_brief(situation, goal, audience, constraints, related_concepts, related_problems, matched_items):
+    concept_names = [
+        concept.get("name", "")
+        for concept in related_concepts
+        if concept.get("name")
+    ]
+
+    problem_names = [
+        problem.get("name", "")
+        for problem in related_problems
+        if problem.get("name")
+    ]
+
+    decision_rules = []
+
+    for item in matched_items:
+        insight = item["insight"]
+
+        for rule in insight.get("decision_rules", []):
+            decision_rules.append(rule)
+
+    examples = []
+
+    for item in matched_items:
+        insight = item["insight"]
+
+        for example in insight.get("examples_from_source", []):
+            examples.append(example)
+
+        for old_example in insight.get("examples", []):
+            examples.append(
+                {
+                    "example_name": old_example,
+                    "transferable_lesson": ""
+                }
+            )
+
+    warnings = []
+
+    for item in matched_items:
+        insight = item["insight"]
+
+        for warning in insight.get("warnings", []):
+            warnings.append(warning)
+
+    core_message = goal.strip()
+
+    if not core_message:
+        core_message = situation.strip()
+
+    audience_problem = ""
+
+    if problem_names:
+        audience_problem = problem_names[0]
+    else:
+        audience_problem = "The audience may not immediately understand why this matters."
+
+    writing_rules = unique_list(
+        [
+            rule.get("rule", "")
+            for rule in decision_rules
+            if rule.get("rule", "")
+        ]
+    )[:6]
+
+    example_lessons = unique_list(
+        [
+            example.get("transferable_lesson", "")
+            for example in examples
+            if example.get("transferable_lesson", "")
+        ]
+    )[:5]
+
+    example_names = unique_list(
+        [
+            example.get("example_name", "")
+            for example in examples
+            if example.get("example_name", "")
+        ]
+    )[:5]
+
+    warning_notes = unique_list(
+        [
+            warning.get("warning", "")
+            for warning in warnings
+            if warning.get("warning", "")
+        ]
+    )[:5]
+
+    draft_starter = (
+        "Most people do not need more information. "
+        "They need a clearer way to understand what the information means and what they can do with it."
+    )
+
+    combined_text = " ".join([situation, goal, audience, constraints]).lower()
+
+    if "ovara" in combined_text:
+        draft_starter = (
+            "Caribbean market information is often scattered, technical, and hard to turn into decisions. "
+            "Ovara helps make that information clearer, more organized, and easier to act on."
+        )
+
+    return {
+        "core_message": core_message,
+        "audience_problem": audience_problem,
+        "concepts_to_use": concept_names[:8],
+        "writing_rules": writing_rules,
+        "example_lessons": example_lessons,
+        "example_names": example_names,
+        "warnings": warning_notes,
+        "draft_starter": draft_starter,
+        "revision_checklist": [
+            "Is the core message clear in the first sentence?",
+            "Is the language concrete rather than abstract?",
+            "Does the audience understand why this matters?",
+            "Is there one main point instead of too many competing points?",
+            "Is there an example, analogy, or familiar reference that makes the idea easier to understand?",
+            "Did you remove jargon that makes the message harder to apply?",
+            "Does the writing tell the reader what to do, think, or understand next?"
+        ]
+    }
 
 
 sources = load_json(SOURCES_FILE)
@@ -38,23 +257,9 @@ page = st.sidebar.radio(
         "Source Overview",
         "Explore Concept",
         "Search by Problem",
-        "Apply Knowledge"
+        "Knowledge Workshop"
     ]
 )
-
-
-def get_source_insights(source_id):
-    return [
-        insight for insight in insights
-        if insight.get("source_id") == source_id
-    ]
-
-
-def get_items_by_ids(items, ids):
-    return [
-        item for item in items
-        if item.get("id") in ids
-    ]
 
 
 if page == "Source Overview":
@@ -68,7 +273,7 @@ if page == "Source Overview":
         if source["title"] == selected_title
     )
 
-    source_insights = get_source_insights(source["id"])
+    source_insights = get_source_insights(source["id"], insights)
 
     st.subheader(source["title"])
     st.write(f"Author: {source.get('author')}")
@@ -197,13 +402,24 @@ if page == "Search by Problem":
                                 st.write(f"  - {step}")
 
 
-if page == "Apply Knowledge":
-    st.header("Apply Knowledge")
+if page == "Knowledge Workshop":
+    st.header("Knowledge Workshop")
 
     st.write(
-        "Describe a real situation. The app will search your knowledge graph "
-        "for relevant concepts, problems, insights, decision rules, patterns, "
-        "examples, and warnings."
+        "Describe a real situation, choose what you want to do with the knowledge, "
+        "and the app will turn relevant concepts, insights, rules, examples, and warnings into a usable workspace."
+    )
+
+    mode = st.selectbox(
+        "What do you want to do with this knowledge?",
+        [
+            "Create or edit writing",
+            "Generate copywriting brief",
+            "Make a decision",
+            "Create study guide",
+            "Build playbook",
+            "Prepare presentation"
+        ]
     )
 
     situation = st.text_area(
@@ -223,10 +439,10 @@ if page == "Apply Knowledge":
 
     constraints = st.text_area(
         "Any constraints?",
-        placeholder="Example: Keep it simple, not too salesy, avoid jargon."
+        placeholder="Example: Keep it simple, human, and not too technical."
     )
 
-    if st.button("Find relevant knowledge"):
+    if st.button("Build workshop"):
         if not situation.strip():
             st.warning("Add a situation first.")
         else:
@@ -235,51 +451,12 @@ if page == "Apply Knowledge":
                     situation,
                     goal,
                     audience,
-                    constraints
+                    constraints,
+                    mode
                 ]
             ).lower()
 
-            query_words = [
-                word.strip(".,!?;:()[]{}\"'").lower()
-                for word in search_text.split()
-                if len(word.strip(".,!?;:()[]{}\"'")) > 3
-            ]
-
-            matching_insights = []
-
-            for insight in insights:
-                insight_search_text = " ".join(
-                    [
-                        insight.get("title", ""),
-                        insight.get("what_it_says", ""),
-                        insight.get("why_it_matters", ""),
-                        " ".join(insight.get("keywords", [])),
-                        insight.get("knowledge_type", "")
-                    ]
-                ).lower()
-
-                match_count = sum(
-                    1 for word in query_words
-                    if word in insight_search_text
-                )
-
-                if match_count > 0:
-                    matching_insights.append(
-                        {
-                            "insight": insight,
-                            "match_count": match_count
-                        }
-                    )
-
-            matching_insights = sorted(
-                matching_insights,
-                key=lambda item: (
-                    item["match_count"],
-                    item["insight"].get("importance_score", 0),
-                    item["insight"].get("confidence_score", 0)
-                ),
-                reverse=True
-            )
+            matching_insights = find_matching_insights(search_text, insights)
 
             if not matching_insights:
                 st.warning(
@@ -288,25 +465,65 @@ if page == "Apply Knowledge":
                 )
             else:
                 top_matches = matching_insights[:8]
-
-                concept_ids = sorted(
-                    set(
-                        concept_id
-                        for item in top_matches
-                        for concept_id in item["insight"].get("concept_ids", [])
-                    )
+                related_concepts, related_problems = collect_related_items(
+                    top_matches,
+                    concepts,
+                    problems
                 )
 
-                problem_ids = sorted(
-                    set(
-                        problem_id
-                        for item in top_matches
-                        for problem_id in item["insight"].get("problem_ids", [])
+                if mode in ["Create or edit writing", "Generate copywriting brief"]:
+                    brief = build_writing_brief(
+                        situation=situation,
+                        goal=goal,
+                        audience=audience,
+                        constraints=constraints,
+                        related_concepts=related_concepts,
+                        related_problems=related_problems,
+                        matched_items=top_matches
                     )
-                )
 
-                related_concepts = get_items_by_ids(concepts, concept_ids)
-                related_problems = get_items_by_ids(problems, problem_ids)
+                    st.subheader("Writing Workshop Brief")
+
+                    st.write("**Core Message**")
+                    st.write(brief["core_message"])
+
+                    st.write("**Audience Problem**")
+                    st.write(brief["audience_problem"])
+
+                    st.write("**Concepts to Use**")
+                    for concept_name in brief["concepts_to_use"]:
+                        st.write(f"- {concept_name}")
+
+                    st.write("**Writing Rules**")
+                    for rule in brief["writing_rules"]:
+                        st.write(f"- {rule}")
+
+                    st.write("**Examples to Borrow From**")
+                    if brief["example_lessons"]:
+                        for lesson in brief["example_lessons"]:
+                            st.write(f"- {lesson}")
+                    else:
+                        for example_name in brief["example_names"]:
+                            st.write(f"- {example_name}")
+
+                    st.write("**Warnings to Avoid**")
+                    for warning in brief["warnings"]:
+                        st.write(f"- {warning}")
+
+                    st.write("**Draft Starter**")
+                    st.info(brief["draft_starter"])
+
+                    st.write("**Revision Checklist**")
+                    for checklist_item in brief["revision_checklist"]:
+                        st.checkbox(checklist_item)
+
+                else:
+                    st.info(
+                        "This workshop mode is not built yet. "
+                        "For now, use Create or edit writing or Generate copywriting brief."
+                    )
+
+                st.divider()
 
                 st.subheader("Relevant Concepts")
 

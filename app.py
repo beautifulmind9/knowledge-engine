@@ -200,46 +200,228 @@ if page == "Search by Problem":
 if page == "Apply Knowledge":
     st.header("Apply Knowledge")
 
-    st.write("Describe a real situation. The app will help you think through relevant concepts, decision rules, and patterns.")
+    st.write(
+        "Describe a real situation. The app will search your knowledge graph "
+        "for relevant concepts, problems, insights, decision rules, patterns, "
+        "examples, and warnings."
+    )
 
-    situation = st.text_area("What are you trying to do?")
+    situation = st.text_area(
+        "What situation are you trying to work through?",
+        placeholder="Example: I need to explain Ovara clearly on LinkedIn."
+    )
 
-    if situation:
-        st.subheader("Suggested lenses to consider")
+    goal = st.text_input(
+        "What outcome do you want?",
+        placeholder="Example: Help people quickly understand what Ovara does and why it matters."
+    )
 
-        keywords = situation.lower().split()
+    audience = st.text_input(
+        "Who is the audience?",
+        placeholder="Example: potential users, investors, founders, LinkedIn connections"
+    )
 
-        matching_insights = []
+    constraints = st.text_area(
+        "Any constraints?",
+        placeholder="Example: Keep it simple, not too salesy, avoid jargon."
+    )
 
-        for insight in insights:
-            searchable_text = " ".join([
-                insight.get("title", ""),
-                insight.get("what_it_says", ""),
-                insight.get("why_it_matters", ""),
-                " ".join(insight.get("keywords", []))
-            ]).lower()
-
-            if any(word in searchable_text for word in keywords):
-                matching_insights.append(insight)
-
-        if not matching_insights:
-            st.warning("No direct matches found yet. Try using words like communication, message, attention, simplicity, decision, or audience.")
+    if st.button("Find relevant knowledge"):
+        if not situation.strip():
+            st.warning("Add a situation first.")
         else:
-            for insight in matching_insights[:10]:
-                with st.expander(insight.get("title", "Untitled insight")):
-                    st.write("**What it says**")
-                    st.write(insight.get("what_it_says", ""))
+            search_text = " ".join(
+                [
+                    situation,
+                    goal,
+                    audience,
+                    constraints
+                ]
+            ).lower()
 
-                    st.write("**Decision Rules**")
+            query_words = [
+                word.strip(".,!?;:()[]{}\"'").lower()
+                for word in search_text.split()
+                if len(word.strip(".,!?;:()[]{}\"'")) > 3
+            ]
+
+            matching_insights = []
+
+            for insight in insights:
+                insight_search_text = " ".join(
+                    [
+                        insight.get("title", ""),
+                        insight.get("what_it_says", ""),
+                        insight.get("why_it_matters", ""),
+                        " ".join(insight.get("keywords", [])),
+                        insight.get("knowledge_type", "")
+                    ]
+                ).lower()
+
+                match_count = sum(
+                    1 for word in query_words
+                    if word in insight_search_text
+                )
+
+                if match_count > 0:
+                    matching_insights.append(
+                        {
+                            "insight": insight,
+                            "match_count": match_count
+                        }
+                    )
+
+            matching_insights = sorted(
+                matching_insights,
+                key=lambda item: (
+                    item["match_count"],
+                    item["insight"].get("importance_score", 0),
+                    item["insight"].get("confidence_score", 0)
+                ),
+                reverse=True
+            )
+
+            if not matching_insights:
+                st.warning(
+                    "No strong matches found yet. Try words like communication, "
+                    "message, audience, attention, simple, decision, or story."
+                )
+            else:
+                top_matches = matching_insights[:8]
+
+                concept_ids = sorted(
+                    set(
+                        concept_id
+                        for item in top_matches
+                        for concept_id in item["insight"].get("concept_ids", [])
+                    )
+                )
+
+                problem_ids = sorted(
+                    set(
+                        problem_id
+                        for item in top_matches
+                        for problem_id in item["insight"].get("problem_ids", [])
+                    )
+                )
+
+                related_concepts = get_items_by_ids(concepts, concept_ids)
+                related_problems = get_items_by_ids(problems, problem_ids)
+
+                st.subheader("Relevant Concepts")
+
+                if related_concepts:
+                    for concept in related_concepts:
+                        st.write(f"**{concept.get('name')}**")
+                        st.write(concept.get("description", ""))
+                else:
+                    st.write("No related concepts found.")
+
+                st.subheader("Relevant Problems")
+
+                if related_problems:
+                    for problem in related_problems:
+                        st.write(f"**{problem.get('name')}**")
+                        st.write(problem.get("description", ""))
+                else:
+                    st.write("No related problems found.")
+
+                st.subheader("Recommended Decision Rules")
+
+                found_rules = False
+
+                for item in top_matches:
+                    insight = item["insight"]
+
                     for rule in insight.get("decision_rules", []):
-                        st.write(f"- {rule.get('rule')}")
+                        found_rules = True
 
-                    st.write("**Application Patterns**")
-                    for pattern in insight.get("application_patterns", []):
-                        st.write(f"- {pattern.get('pattern_name')}")
-                        for step in pattern.get("steps", []):
-                            st.write(f"  - {step}")
+                        st.write(f"**{rule.get('rule')}**")
+                        st.write(f"Use when: {rule.get('condition', '')}")
+                        st.write(f"Action: {rule.get('action', '')}")
+                        st.caption(f"From: {insight.get('title', '')}")
 
-                    st.write("**Examples**")
+                if not found_rules:
+                    st.write("No decision rules found for this situation yet.")
+
+                st.subheader("Useful Patterns")
+
+                found_patterns = False
+
+                for item in top_matches:
+                    insight = item["insight"]
+
+                    for pattern in insight.get("patterns", []):
+                        found_patterns = True
+
+                        with st.expander(pattern.get("pattern_name", "Pattern")):
+                            st.write(pattern.get("description", ""))
+
+                            steps = pattern.get("steps", [])
+
+                            if steps:
+                                st.write("Steps:")
+                                for step in steps:
+                                    st.write(f"- {step}")
+
+                            st.caption(f"From: {insight.get('title', '')}")
+
+                if not found_patterns:
+                    st.write("No patterns found for this situation yet.")
+
+                st.subheader("Examples to Learn From")
+
+                found_examples = False
+
+                for item in top_matches:
+                    insight = item["insight"]
+
                     for example in insight.get("examples_from_source", []):
-                        st.write(f"- {example.get('example_name')}: {example.get('transferable_lesson')}")
+                        found_examples = True
+
+                        with st.expander(example.get("example_name", "Example")):
+                            st.write(f"**What happened:** {example.get('what_happened', '')}")
+                            st.write(f"**Why it matters:** {example.get('why_it_matters', '')}")
+                            st.write(f"**Transferable lesson:** {example.get('transferable_lesson', '')}")
+                            st.caption(f"From: {insight.get('title', '')}")
+
+                    for example in insight.get("examples", []):
+                        found_examples = True
+                        st.write(f"- {example}")
+                        st.caption(f"From: {insight.get('title', '')}")
+
+                if not found_examples:
+                    st.write("No examples found for this situation yet.")
+
+                st.subheader("Warnings")
+
+                found_warnings = False
+
+                for item in top_matches:
+                    insight = item["insight"]
+
+                    for warning in insight.get("warnings", []):
+                        found_warnings = True
+
+                        with st.expander(warning.get("warning", "Warning")):
+                            st.write(f"**Consequence:** {warning.get('consequence', '')}")
+                            st.write(f"**Prevention:** {warning.get('prevention', '')}")
+                            st.caption(f"From: {insight.get('title', '')}")
+
+                if not found_warnings:
+                    st.write("No warnings found for this situation yet.")
+
+                st.subheader("Relevant Insights")
+
+                for item in top_matches:
+                    insight = item["insight"]
+
+                    with st.expander(insight.get("title", "Untitled insight")):
+                        st.write("**What it says**")
+                        st.write(insight.get("what_it_says", ""))
+
+                        st.write("**Why it matters**")
+                        st.write(insight.get("why_it_matters", ""))
+
+                        st.write("**Evidence**")
+                        st.write(insight.get("evidence", ""))

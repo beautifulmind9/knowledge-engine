@@ -195,6 +195,57 @@ def build_draft_starter(situation, goal, audience, constraints):
     )
 
 
+def build_generated_draft(situation, goal, audience, constraints, brief):
+    combined_text = " ".join(
+        [
+            situation,
+            goal,
+            audience,
+            constraints
+        ]
+    ).lower()
+
+    if "ovara" in combined_text:
+        return (
+            "Caribbean market information is often scattered, technical, and hard to turn into decisions.\n\n"
+            "That is the gap Ovara is being built to address.\n\n"
+            "Ovara helps make Caribbean market information clearer, more organized, and easier to act on. "
+            "Instead of leaving people to piece together scattered data on their own, it brings market signals, "
+            "company information, and research into a more useful decision-support experience.\n\n"
+            "The goal is simple: help people understand what is happening, why it matters, and what they may want to look at next."
+        )
+
+    if "linkedin" in combined_text or "post" in combined_text:
+        return (
+            f"{brief['draft_starter']}\n\n"
+            f"The core idea is this: {brief['core_message']}\n\n"
+            f"The audience problem is that {brief['audience_problem'].lower()}\n\n"
+            "So the message needs to be clear, concrete, and focused on one main point."
+        )
+
+    if "website" in combined_text or "landing page" in combined_text:
+        return (
+            f"{brief['draft_starter']}\n\n"
+            f"{brief['core_message']}\n\n"
+            f"For people who are dealing with this problem: {brief['audience_problem']}\n\n"
+            "This should be communicated in plain language, with a clear next step."
+        )
+
+    if "friend" in combined_text or "ask" in combined_text:
+        return (
+            "I need to be honest about where I am right now, and I am asking because I trust you.\n\n"
+            f"{brief['audience_problem']}\n\n"
+            "I am trying to keep going, but I do not think I should keep carrying this entirely on my own."
+        )
+
+    return (
+        f"{brief['draft_starter']}\n\n"
+        f"The main thing I want to communicate is: {brief['core_message']}\n\n"
+        f"The audience needs to understand this problem: {brief['audience_problem']}\n\n"
+        "A stronger version should lead with the core message, use concrete language, and make the next step clear."
+    )
+
+
 def build_writing_brief(situation, goal, audience, constraints, related_concepts, related_problems, matched_items):
     concept_names = [
         concept.get("name", "")
@@ -292,6 +343,18 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
         constraints=constraints
     )
 
+    generated_draft = build_generated_draft(
+        situation=situation,
+        goal=goal,
+        audience=audience,
+        constraints=constraints,
+        brief={
+            "core_message": core_message,
+            "audience_problem": audience_problem,
+            "draft_starter": draft_starter
+        }
+    )
+
     return {
         "core_message": core_message,
         "audience_problem": audience_problem,
@@ -301,6 +364,7 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
         "example_names": example_names,
         "warnings": warning_notes,
         "draft_starter": draft_starter,
+        "generated_draft": generated_draft,
         "revision_checklist": [
             "Is the core message clear in the first sentence?",
             "Is the audience problem specific rather than generic?",
@@ -588,6 +652,13 @@ if page == "Knowledge Workshop":
 
                     st.write("**Draft Starter**")
                     st.info(brief["draft_starter"])
+
+                    st.write("**Generated Draft V1**")
+                    st.text_area(
+                        "Edit the generated draft",
+                        value=brief["generated_draft"],
+                        height=260
+                    )
 
                     st.write("**Revision Checklist**")
                     for checklist_item in brief["revision_checklist"]:

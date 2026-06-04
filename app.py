@@ -195,15 +195,76 @@ def build_draft_starter(situation, goal, audience, constraints):
     )
 
 
-def build_generated_draft(situation, goal, audience, constraints, brief):
+def build_generated_draft(situation, goal, audience, constraints, brief, output_format, tone):
     combined_text = " ".join(
         [
             situation,
             goal,
             audience,
-            constraints
+            constraints,
+            output_format or "",
+            tone or ""
         ]
     ).lower()
+
+    core_message = brief["core_message"]
+    audience_problem = brief["audience_problem"]
+    draft_starter = brief["draft_starter"]
+
+    if output_format == "Cover letter":
+        return (
+            f"I am excited to apply for this opportunity because {core_message.lower()}\n\n"
+            f"What stands out to me is the need to communicate value clearly and connect experience to the needs of the role. "
+            f"My background has helped me develop the ability to identify what matters, organize information, and translate complex or scattered details into clear action.\n\n"
+            f"I would welcome the opportunity to bring that same clarity, focus, and follow-through to this role."
+        )
+
+    if output_format == "Email or message":
+        return (
+            f"Hi,\n\n"
+            f"I wanted to reach out because {core_message.lower()}\n\n"
+            f"The main issue is this: {audience_problem}\n\n"
+            f"I wanted to keep this clear and direct, so the most important thing to know is that I am looking for a practical next step.\n\n"
+            f"Thank you for taking the time to read this."
+        )
+
+    if output_format == "Social post":
+        return (
+            f"{draft_starter}\n\n"
+            f"The core idea is simple: {core_message}\n\n"
+            f"The challenge is that {audience_problem.lower()}\n\n"
+            f"That is why clarity matters. When the message is focused, concrete, and easy to understand, people are more likely to remember it and act on it."
+        )
+
+    if output_format == "Website or landing page copy":
+        return (
+            f"{core_message}\n\n"
+            f"For people dealing with this problem: {audience_problem}\n\n"
+            f"{draft_starter}\n\n"
+            f"Make the next step clear, practical, and easy to understand."
+        )
+
+    if output_format == "Product description":
+        return (
+            f"{core_message}\n\n"
+            f"It is designed for people who face this problem: {audience_problem}\n\n"
+            f"The goal is to make the information clearer, more useful, and easier to apply."
+        )
+
+    if output_format == "Presentation script":
+        return (
+            f"Today, I want to focus on one core idea: {core_message}\n\n"
+            f"The reason this matters is that {audience_problem.lower()}\n\n"
+            f"A useful way to think about this is to start with the core message, make it concrete, and then build the supporting details around it."
+        )
+
+    if output_format == "Article or essay":
+        return (
+            f"{draft_starter}\n\n"
+            f"At the center of this topic is a simple idea: {core_message}\n\n"
+            f"The problem is that {audience_problem.lower()}\n\n"
+            f"To make this useful, the writing should lead with the main idea, use concrete examples, and avoid overwhelming the reader with too many competing points."
+        )
 
     if "ovara" in combined_text:
         return (
@@ -215,38 +276,16 @@ def build_generated_draft(situation, goal, audience, constraints, brief):
             "The goal is simple: help people understand what is happening, why it matters, and what they may want to look at next."
         )
 
-    if "linkedin" in combined_text or "post" in combined_text:
-        return (
-            f"{brief['draft_starter']}\n\n"
-            f"The core idea is this: {brief['core_message']}\n\n"
-            f"The audience problem is that {brief['audience_problem'].lower()}\n\n"
-            "So the message needs to be clear, concrete, and focused on one main point."
-        )
-
-    if "website" in combined_text or "landing page" in combined_text:
-        return (
-            f"{brief['draft_starter']}\n\n"
-            f"{brief['core_message']}\n\n"
-            f"For people who are dealing with this problem: {brief['audience_problem']}\n\n"
-            "This should be communicated in plain language, with a clear next step."
-        )
-
-    if "friend" in combined_text or "ask" in combined_text:
-        return (
-            "I need to be honest about where I am right now, and I am asking because I trust you.\n\n"
-            f"{brief['audience_problem']}\n\n"
-            "I am trying to keep going, but I do not think I should keep carrying this entirely on my own."
-        )
-
     return (
-        f"{brief['draft_starter']}\n\n"
-        f"The main thing I want to communicate is: {brief['core_message']}\n\n"
-        f"The audience needs to understand this problem: {brief['audience_problem']}\n\n"
+        f"{draft_starter}\n\n"
+        f"The main thing I want to communicate is: {core_message}\n\n"
+        f"The audience needs to understand this problem: {audience_problem}\n\n"
+        f"Tone: {tone}\n\n"
         "A stronger version should lead with the core message, use concrete language, and make the next step clear."
     )
 
 
-def build_writing_brief(situation, goal, audience, constraints, related_concepts, related_problems, matched_items):
+def build_writing_brief(situation, goal, audience, constraints, related_concepts, related_problems, matched_items, output_format, tone):
     concept_names = [
         concept.get("name", "")
         for concept in related_concepts
@@ -352,7 +391,9 @@ def build_writing_brief(situation, goal, audience, constraints, related_concepts
             "core_message": core_message,
             "audience_problem": audience_problem,
             "draft_starter": draft_starter
-        }
+        },
+        output_format=output_format,
+        tone=tone
     )
 
     return {
@@ -550,15 +591,47 @@ if page == "Knowledge Workshop":
         "and the app will turn relevant concepts, insights, rules, examples, and warnings into a usable workspace."
     )
 
-    mode = st.selectbox(
+    workshop_goal = st.selectbox(
         "What do you want to do with this knowledge?",
         [
-            "Create or edit writing",
-            "Generate copywriting brief",
+            "Write or edit something",
             "Make a decision",
-            "Create study guide",
-            "Build playbook",
-            "Prepare presentation"
+            "Learn or study",
+            "Plan or strategize",
+            "Explain or teach",
+            "Compare or evaluate",
+            "Summarize or synthesize",
+            "Create a playbook or checklist"
+        ]
+    )
+
+    output_format = None
+
+    if workshop_goal == "Write or edit something":
+        output_format = st.selectbox(
+            "What kind of writing output do you want?",
+            [
+                "General draft",
+                "Email or message",
+                "Social post",
+                "Cover letter",
+                "Website or landing page copy",
+                "Product description",
+                "Article or essay",
+                "Presentation script"
+            ]
+        )
+
+    tone = st.selectbox(
+        "What tone or style should the output have?",
+        [
+            "Clear and simple",
+            "Warm and human",
+            "Professional",
+            "Direct",
+            "Founder-led",
+            "Persuasive",
+            "Reflective"
         ]
     )
 
@@ -592,7 +665,9 @@ if page == "Knowledge Workshop":
                     goal,
                     audience,
                     constraints,
-                    mode
+                    workshop_goal,
+                    output_format or "",
+                    tone
                 ]
             ).lower()
 
@@ -611,7 +686,7 @@ if page == "Knowledge Workshop":
                     problems
                 )
 
-                if mode in ["Create or edit writing", "Generate copywriting brief"]:
+                if workshop_goal == "Write or edit something":
                     brief = build_writing_brief(
                         situation=situation,
                         goal=goal,
@@ -619,7 +694,9 @@ if page == "Knowledge Workshop":
                         constraints=constraints,
                         related_concepts=related_concepts,
                         related_problems=related_problems,
-                        matched_items=top_matches
+                        matched_items=top_matches,
+                        output_format=output_format,
+                        tone=tone
                     )
 
                     st.subheader("Writing Workshop Brief")
@@ -666,8 +743,8 @@ if page == "Knowledge Workshop":
 
                 else:
                     st.info(
-                        "This workshop mode is not built yet. "
-                        "For now, use Create or edit writing or Generate copywriting brief."
+                        "This workshop goal is not built yet. "
+                        "For now, use Write or edit something."
                     )
 
                 st.divider()

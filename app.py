@@ -26,6 +26,14 @@ def get_source_insights(source_id, insights):
         if insight.get("source_id") == source_id
     ]
 
+def get_insights_for_source_ids(source_ids, insights):
+    if not source_ids:
+        return insights
+
+    return [
+        insight for insight in insights
+        if insight.get("source_id") in source_ids
+    ]
 
 def get_items_by_ids(items, ids):
     return [
@@ -591,6 +599,43 @@ if page == "Knowledge Workshop":
         "and the app will turn relevant concepts, insights, rules, examples, and warnings into a usable workspace."
     )
 
+    st.subheader("Knowledge Scope")
+
+    source_scope = st.radio(
+        "Which sources should this workshop use?",
+        [
+            "All sources",
+            "Select sources"
+        ]
+    )
+
+    selected_source_ids = []
+
+    if source_scope == "Select sources":
+        source_options = {
+            f"{source.get('title', 'Untitled source')} — {source.get('author', 'Unknown author')}": source.get("id")
+            for source in sources
+        }
+
+        selected_source_labels = st.multiselect(
+            "Select one or more sources",
+            list(source_options.keys())
+        )
+
+        selected_source_ids = [
+            source_options[label]
+            for label in selected_source_labels
+        ]
+
+        if not selected_source_ids:
+            st.info("Select at least one source, or switch back to All sources.")
+
+    scoped_insights = get_insights_for_source_ids(
+        selected_source_ids,
+        insights
+    )
+    st.caption(f"Workshop will search {len(scoped_insights)} insight(s).")
+    
     workshop_goal = st.selectbox(
         "What do you want to do with this knowledge?",
         [
@@ -671,7 +716,7 @@ if page == "Knowledge Workshop":
                 ]
             ).lower()
 
-            matching_insights = find_matching_insights(search_text, insights)
+            matching_insights = find_matching_insights(search_text, scoped_insights)
 
             if not matching_insights:
                 st.warning(

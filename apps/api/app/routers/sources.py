@@ -2,10 +2,15 @@ from pathlib import Path
 from shutil import copyfileobj
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from app.db.mock_data import create_id, sources
+from app.services.text_extraction import (
+    UnsupportedExtractionTypeError,
+    extract_text_from_file,
+    save_extracted_text
+)
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -74,6 +79,7 @@ def create_source(payload: SourceCreate):
         "file_name": None,
         "file_path": None,
         "file_type": None,
+        "extracted_text_path": None,
         "created_at": None
     }
 
@@ -110,7 +116,8 @@ def get_source_status(source_id: str):
         "title": source["title"],
         "processing_status": source["processing_status"],
         "file_name": source.get("file_name"),
-        "file_type": source.get("file_type")
+        "file_type": source.get("file_type"),
+        "extracted_text_path": source.get("extracted_text_path")
     }
 
 
@@ -170,6 +177,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source["file_path"] = str(file_path)
     source["file_type"] = file_extension
     source["processing_status"] = "uploaded"
+    source["extracted_text_path"] = None
 
     return {
         "source_id": source["id"],
@@ -211,3 +219,83 @@ def get_source_file(source_id: str):
         path=path,
         filename=source.get("file_name") or path.name
     )
+
+
+@router.post("/{source_id}/extract")
+def extract_source_text(source_id: str):
+    source = find_source(source_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found"
+        )
+
+    file_path = source.get("file_path")
+    file_type = source.get("file_type")
+
+    if not file_path or not file_type:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload a source file before extracting text."
+        )
+
+    try:
+        extracted_text = extract_text_from_file(
+            file_path=file_path,
+            file_type=file_type
+        )
+    except UnsupportedExtractionTypeError as error:
+        source["processing_status"] = "extraction_not_supported"
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    extracted_text_path = save_extracted_text(
+        source_id=source_id,
+        text=extracted_text
+    )
+
+    source["extracted_text_path"] = extracted_text_path
+    source["processing_status"] = "text_extracted"
+
+    return {
+        "source_id": source["id"],
+        "title": source["title"],
+        "file_type": source["file_type"],
+        "processing_status": source["processing_status"],
+        "extracted_text_path": source["extracted_text_path"],
+        "character_count": len(extracted_text),
+        "message": "Text extracted successfully."
+    }
+
+
+@router.get("/{source_id}/extracted-text", response_class=PlainTextResponse)
+def get_extracted_text(source_id: str):
+    source = find_source(source_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found"
+        )
+
+    extracted_text_path = source.get("extracted_text_path")
+
+    if not extracted_text_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No extracted text found for this source."
+        )
+
+    path = Path(extracted_text_path)
+
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Extracted text file not found on disk."
+        )
+
+    return path.read_text(encoding="utf-8", errors="ignore")

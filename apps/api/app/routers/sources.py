@@ -12,6 +12,8 @@ from app.services.text_extraction import (
     save_extracted_text
 )
 
+from app.services.text_chunking import chunk_text, load_chunks, save_chunks
+
 router = APIRouter(prefix="/sources", tags=["sources"])
 
 UPLOAD_FOLDER = Path("storage/uploads")
@@ -80,6 +82,7 @@ def create_source(payload: SourceCreate):
         "file_path": None,
         "file_type": None,
         "extracted_text_path": None,
+        "chunks_path": None,
         "created_at": None
     }
 
@@ -117,7 +120,8 @@ def get_source_status(source_id: str):
         "processing_status": source["processing_status"],
         "file_name": source.get("file_name"),
         "file_type": source.get("file_type"),
-        "extracted_text_path": source.get("extracted_text_path")
+        "extracted_text_path": source.get("extracted_text_path"),
+        "chunks_path": source.get("chunks_path")
     }
 
 
@@ -178,7 +182,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source["file_type"] = file_extension
     source["processing_status"] = "uploaded"
     source["extracted_text_path"] = None
-
+    source["chunks_path"] = None
     return {
         "source_id": source["id"],
         "title": source["title"],
@@ -299,3 +303,88 @@ def get_extracted_text(source_id: str):
         )
 
     return path.read_text(encoding="utf-8", errors="ignore")
+
+@router.post("/{source_id}/chunk")
+def chunk_source_text(source_id: str):
+    source = find_source(source_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found"
+        )
+
+    extracted_text_path = source.get("extracted_text_path")
+
+    if not extracted_text_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Extract text before chunking this source."
+        )
+
+    path = Path(extracted_text_path)
+
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Extracted text file not found on disk."
+        )
+
+    extracted_text = path.read_text(encoding="utf-8", errors="ignore")
+    chunks = chunk_text(
+        source_id=source_id,
+        text=extracted_text
+    )
+
+    chunks_path = save_chunks(
+        source_id=source_id,
+        chunks=chunks
+    )
+
+    source["chunks_path"] = chunks_path
+    source["processing_status"] = "chunked"
+
+    return {
+        "source_id": source["id"],
+        "title": source["title"],
+        "processing_status": source["processing_status"],
+        "chunks_path": source["chunks_path"],
+        "chunk_count": len(chunks),
+        "message": "Text chunked successfully."
+    }
+
+
+@router.get("/{source_id}/chunks")
+def get_source_chunks(source_id: str):
+    source = find_source(source_id)
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Source not found"
+        )
+
+    chunks_path = source.get("chunks_path")
+
+    if not chunks_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No chunks found for this source."
+        )
+
+    path = Path(chunks_path)
+
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Chunks file not found on disk."
+        )
+
+    chunks = load_chunks(chunks_path)
+
+    return {
+        "source_id": source["id"],
+        "title": source["title"],
+        "items": chunks,
+        "count": len(chunks)
+    }

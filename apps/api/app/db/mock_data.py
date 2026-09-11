@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.db.persistence import load_state
 
-libraries = [
+
+_default_libraries = [
     {
         "id": "library_copywriting",
         "name": "Copywriting",
@@ -18,7 +20,7 @@ libraries = [
 ]
 
 
-sources = [
+_default_sources = [
     {
         "id": "source_made_to_stick",
         "library_id": "library_copywriting",
@@ -31,10 +33,18 @@ sources = [
 ]
 
 
-# Temporary in-memory stores for the current API prototype.
-# These will move to a real database later.
-extraction_jobs = []
-knowledge_assets = []
+_state = load_state()
+
+if _state:
+    libraries = _state.get("libraries", _default_libraries)
+    sources = _state.get("sources", _default_sources)
+    extraction_jobs = _state.get("extraction_jobs", [])
+    knowledge_assets = _state.get("knowledge_assets", [])
+else:
+    libraries = _default_libraries
+    sources = _default_sources
+    extraction_jobs = []
+    knowledge_assets = []
 
 
 def create_id(prefix):

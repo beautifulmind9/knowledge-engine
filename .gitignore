@@ -182,3 +182,7 @@ data/pdfs/
 # data/relationships.json
 # data/sources.json
 apps/api/storage/
+
+# Local workspace data and execution profile
+storage/
+.sites-runtime/

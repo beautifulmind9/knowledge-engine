@@ -4,3 +4,5 @@ pydantic
 python-multipart
 beautifulsoup4
 ebooklib
+pypdf
+python-docx

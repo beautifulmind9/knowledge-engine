@@ -1,11 +1,12 @@
 from pathlib import Path
-from shutil import copyfileobj
+from hashlib import sha256
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
-from app.db.mock_data import create_id, sources
+from app.db import store
+from app.db.store import create_id
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
     extract_text_from_file,
@@ -16,7 +17,7 @@ from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
-UPLOAD_FOLDER = Path("storage/uploads")
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",
@@ -32,26 +33,24 @@ ALLOWED_FILE_EXTENSIONS = {
 
 
 class SourceCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     library_id: str
-    title: str
+    title: str = Field(min_length=1, max_length=500)
     author: str | None = None
     source_type: str = "book"
 
 
 def find_source(source_id: str):
-    for source in sources:
-        if source.get("id") == source_id:
-            return source
-
-    return None
+    return store.get("source", source_id)
 
 
 def get_file_extension(filename: str):
-    return Path(filename).suffix.lower()
+    return Path(filename or "").suffix.lower()
 
 
 @router.get("")
 def get_sources(library_id: str | None = None):
+    sources = store.all_records("source")
     if library_id:
         filtered_sources = [
             source for source in sources
@@ -71,6 +70,8 @@ def get_sources(library_id: str | None = None):
 
 @router.post("")
 def create_source(payload: SourceCreate):
+    if not store.get("library", payload.library_id):
+        raise HTTPException(404, "Library not found")
     source = {
         "id": create_id("source"),
         "library_id": payload.library_id,
@@ -83,10 +84,10 @@ def create_source(payload: SourceCreate):
         "file_type": None,
         "extracted_text_path": None,
         "chunks_path": None,
-        "created_at": None
+        "created_at": store.now()
     }
 
-    sources.append(source)
+    store.save("source", source)
 
     return source
 
@@ -141,14 +142,8 @@ def request_source_processing(source_id: str):
             detail="Upload a source file before requesting processing."
         )
 
-    source["processing_status"] = "processing_requested"
-
-    return {
-        "source_id": source["id"],
-        "title": source["title"],
-        "processing_status": source["processing_status"],
-        "message": "Processing has been requested. Background processing will be connected later."
-    }
+    extract_source_text(source_id)
+    return chunk_source_text(source_id)
 
 
 @router.post("/{source_id}/upload")
@@ -169,13 +164,21 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
             detail=f"Unsupported file type. Allowed types: {sorted(ALLOWED_FILE_EXTENSIONS)}"
         )
 
-    UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+    if source.get("file_path"):
+        raise HTTPException(409, "This source already has a file. Add a new source for a revised file to preserve existing evidence.")
+    upload_folder = store.storage_root() / "uploads"
+    upload_folder.mkdir(parents=True, exist_ok=True)
 
     safe_file_name = f"{source_id}{file_extension}"
-    file_path = UPLOAD_FOLDER / safe_file_name
+    file_path = upload_folder / safe_file_name
 
-    with file_path.open("wb") as buffer:
-        copyfileobj(file.file, buffer)
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if not data:
+        raise HTTPException(400, "The uploaded file is empty.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "Please upload a file smaller than 25 MB.")
+    file_path.write_bytes(data)
+    source["file_sha256"] = sha256(data).hexdigest()
 
     source["file_name"] = file.filename
     source["file_path"] = str(file_path)
@@ -183,6 +186,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source["processing_status"] = "uploaded"
     source["extracted_text_path"] = None
     source["chunks_path"] = None
+    store.save("source", source)
     return {
         "source_id": source["id"],
         "title": source["title"],
@@ -249,13 +253,19 @@ def extract_source_text(source_id: str):
             file_path=file_path,
             file_type=file_type
         )
-    except UnsupportedExtractionTypeError as error:
-        source["processing_status"] = "extraction_not_supported"
+    except Exception as error:
+        source["processing_status"] = "extraction_failed"
+        store.save("source", source)
 
         raise HTTPException(
             status_code=400,
-            detail=str(error)
+            detail=str(error) if isinstance(error, (UnsupportedExtractionTypeError, ValueError)) else "Could not read this file. Check that it is valid and not encrypted."
         )
+
+    if not extracted_text.strip():
+        source["processing_status"] = "extraction_failed"
+        store.save("source", source)
+        raise HTTPException(422, "No readable text found. Scanned PDFs need OCR before upload.")
 
     extracted_text_path = save_extracted_text(
         source_id=source_id,
@@ -264,6 +274,7 @@ def extract_source_text(source_id: str):
 
     source["extracted_text_path"] = extracted_text_path
     source["processing_status"] = "text_extracted"
+    store.save("source", source)
 
     return {
         "source_id": source["id"],
@@ -343,6 +354,8 @@ def chunk_source_text(source_id: str):
 
     source["chunks_path"] = chunks_path
     source["processing_status"] = "chunked"
+    source["chunk_count"] = len(chunks)
+    store.save("source", source)
 
     return {
         "source_id": source["id"],
@@ -388,3 +401,19 @@ def get_source_chunks(source_id: str):
         "items": chunks,
         "count": len(chunks)
     }
+
+@router.delete("/{source_id}", status_code=204)
+def delete_source(source_id: str):
+    source = find_source(source_id)
+    if not source:
+        raise HTTPException(404, "Source not found")
+    used = any(source_id in w.get("source_ids", []) for w in store.all_records("workshop"))
+    if used:
+        raise HTTPException(409, "Delete workshops using this source first so saved evidence remains traceable.")
+    for unit in store.all_records("knowledge"):
+        if unit["source_id"] == source_id:
+            store.delete("knowledge", unit["id"])
+    for key in ("file_path", "extracted_text_path", "chunks_path"):
+        if source.get(key):
+            Path(source[key]).unlink(missing_ok=True)
+    store.delete("source", source_id)

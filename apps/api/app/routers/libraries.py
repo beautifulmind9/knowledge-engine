@@ -1,7 +1,14 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.db.mock_data import create_id, libraries
+from app.db.mock_data import (
+    create_id,
+    extraction_jobs,
+    knowledge_assets,
+    libraries,
+    sources,
+)
+from app.db.persistence import save_state
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
 
@@ -29,5 +36,6 @@ def create_library(payload: LibraryCreate):
     }
 
     libraries.append(library)
+    save_state(libraries, sources, extraction_jobs, knowledge_assets)
 
     return library

@@ -10,6 +10,7 @@ from app.models.knowledge_extraction import (
     KnowledgeExtractionJob,
     KnowledgeExtractionStatus,
 )
+from app.services.knowledge_extraction_prompt import build_knowledge_extraction_request
 from app.services.text_chunking import load_chunks
 
 
@@ -76,6 +77,11 @@ def get_extraction_chunk(job_id: str):
         source_id=job["source_id"],
         chunk_id=job["chunk_id"],
     )
+
+
+def get_extraction_request(job_id: str):
+    chunk = get_extraction_chunk(job_id)
+    return build_knowledge_extraction_request(chunk)
 
 
 def complete_extraction_job(job_id: str, assets):

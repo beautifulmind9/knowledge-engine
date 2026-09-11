@@ -9,6 +9,7 @@ from app.services.knowledge_extraction import (
     create_extraction_job,
     get_extraction_chunk,
     get_extraction_job,
+    get_extraction_request,
     list_knowledge_assets,
 )
 
@@ -49,6 +50,14 @@ def read_knowledge_extraction(job_id: str):
 def read_knowledge_extraction_chunk(job_id: str):
     try:
         return get_extraction_chunk(job_id)
+    except ValueError as error:
+        service_error(error)
+
+
+@router.get("/knowledge-extractions/{job_id}/request")
+def read_knowledge_extraction_request(job_id: str):
+    try:
+        return get_extraction_request(job_id)
     except ValueError as error:
         service_error(error)
 

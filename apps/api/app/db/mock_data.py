@@ -31,5 +31,11 @@ sources = [
 ]
 
 
+# Temporary in-memory stores for the current API prototype.
+# These will move to a real database later.
+extraction_jobs = []
+knowledge_assets = []
+
+
 def create_id(prefix):
     return f"{prefix}_{uuid4().hex[:8]}"

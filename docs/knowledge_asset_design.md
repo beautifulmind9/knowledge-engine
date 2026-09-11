@@ -111,4 +111,19 @@ Library
                           -> Outputs
 ```
 
-The next engineering milestone after this schema is to create a Knowledge Extraction Job that takes a chunk and produces validated Knowledge Assets.
+## Current build status
+
+The Knowledge Asset schema and Knowledge Extraction Job backbone are now implemented.
+
+A knowledge extraction job can:
+
+- point to one source chunk
+- expose the chunk and the extraction instructions for an AI provider
+- define the exact structured output expected from the AI
+- accept returned assets
+- validate their source and chunk provenance
+- assign asset IDs and timestamps
+- store the validated assets in the current prototype store
+- retrieve assets by source, chunk, or asset type
+
+The AI provider itself is deliberately not hard-coded yet. The next milestone is to connect a model provider so a pending extraction job can run automatically instead of requiring the result to be submitted separately.

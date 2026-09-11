@@ -4,8 +4,10 @@ from app.db.mock_data import (
     create_id,
     extraction_jobs,
     knowledge_assets,
+    libraries,
     sources,
 )
+from app.db.persistence import save_state
 from app.models.knowledge_extraction import (
     KnowledgeExtractionJob,
     KnowledgeExtractionStatus,
@@ -16,6 +18,10 @@ from app.services.text_chunking import load_chunks
 
 def utc_now():
     return datetime.now(timezone.utc)
+
+
+def persist_state():
+    save_state(libraries, sources, extraction_jobs, knowledge_assets)
 
 
 def find_source(source_id: str):
@@ -54,6 +60,7 @@ def create_extraction_job(source_id: str, chunk_id: str):
 
     job_data = job.model_dump(mode="json")
     extraction_jobs.append(job_data)
+    persist_state()
     return job_data
 
 
@@ -115,6 +122,7 @@ def complete_extraction_job(job_id: str, assets):
     job["asset_count"] = len(stored_assets)
     job["completed_at"] = utc_now().isoformat()
     job["error"] = None
+    persist_state()
 
     return {
         "job": job,

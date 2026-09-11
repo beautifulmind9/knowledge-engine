@@ -1,5 +1,26 @@
 # Knowledge Engine
 
+## Run the current personal workspace
+
+The FastAPI application now serves a browser workspace for **Library → reviewed knowledge → Workshop → saved output**. Libraries, source files, extracted knowledge, and workshops persist locally.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
+```
+
+Open **http://127.0.0.1:8000**. See [the API guide](apps/api/README.md) for the full workflow and [release status](docs/first_release_status.md) for completed work and remaining product requirements.
+
+This first release is for one local owner. AI extraction and drafting use an explicit copy/paste handoff to your AI assistant; no model is called by the application. Knowledge requires matching source evidence and human approval before use in a workshop. Hosted accounts, automatic AI calls, and background processing remain future work.
+
+The original Streamlit implementation is preserved under `legacy/streamlit_prototype/`. The historical description below describes that prototype; its `src/` and `app.py` paths are relative to that folder, not the repository root. The new workspace starts empty and does not automatically migrate the legacy graph.
+
+---
+
+## Original prototype and product vision
+
 Knowledge Engine turns source material into reusable knowledge that can be searched, explored, and applied to real problems.
 
 This project started as a way to extract useful ideas from books and PDFs. It is evolving into a knowledge application engine: a system that does not only summarize sources, but breaks them into concepts, problems, insights, examples, decision rules, patterns, warnings, and application methods.

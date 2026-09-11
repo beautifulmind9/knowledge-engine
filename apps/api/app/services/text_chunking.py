@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
+from app.db.store import storage_root
 
 
 CHUNK_OUTPUT_FOLDER = Path("storage/chunks")
 
 
 def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int = 200):
+    if chunk_size <= 0 or overlap < 0 or overlap >= chunk_size:
+        raise ValueError("Use chunk_size > 0 and 0 <= overlap < chunk_size")
     words = text.split()
 
     if not words:
@@ -40,10 +43,14 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
             }
         )
 
+        if end >= len(words):
+            break
+
     return chunks
 
 
 def save_chunks(source_id: str, chunks):
+    CHUNK_OUTPUT_FOLDER = storage_root() / "chunks"
     CHUNK_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 
     output_path = CHUNK_OUTPUT_FOLDER / f"{source_id}.json"

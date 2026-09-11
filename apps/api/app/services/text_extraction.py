@@ -4,6 +4,9 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 from ebooklib import epub
+from pypdf import PdfReader
+from docx import Document
+from app.db.store import storage_root
 
 
 TEXT_OUTPUT_FOLDER = Path("storage/extracted_text")
@@ -26,7 +29,9 @@ def extract_text_from_epub(file_path: str) -> str:
     book = epub.read_epub(file_path)
     sections = []
 
-    for item in book.get_items():
+    # Preserve the reading order instead of ZIP/manifest order.
+    items = [book.get_item_with_id(item_id) for item_id, linear in book.spine if linear != "no"]
+    for item in items:
         media_type = getattr(item, "media_type", None)
 
         if media_type != "application/xhtml+xml":
@@ -71,6 +76,13 @@ def extract_text_from_file(file_path: str, file_type: str) -> str:
 
         return "\n".join(rows)
 
+    if extension == ".pdf":
+        return "\n\n".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
+
+    if extension == ".docx":
+        doc = Document(str(path))
+        return "\n".join([p.text for p in doc.paragraphs] + [" | ".join(c.text for c in row.cells) for table in doc.tables for row in table.rows])
+
     if extension == ".epub":
         return extract_text_from_epub(str(path))
 
@@ -80,6 +92,7 @@ def extract_text_from_file(file_path: str, file_type: str) -> str:
 
 
 def save_extracted_text(source_id: str, text: str) -> str:
+    TEXT_OUTPUT_FOLDER = storage_root() / "extracted_text"
     TEXT_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 
     output_path = TEXT_OUTPUT_FOLDER / f"{source_id}.txt"

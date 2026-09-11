@@ -1,33 +1,22 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
-
-from app.db.mock_data import create_id, libraries
+from pydantic import BaseModel, Field, ConfigDict
+from app.db import store
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
 
 
 class LibraryCreate(BaseModel):
-    name: str
-    description: str | None = None
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=2000)
 
 
 @router.get("")
 def get_libraries():
-    return {
-        "items": libraries,
-        "count": len(libraries)
-    }
+    items = store.all_records("library")
+    return {"items": items, "count": len(items)}
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_library(payload: LibraryCreate):
-    library = {
-        "id": create_id("library"),
-        "name": payload.name,
-        "description": payload.description or "",
-        "created_at": None
-    }
-
-    libraries.append(library)
-
-    return library
+    return store.save("library", {"id": store.create_id("library"), **payload.model_dump(), "created_at": store.now()})

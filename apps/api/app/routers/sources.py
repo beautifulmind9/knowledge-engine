@@ -5,13 +5,19 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from app.db.mock_data import create_id, sources
+from app.db.mock_data import (
+    create_id,
+    extraction_jobs,
+    knowledge_assets,
+    libraries,
+    sources,
+)
+from app.db.persistence import save_state
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
     extract_text_from_file,
     save_extracted_text
 )
-
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 
 router = APIRouter(prefix="/sources", tags=["sources"])
@@ -36,6 +42,10 @@ class SourceCreate(BaseModel):
     title: str
     author: str | None = None
     source_type: str = "book"
+
+
+def persist_state():
+    save_state(libraries, sources, extraction_jobs, knowledge_assets)
 
 
 def find_source(source_id: str):
@@ -87,6 +97,7 @@ def create_source(payload: SourceCreate):
     }
 
     sources.append(source)
+    persist_state()
 
     return source
 
@@ -142,6 +153,7 @@ def request_source_processing(source_id: str):
         )
 
     source["processing_status"] = "processing_requested"
+    persist_state()
 
     return {
         "source_id": source["id"],
@@ -183,6 +195,8 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source["processing_status"] = "uploaded"
     source["extracted_text_path"] = None
     source["chunks_path"] = None
+    persist_state()
+
     return {
         "source_id": source["id"],
         "title": source["title"],
@@ -251,6 +265,7 @@ def extract_source_text(source_id: str):
         )
     except UnsupportedExtractionTypeError as error:
         source["processing_status"] = "extraction_not_supported"
+        persist_state()
 
         raise HTTPException(
             status_code=400,
@@ -264,6 +279,7 @@ def extract_source_text(source_id: str):
 
     source["extracted_text_path"] = extracted_text_path
     source["processing_status"] = "text_extracted"
+    persist_state()
 
     return {
         "source_id": source["id"],
@@ -304,6 +320,7 @@ def get_extracted_text(source_id: str):
 
     return path.read_text(encoding="utf-8", errors="ignore")
 
+
 @router.post("/{source_id}/chunk")
 def chunk_source_text(source_id: str):
     source = find_source(source_id)
@@ -343,6 +360,7 @@ def chunk_source_text(source_id: str):
 
     source["chunks_path"] = chunks_path
     source["processing_status"] = "chunked"
+    persist_state()
 
     return {
         "source_id": source["id"],

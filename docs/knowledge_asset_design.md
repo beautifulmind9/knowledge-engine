@@ -72,6 +72,8 @@ Some asset types need extra structure.
 - action: what to do
 - rationale: why that action makes sense
 
+A decision rule must include an action. The schema enforces this before the asset can be stored.
+
 ### Warning
 
 - consequence: what can go wrong
@@ -87,6 +89,8 @@ Some asset types need extra structure.
 
 - steps
 - adaptation notes
+
+A process must include at least one step.
 
 ## What changed from the old prototype
 
@@ -106,22 +110,50 @@ The current automatic extraction path uses the Gemini API free tier. The provide
 
 Free-tier model access can have lower rate limits and different data-use terms than paid plans, so that trade-off should remain visible when choosing what source material to process.
 
+The current default extraction model is `gemini-3.1-flash-lite`, chosen for lightweight, high-frequency structured extraction work.
+
 ## Current pipeline
 
 ```text
 Library
   -> Source
       -> Extracted Text
-          -> Chunk
-              -> Knowledge Extraction Job
-                  -> Knowledge Assets
-                      -> Workshop
-                          -> Outputs
+          -> Chunks
+              -> Source Interpretation
+                  -> Knowledge Extraction Jobs
+                      -> Knowledge Assets
+                          -> Workshop
+                              -> Outputs
 ```
+
+## Source-level interpretation
+
+The source-level workflow sits above individual chunk extraction jobs.
+
+When a source is interpreted, Knowledge Engine:
+
+1. loads every chunk for the source
+2. checks which chunks already have a completed extraction job
+3. skips completed chunks so work is not repeated
+4. creates extraction jobs for unfinished chunks
+5. processes a small batch of chunks
+6. stores valid Knowledge Assets as each chunk succeeds
+7. saves progress so the source can resume later
+8. stops cleanly if the free-tier model rate limit is reached
+
+This design is intentionally resumable. Processing an entire book in one synchronous request would be fragile and could exceed free-tier limits. The API therefore processes a configurable small batch per run and reports how many chunks remain.
+
+Source-level endpoints:
+
+- `GET /sources/{source_id}/interpretation` — see source interpretation progress
+- `POST /sources/{source_id}/interpret?max_chunks=1` — interpret the next source chunk(s), skipping completed work
+- `GET /sources/{source_id}/knowledge-assets` — retrieve all assets produced for one source
+
+`max_chunks` is limited to 1–5 per run during the development build.
 
 ## Current build status
 
-The Knowledge Asset schema and Knowledge Extraction Job backbone are implemented.
+The Knowledge Asset schema, single-chunk Knowledge Extraction Job pipeline, and resumable source-level interpretation workflow are implemented.
 
 A knowledge extraction job can:
 
@@ -130,8 +162,18 @@ A knowledge extraction job can:
 - define the exact structured output expected from the model
 - run automatically through the current free-tier model provider
 - validate returned assets and their provenance
+- request one repair attempt for structurally invalid model output
 - assign asset IDs and timestamps
 - store validated assets in the current prototype store
 - retrieve assets by source, chunk, or asset type
+
+A source interpretation run can:
+
+- inspect all chunks for one source
+- skip already completed chunks
+- resume from previous progress
+- process a small free-tier-safe batch
+- preserve successful assets if a later chunk fails or is rate-limited
+- report total, completed, and remaining chunks
 
 The model provider is kept behind a service boundary so it can be changed later without redesigning Knowledge Assets or the Workshop.

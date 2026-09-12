@@ -1,3 +1,3 @@
-from app.models.knowledge_asset import KnowledgeAsset, KnowledgeAssetType
+from app.models.knowledge_asset import KnowledgeAsset
 
-__all__ = ["KnowledgeAsset", "KnowledgeAssetType"]
+__all__ = ["KnowledgeAsset"]

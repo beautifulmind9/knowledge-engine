@@ -2,6 +2,7 @@ import json
 import os
 
 from google import genai
+from pydantic import ValidationError
 
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
 from app.services.knowledge_extraction import (
@@ -13,6 +14,61 @@ from app.services.knowledge_extraction import (
 
 
 DEFAULT_MODEL = "gemini-3.8-flash"
+
+
+def generate_structured_interaction(client, model: str, request: dict, payload: dict):
+    return client.interactions.create(
+        model=model,
+        input=json.dumps(payload, ensure_ascii=False),
+        response_format={
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": request["expected_output_schema"],
+        },
+    )
+
+
+def validate_or_repair_result(client, model: str, request: dict, interaction):
+    if not interaction.output_text:
+        raise RuntimeError("The AI returned no structured extraction output.")
+
+    try:
+        result = KnowledgeExtractionResultSubmission.model_validate_json(
+            interaction.output_text
+        )
+        return result, interaction
+    except ValidationError as validation_error:
+        repair_payload = {
+            "task": "Repair the previous knowledge extraction so it passes validation.",
+            "rules": [
+                "Use only information supported by the original chunk.",
+                "Do not invent missing facts just to satisfy validation.",
+                "If an asset cannot satisfy the rules from the source, change it to a better-fitting asset type or remove it.",
+                "For decision_rule assets, action must be a concrete behavior or choice supported by the chunk.",
+                "For process assets, steps must contain at least one source-supported step.",
+                "Return only the corrected structured result.",
+            ],
+            "validation_error": str(validation_error),
+            "previous_output": interaction.output_text,
+            "source_id": request["source_id"],
+            "chunk_id": request["chunk_id"],
+            "chunk_text": request["chunk_text"],
+        }
+
+        repaired_interaction = generate_structured_interaction(
+            client=client,
+            model=model,
+            request=request,
+            payload=repair_payload,
+        )
+
+        if not repaired_interaction.output_text:
+            raise RuntimeError("The AI repair attempt returned no structured output.")
+
+        repaired_result = KnowledgeExtractionResultSubmission.model_validate_json(
+            repaired_interaction.output_text
+        )
+        return repaired_result, repaired_interaction
 
 
 def run_gemini_knowledge_extraction(job_id: str):
@@ -41,21 +97,18 @@ def run_gemini_knowledge_extraction(job_id: str):
     }
 
     try:
-        interaction = client.interactions.create(
+        interaction = generate_structured_interaction(
+            client=client,
             model=model,
-            input=json.dumps(model_input, ensure_ascii=False),
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": request["expected_output_schema"],
-            },
+            request=request,
+            payload=model_input,
         )
 
-        if not interaction.output_text:
-            raise RuntimeError("The AI returned no structured extraction output.")
-
-        result = KnowledgeExtractionResultSubmission.model_validate_json(
-            interaction.output_text
+        result, final_interaction = validate_or_repair_result(
+            client=client,
+            model=model,
+            request=request,
+            interaction=interaction,
         )
 
         # Provenance and system metadata belong to Knowledge Engine, not the model.
@@ -68,7 +121,7 @@ def run_gemini_knowledge_extraction(job_id: str):
         return complete_extraction_job(
             job_id=job_id,
             assets=result.assets,
-            model_response_id=getattr(interaction, "id", None),
+            model_response_id=getattr(final_interaction, "id", None),
         )
 
     except Exception as error:

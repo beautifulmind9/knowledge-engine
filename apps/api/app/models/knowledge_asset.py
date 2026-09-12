@@ -1,28 +1,13 @@
 from datetime import datetime
-from enum import Enum
 from typing import Literal, Union
 
-from pydantic import BaseModel, Field
-
-
-class KnowledgeAssetType(str, Enum):
-    """The kinds of reusable knowledge Knowledge Engine can extract."""
-
-    CONCEPT = "concept"
-    PROBLEM = "problem"
-    PRINCIPLE = "principle"
-    INSIGHT = "insight"
-    DECISION_RULE = "decision_rule"
-    PATTERN = "pattern"
-    EXAMPLE = "example"
-    WARNING = "warning"
-    FRAMEWORK = "framework"
-    MENTAL_MODEL = "mental_model"
-    PROCESS = "process"
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseKnowledgeAsset(BaseModel):
     """Fields shared by every reusable knowledge asset."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str | None = None
     title: str
@@ -35,72 +20,95 @@ class BaseKnowledgeAsset(BaseModel):
     chapter_or_section: str | None = None
     evidence: str | None = None
 
-    # Application guidance learned from the original prototype.
+    # Application guidance learned from the Made to Stick prototype.
     how_to_apply: list[str] = Field(default_factory=list)
     when_to_use: list[str] = Field(default_factory=list)
     when_not_to_use: list[str] = Field(default_factory=list)
     tradeoffs: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
 
-    # Type-specific fields. They stay optional unless a subtype requires them.
-    condition: str | None = None
-    action: str | None = None
-    rationale: str | None = None
-
-    consequence: str | None = None
-    prevention: str | None = None
-
-    what_happened: str | None = None
-    transferable_lesson: str | None = None
-    concept_demonstrated: str | None = None
-
-    steps: list[str] = Field(default_factory=list)
-    adaptation_notes: str | None = None
-
     confidence_score: int = Field(default=3, ge=1, le=5)
     created_at: datetime | None = None
 
 
-class GeneralKnowledgeAsset(BaseKnowledgeAsset):
-    """Asset types that do not currently require extra mandatory fields."""
+class ConceptKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["concept"]
 
-    asset_type: Literal[
-        "concept",
-        "problem",
-        "principle",
-        "insight",
-        "pattern",
-        "example",
-        "warning",
-        "framework",
-        "mental_model",
-    ]
+
+class ProblemKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["problem"]
+
+
+class PrincipleKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["principle"]
+
+
+class InsightKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["insight"]
 
 
 class DecisionRuleKnowledgeAsset(BaseKnowledgeAsset):
-    """A decision rule must say what action or choice it recommends."""
+    """A decision rule says when a choice applies and what to do."""
 
     asset_type: Literal["decision_rule"]
+    condition: str | None = None
     action: str = Field(
         min_length=1,
         description="Concrete behavior or choice recommended by the rule.",
     )
+    rationale: str | None = None
+
+
+class PatternKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["pattern"]
+    steps: list[str] = Field(default_factory=list)
+    adaptation_notes: str | None = None
+
+
+class ExampleKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["example"]
+    what_happened: str | None = None
+    transferable_lesson: str | None = None
+    concept_demonstrated: str | None = None
+
+
+class WarningKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["warning"]
+    consequence: str | None = None
+    prevention: str | None = None
+
+
+class FrameworkKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["framework"]
+    steps: list[str] = Field(default_factory=list)
+    adaptation_notes: str | None = None
+
+
+class MentalModelKnowledgeAsset(BaseKnowledgeAsset):
+    asset_type: Literal["mental_model"]
 
 
 class ProcessKnowledgeAsset(BaseKnowledgeAsset):
-    """A process must contain at least one repeatable step."""
-
     asset_type: Literal["process"]
     steps: list[str] = Field(
         min_length=1,
         description="Ordered source-supported actions that make up the process.",
     )
+    adaptation_notes: str | None = None
 
 
-# A union makes the requirement visible to Gemini's JSON schema, rather than
-# relying only on validation after the model has already generated its output.
+# Each type has its own structure. This prevents a generic concept from
+# carrying decision-rule fields such as condition, action, and rationale.
 KnowledgeAsset = Union[
     DecisionRuleKnowledgeAsset,
     ProcessKnowledgeAsset,
-    GeneralKnowledgeAsset,
+    WarningKnowledgeAsset,
+    ExampleKnowledgeAsset,
+    PatternKnowledgeAsset,
+    FrameworkKnowledgeAsset,
+    ConceptKnowledgeAsset,
+    ProblemKnowledgeAsset,
+    PrincipleKnowledgeAsset,
+    InsightKnowledgeAsset,
+    MentalModelKnowledgeAsset,
 ]

@@ -12,6 +12,7 @@ from app.services.knowledge_extraction import (
     get_extraction_request,
     list_knowledge_assets,
 )
+from app.services.openai_knowledge_extraction import run_openai_knowledge_extraction
 
 router = APIRouter(tags=["knowledge"])
 
@@ -60,6 +61,26 @@ def read_knowledge_extraction_request(job_id: str):
         return get_extraction_request(job_id)
     except ValueError as error:
         service_error(error)
+
+
+@router.post("/knowledge-extractions/{job_id}/run")
+def run_knowledge_extraction(job_id: str):
+    try:
+        result = run_openai_knowledge_extraction(job_id)
+    except ValueError as error:
+        service_error(error)
+    except RuntimeError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI extraction failed: {error}",
+        )
+
+    return {
+        **result,
+        "message": "AI extraction completed and knowledge assets were stored.",
+    }
 
 
 @router.post("/knowledge-extractions/{job_id}/results")

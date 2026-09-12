@@ -8,6 +8,7 @@ from app.models.knowledge_asset import KnowledgeAsset
 
 class KnowledgeExtractionStatus(str, Enum):
     PENDING_AI = "pending_ai"
+    RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -23,6 +24,9 @@ class KnowledgeExtractionJob(BaseModel):
     chunk_id: str
     status: KnowledgeExtractionStatus = KnowledgeExtractionStatus.PENDING_AI
     asset_count: int = 0
+    provider: str | None = None
+    model: str | None = None
+    model_response_id: str | None = None
     created_at: datetime
     completed_at: datetime | None = None
     error: str | None = None

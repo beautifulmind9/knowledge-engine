@@ -30,14 +30,15 @@ Rules:
 6. Keep what_it_says faithful to the source.
 7. Fill why_it_matters only when the chunk supports it.
 8. Capture when_to_use, when_not_to_use, tradeoffs, and how_to_apply when supported.
-9. For a decision_rule, use condition, action, and rationale when available.
+9. For a decision_rule, always populate action with the concrete behavior or choice the rule recommends. Use condition and rationale when supported. Do not create a decision_rule if no action can be stated from the source.
 10. For a warning, use consequence and prevention when available.
 11. For an example, use what_happened, transferable_lesson, and concept_demonstrated when available.
-12. For a process, framework, or pattern, use steps and adaptation_notes when available.
+12. For a process, always provide steps. For a framework or pattern, provide steps and adaptation_notes when supported.
 13. Evidence should be a short source-grounded excerpt or close paraphrase, not invented evidence.
-14. Confidence is 1 to 5: use 5 only when the asset is explicit and strongly supported.
-15. Do not force every asset type to appear. Extract only what the chunk actually supports.
-16. Return an empty assets list if the chunk contains no reusable knowledge.
+14. Confidence is 1 to 5. Use 5 when the asset is explicitly stated in the chunk and strongly supported; use lower scores when interpretation is required.
+15. Add a small set of grounded keywords using terms that appear in, or are direct labels for, the source content.
+16. Do not force every asset type to appear. Extract only what the chunk actually supports.
+17. Return an empty assets list if the chunk contains no reusable knowledge.
 """
 
     return {

@@ -1,7 +1,8 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class KnowledgeAssetType(str, Enum):
@@ -20,16 +21,10 @@ class KnowledgeAssetType(str, Enum):
     PROCESS = "process"
 
 
-class KnowledgeAsset(BaseModel):
-    """A reusable piece of knowledge extracted from a source chunk.
-
-    The common fields preserve the useful structure learned from the
-    Made to Stick prototype while keeping each asset small enough to
-    retrieve and reuse independently in the Workshop later.
-    """
+class BaseKnowledgeAsset(BaseModel):
+    """Fields shared by every reusable knowledge asset."""
 
     id: str | None = None
-    asset_type: KnowledgeAssetType
     title: str
     what_it_says: str
     why_it_matters: str | None = None
@@ -47,7 +42,7 @@ class KnowledgeAsset(BaseModel):
     tradeoffs: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
 
-    # Type-specific fields. Only populate the ones that fit the asset.
+    # Type-specific fields. They stay optional unless a subtype requires them.
     condition: str | None = None
     action: str | None = None
     rationale: str | None = None
@@ -62,19 +57,50 @@ class KnowledgeAsset(BaseModel):
     steps: list[str] = Field(default_factory=list)
     adaptation_notes: str | None = None
 
-    # Confidence remains useful from the prototype. Importance and novelty
-    # are intentionally left out for now because they are more subjective.
     confidence_score: int = Field(default=3, ge=1, le=5)
-
-    # System-owned metadata. The application can fill this later.
     created_at: datetime | None = None
 
-    @model_validator(mode="after")
-    def validate_type_specific_content(self):
-        if self.asset_type == KnowledgeAssetType.DECISION_RULE and not self.action:
-            raise ValueError("decision_rule assets must include an action")
 
-        if self.asset_type == KnowledgeAssetType.PROCESS and not self.steps:
-            raise ValueError("process assets must include at least one step")
+class GeneralKnowledgeAsset(BaseKnowledgeAsset):
+    """Asset types that do not currently require extra mandatory fields."""
 
-        return self
+    asset_type: Literal[
+        "concept",
+        "problem",
+        "principle",
+        "insight",
+        "pattern",
+        "example",
+        "warning",
+        "framework",
+        "mental_model",
+    ]
+
+
+class DecisionRuleKnowledgeAsset(BaseKnowledgeAsset):
+    """A decision rule must say what action or choice it recommends."""
+
+    asset_type: Literal["decision_rule"]
+    action: str = Field(
+        min_length=1,
+        description="Concrete behavior or choice recommended by the rule.",
+    )
+
+
+class ProcessKnowledgeAsset(BaseKnowledgeAsset):
+    """A process must contain at least one repeatable step."""
+
+    asset_type: Literal["process"]
+    steps: list[str] = Field(
+        min_length=1,
+        description="Ordered source-supported actions that make up the process.",
+    )
+
+
+# A union makes the requirement visible to Gemini's JSON schema, rather than
+# relying only on validation after the model has already generated its output.
+KnowledgeAsset = Union[
+    DecisionRuleKnowledgeAsset,
+    ProcessKnowledgeAsset,
+    GeneralKnowledgeAsset,
+]

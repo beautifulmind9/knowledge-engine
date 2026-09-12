@@ -13,7 +13,9 @@ from app.services.knowledge_extraction import (
 )
 
 
-DEFAULT_MODEL = "gemini-3.8-flash"
+# Flash-Lite is a better fit for our current workload: short, structured
+# extraction jobs where we want to stay within a free development setup.
+DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 
 def generate_structured_interaction(client, model: str, request: dict, payload: dict):

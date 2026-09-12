@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.models.knowledge_extraction import (
     KnowledgeExtractionRequest,
@@ -13,6 +13,10 @@ from app.services.knowledge_extraction import (
     list_knowledge_assets,
 )
 from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
+from app.services.source_interpretation import (
+    get_source_interpretation_summary,
+    interpret_source,
+)
 
 router = APIRouter(tags=["knowledge"])
 
@@ -115,6 +119,61 @@ def read_knowledge_assets(
     )
 
     return {
+        "items": items,
+        "count": len(items),
+    }
+
+
+@router.get("/sources/{source_id}/interpretation")
+def read_source_interpretation(source_id: str):
+    try:
+        return get_source_interpretation_summary(source_id)
+    except ValueError as error:
+        service_error(error)
+
+
+@router.post("/sources/{source_id}/interpret")
+def interpret_source_knowledge(
+    source_id: str,
+    max_chunks: int = Query(
+        default=1,
+        ge=1,
+        le=5,
+        description=(
+            "Maximum number of source chunks to interpret in this run. "
+            "Small batches protect the free AI quota and make the workflow resumable."
+        ),
+    ),
+):
+    try:
+        result = interpret_source(
+            source_id=source_id,
+            max_chunks=max_chunks,
+        )
+    except ValueError as error:
+        service_error(error)
+
+    return {
+        **result,
+        "message": (
+            "Source interpretation run finished. Call this endpoint again later "
+            "if chunks remain."
+        ),
+    }
+
+
+@router.get("/sources/{source_id}/knowledge-assets")
+def read_source_knowledge_assets(
+    source_id: str,
+    asset_type: str | None = None,
+):
+    items = list_knowledge_assets(
+        source_id=source_id,
+        asset_type=asset_type,
+    )
+
+    return {
+        "source_id": source_id,
         "items": items,
         "count": len(items),
     }

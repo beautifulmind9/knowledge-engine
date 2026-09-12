@@ -98,6 +98,14 @@ The new model also avoids repeating source title and author on every asset. The 
 
 For now, confidence remains part of the model. Importance and novelty are left out because they are more subjective and can be revisited later.
 
+## Cost rule for the development build
+
+The development build should not require paid AI API usage.
+
+The current automatic extraction path uses the Gemini API free tier. The provider remains replaceable so Knowledge Engine is not permanently tied to one model company. If the free tier changes or its quota is exhausted, the system should fail clearly rather than silently incur paid usage.
+
+Free-tier model access can have lower rate limits and different data-use terms than paid plans, so that trade-off should remain visible when choosing what source material to process.
+
 ## Current pipeline
 
 ```text
@@ -113,17 +121,17 @@ Library
 
 ## Current build status
 
-The Knowledge Asset schema and Knowledge Extraction Job backbone are now implemented.
+The Knowledge Asset schema and Knowledge Extraction Job backbone are implemented.
 
 A knowledge extraction job can:
 
 - point to one source chunk
-- expose the chunk and the extraction instructions for an AI provider
-- define the exact structured output expected from the AI
-- accept returned assets
-- validate their source and chunk provenance
+- expose the chunk and the extraction instructions
+- define the exact structured output expected from the model
+- run automatically through the current free-tier model provider
+- validate returned assets and their provenance
 - assign asset IDs and timestamps
-- store the validated assets in the current prototype store
+- store validated assets in the current prototype store
 - retrieve assets by source, chunk, or asset type
 
-The AI provider itself is deliberately not hard-coded yet. The next milestone is to connect a model provider so a pending extraction job can run automatically instead of requiring the result to be submitted separately.
+The model provider is kept behind a service boundary so it can be changed later without redesigning Knowledge Assets or the Workshop.

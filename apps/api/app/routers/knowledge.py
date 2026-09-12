@@ -12,7 +12,7 @@ from app.services.knowledge_extraction import (
     get_extraction_request,
     list_knowledge_assets,
 )
-from app.services.openai_knowledge_extraction import run_openai_knowledge_extraction
+from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
 
 router = APIRouter(tags=["knowledge"])
 
@@ -66,7 +66,7 @@ def read_knowledge_extraction_request(job_id: str):
 @router.post("/knowledge-extractions/{job_id}/run")
 def run_knowledge_extraction(job_id: str):
     try:
-        result = run_openai_knowledge_extraction(job_id)
+        result = run_gemini_knowledge_extraction(job_id)
     except ValueError as error:
         service_error(error)
     except RuntimeError as error:

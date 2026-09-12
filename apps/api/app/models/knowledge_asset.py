@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class KnowledgeAssetType(str, Enum):
@@ -68,3 +68,13 @@ class KnowledgeAsset(BaseModel):
 
     # System-owned metadata. The application can fill this later.
     created_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_type_specific_content(self):
+        if self.asset_type == KnowledgeAssetType.DECISION_RULE and not self.action:
+            raise ValueError("decision_rule assets must include an action")
+
+        if self.asset_type == KnowledgeAssetType.PROCESS and not self.steps:
+            raise ValueError("process assets must include at least one step")
+
+        return self

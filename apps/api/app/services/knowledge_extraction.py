@@ -91,7 +91,29 @@ def get_extraction_request(job_id: str):
     return build_knowledge_extraction_request(chunk)
 
 
-def complete_extraction_job(job_id: str, assets):
+def mark_extraction_job_running(job_id: str, provider: str, model: str):
+    job = get_extraction_job(job_id)
+
+    if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
+        raise ValueError("This knowledge extraction job is already completed.")
+
+    job["status"] = KnowledgeExtractionStatus.RUNNING.value
+    job["provider"] = provider
+    job["model"] = model
+    job["error"] = None
+    persist_state()
+    return job
+
+
+def mark_extraction_job_failed(job_id: str, error: str):
+    job = get_extraction_job(job_id)
+    job["status"] = KnowledgeExtractionStatus.FAILED.value
+    job["error"] = error
+    persist_state()
+    return job
+
+
+def complete_extraction_job(job_id: str, assets, model_response_id: str | None = None):
     job = get_extraction_job(job_id)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
@@ -121,6 +143,7 @@ def complete_extraction_job(job_id: str, assets):
     job["status"] = KnowledgeExtractionStatus.COMPLETED.value
     job["asset_count"] = len(stored_assets)
     job["completed_at"] = utc_now().isoformat()
+    job["model_response_id"] = model_response_id
     job["error"] = None
     persist_state()
 

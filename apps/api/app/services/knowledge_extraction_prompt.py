@@ -46,6 +46,12 @@ Rules:
 22. Confidence is 1 to 5. Use 5 when the asset is explicitly stated and directly supported by the evidence; use 4 when it is strongly implied; use 3 when meaningful interpretation is required. Do not default to 3 when the source states the asset plainly.
 23. Do not force every asset type to appear. Extract only what the chunk actually supports.
 24. Return an empty assets list if the chunk contains no reusable knowledge.
+25. Each asset must contain only fields valid for its chosen asset_type. Do not mix subtype-only fields across asset types.
+26. decision_rule may use condition, action, and rationale; action is required.
+27. warning may use consequence and prevention; do not add decision_rule, process, framework, example, or pattern-only fields to a warning.
+28. process requires steps. framework requires components. pattern may use steps and adaptation_notes. example may use what_happened, transferable_lesson, and concept_demonstrated.
+29. concept, problem, principle, insight, and mental_model use only the shared fields; do not attach action, consequence, prevention, steps, components, or example-only fields to them.
+30. Follow the response schema literally. asset_type determines the exact subtype schema for that asset.
 """
 
     return {

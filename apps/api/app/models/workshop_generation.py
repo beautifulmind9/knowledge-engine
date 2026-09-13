@@ -1,0 +1,19 @@
+from pydantic import BaseModel, Field
+
+from app.models.workshop import WorkshopPrepareRequest
+
+
+class WorkshopGenerateRequest(WorkshopPrepareRequest):
+    tone_or_style: str | None = None
+
+
+class AppliedKnowledgeReference(BaseModel):
+    asset_id: str
+    usage_note: str = Field(min_length=2)
+
+
+class WorkshopGeneratedOutput(BaseModel):
+    title: str = Field(min_length=2)
+    output_type: str = Field(min_length=2)
+    content: str = Field(min_length=20)
+    applied_knowledge: list[AppliedKnowledgeReference] = Field(default_factory=list)

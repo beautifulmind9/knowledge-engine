@@ -17,7 +17,7 @@ Supported asset types:
 - pattern: a recurring structure or approach
 - example: a concrete case that demonstrates an idea
 - warning: a risk, failure mode, or caution
-- framework: an organized way to think about a problem
+- framework: an organized way to think about a problem, made of named components
 - mental_model: a reusable lens for understanding situations
 - process: a repeatable sequence of actions
 
@@ -40,10 +40,12 @@ Rules:
 16. For a decision_rule, always populate action with the concrete behavior or choice the rule recommends. Use condition and rationale when supported. Do not create a decision_rule if no action can be stated from the source.
 17. For a warning, use consequence and prevention when available.
 18. For an example, use what_happened, transferable_lesson, and concept_demonstrated when available.
-19. For a process, always provide ordered steps. For a framework or pattern, provide steps and adaptation_notes when supported.
-20. Confidence is 1 to 5. Use 5 only when the asset is explicitly stated and directly supported by the evidence. Use lower scores when interpretation is required.
-21. Do not force every asset type to appear. Extract only what the chunk actually supports.
-22. Return an empty assets list if the chunk contains no reusable knowledge.
+19. For a process, always provide ordered steps.
+20. For a framework, always provide its named components. Only use steps as well if the source presents an ordered procedure for using the framework.
+21. For a pattern, provide steps and adaptation_notes when supported.
+22. Confidence is 1 to 5. Use 5 when the asset is explicitly stated and directly supported by the evidence; use 4 when it is strongly implied; use 3 when meaningful interpretation is required. Do not default to 3 when the source states the asset plainly.
+23. Do not force every asset type to appear. Extract only what the chunk actually supports.
+24. Return an empty assets list if the chunk contains no reusable knowledge.
 """
 
     return {

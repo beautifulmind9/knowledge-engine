@@ -3,7 +3,10 @@ import os
 
 from google import genai
 
-from app.models.workshop import WorkshopGenerateRequest, WorkshopGeneratedOutput
+from app.models.workshop_generation import (
+    WorkshopGenerateRequest,
+    WorkshopGeneratedOutput,
+)
 from app.services.workshop import prepare_workshop
 
 

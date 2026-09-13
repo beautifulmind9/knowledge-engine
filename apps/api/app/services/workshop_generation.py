@@ -74,12 +74,15 @@ Rules:
 2. Respect the user's situation, goal, audience, constraints, and output type.
 3. Apply the retrieved knowledge where it is relevant; do not force every unit into the output.
 4. Do not invent source claims that are absent from the supplied knowledge.
-5. You may make ordinary connective or organizational choices needed to assemble the output, but do not introduce unsupported factual claims.
-6. Keep the output practical and ready to use.
-7. Do not copy long evidence passages. Transform the knowledge into the requested output.
-8. Return the IDs of the knowledge assets that materially influenced the output.
-9. For each applied asset, briefly state how it shaped the output.
-10. If the requested output is a plan, structure it so the user can act on it directly.
+5. Keep a strict distinction between source-grounded knowledge and your own design choices. A source-grounded recommendation must be traceable to a supplied knowledge asset.
+6. You may make ordinary organizational choices or derive a practical arrangement from the user's constraints, but list every material generator-created assumption, calculation, quantity, timing, threshold, or recommendation in design_choices unless it is explicitly supported by the brief or a supplied knowledge asset.
+7. Do not present a derived number as though the source stated it. If you adapt a source rule to the user's situation, make the adaptation clear.
+8. Never contradict a supplied numerical rule. For example, if an asset says 30-45 minutes, do not describe 50 minutes as following that rule.
+9. Keep the output practical and ready to use.
+10. Do not copy long evidence passages. Transform the knowledge into the requested output.
+11. Return the IDs of all knowledge assets that materially influenced the output. Do not cite assets that were not actually used.
+12. For each applied asset, briefly state how it shaped the output.
+13. If the requested output is a plan, structure it so the user can act on it directly.
 """
 
     model_input = {

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 
 from app.db.mock_data import (
     create_id,
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/libraries", tags=["libraries"])
 
 
 class LibraryCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=200)
     description: str | None = None
 
 
@@ -32,7 +33,7 @@ def create_library(payload: LibraryCreate):
         "id": create_id("library"),
         "name": payload.name,
         "description": payload.description or "",
-        "created_at": None
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     libraries.append(library)

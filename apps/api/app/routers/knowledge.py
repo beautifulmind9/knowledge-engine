@@ -37,6 +37,7 @@ def start_knowledge_extraction(payload: KnowledgeExtractionRequest):
         job = create_extraction_job(
             source_id=payload.source_id,
             chunk_id=payload.chunk_id,
+            reprocess=payload.reprocess,
         )
     except ValueError as error:
         service_error(error)
@@ -79,6 +80,8 @@ def run_knowledge_extraction(job_id: str):
         service_error(error)
     except RuntimeError as error:
         raise HTTPException(status_code=400, detail=str(error))
+    except HTTPException:
+        raise
     except Exception as error:
         raise HTTPException(
             status_code=502,
@@ -132,6 +135,7 @@ def read_knowledge_assets(
 def search_assets(
     q: str = Query(min_length=2, description="Words or phrase to retrieve."),
     source_id: str | None = None,
+    library_id: str | None = None,
     asset_type: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     consolidated: bool = Query(default=False),
@@ -142,6 +146,7 @@ def search_assets(
             source_id=source_id,
             asset_type=asset_type,
             limit=limit,
+            library_id=library_id,
         )
     else:
         items = search_knowledge_assets(
@@ -149,6 +154,7 @@ def search_assets(
             source_id=source_id,
             asset_type=asset_type,
             limit=limit,
+            library_id=library_id,
         )
 
     return {
@@ -277,3 +283,14 @@ def search_source_knowledge(
         "items": items,
         "count": len(items),
     }
+
+
+@router.post("/knowledge-extractions/{job_id}/recover")
+def recover_extraction(job_id: str):
+    from app.services.knowledge_extraction import recover_job
+    return recover_job(job_id)
+
+@router.get("/sources/{source_id}/audit")
+def audit(source_id: str):
+    from app.services.knowledge_extraction import audit_source
+    return audit_source(source_id)

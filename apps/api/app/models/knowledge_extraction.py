@@ -16,6 +16,7 @@ class KnowledgeExtractionStatus(str, Enum):
 class KnowledgeExtractionRequest(BaseModel):
     source_id: str
     chunk_id: str
+    reprocess: bool = False
 
 
 class KnowledgeExtractionJob(BaseModel):

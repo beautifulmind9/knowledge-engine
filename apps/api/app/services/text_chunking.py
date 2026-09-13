@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 
-CHUNK_OUTPUT_FOLDER = Path("storage/chunks")
+from app.db.persistence import STORAGE_ROOT
+
+CHUNK_OUTPUT_FOLDER = STORAGE_ROOT / "chunks"
 
 
 def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int = 200):
@@ -16,6 +18,13 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
     if step_size <= 0:
         raise ValueError("chunk_size must be greater than overlap")
 
+    import re
+    headings=[]
+    word_offset=0
+    for line in text.splitlines():
+        if re.match(r"^#{1,6}\s+", line):
+            headings.append((word_offset, re.sub(r"^#{1,6}\s+", "", line).strip()))
+        word_offset += len(line.split())
     chunks = []
 
     for index, start in enumerate(range(0, len(words), step_size), start=1):
@@ -32,6 +41,7 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
                 "id": f"chunk_{source_id}_{index:03}",
                 "source_id": source_id,
                 "chunk_index": index,
+                "chapter_or_section": next((title for offset,title in reversed(headings) if offset <= start), None),
                 "text": chunk_text_value,
                 "word_count": len(chunk_words),
                 "character_count": len(chunk_text_value),
@@ -39,6 +49,9 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
                 "end_word_index": start + len(chunk_words)
             }
         )
+        # The final full window already contains the remaining words.
+        if end >= len(words):
+            break
 
     return chunks
 
@@ -59,6 +72,6 @@ def load_chunks(chunks_path: str):
     path = Path(chunks_path)
 
     if not path.exists():
-        return []
+        raise ValueError("Chunks file not found on disk. Restore the source data before continuing.")
 
     return json.loads(path.read_text(encoding="utf-8"))

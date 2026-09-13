@@ -4,5 +4,7 @@ pydantic
 python-multipart
 beautifulsoup4
 ebooklib
-google-genai
+google-genai==2.23.0
 pypdf
+
+python-docx==1.2.0

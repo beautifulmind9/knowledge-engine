@@ -1,240 +1,88 @@
 # Knowledge Engine
 
-Knowledge Engine turns source material into reusable knowledge that can be searched, explored, and applied to real problems.
+Knowledge Engine turns source material into reusable, traceable knowledge and applies it to real work: writing, decisions, study guides, product messaging, playbooks, and workshop plans.
 
-This project started as a way to extract useful ideas from books and PDFs. It is evolving into a knowledge application engine: a system that does not only summarize sources, but breaks them into concepts, problems, insights, examples, decision rules, patterns, warnings, and application methods.
+The active application is a **local, single-owner FastAPI application with a browser interface**. Source text becomes chunks, validated Knowledge Assets, consolidated Knowledge Units, and saved outputs with revision history. The original Streamlit experiment is archived in `legacy/streamlit_prototype`; it is not the active app.
 
-The goal is simple:
+## Run locally
 
-> Help people use what they have learned when they actually need it.
-
----
-
-## Why This Exists
-
-People often read books, articles, papers, and reports but struggle to retrieve the right idea at the right moment.
-
-The problem is not only information access.
-
-The deeper problem is application:
-
-- I know I read something useful, but I cannot remember where.
-- I understand the idea, but I do not know how to apply it.
-- I do not want to read five books before solving one practical problem.
-- I need the decision rule, example, framework, or pattern hidden inside the source.
-
-Knowledge Engine is built around that gap.
-
-Instead of asking only, “What does this book say?” the system is being designed to answer:
-
-- What problem does this help solve?
-- What concept is being taught?
-- What decision rule can I use?
-- What example makes this clearer?
-- How can I apply this to a real situation?
-
----
-
-## What It Does
-
-The current prototype can:
-
-- Extract text from PDFs
-- Split extracted text into chunks
-- Generate AI analysis prompts for each chunk
-- Import structured AI results into JSON graph files
-- Store sources, concepts, problems, insights, and relationships
-- Track decision rules, examples, warnings, patterns, and application patterns
-- Validate and clean the graph
-- Explore knowledge by source, concept, problem, chapter, and chapter group
-- Track book processing progress
-- Produce source-level summaries
-- Run a basic Streamlit interface
-
----
-
-## Knowledge Structure
-
-The system currently organizes knowledge like this:
-
-```text
-Source
-↓
-Concepts
-↓
-Problems
-↓
-Insights
-↓
-Patterns
-↓
-Examples
-```
-
-Additional layers include:
-
-- Decision Rules
-- Warnings
-- Application Patterns
-- Relationships
-- Source Classification
-- Chapter Groups
-- Extraction Lenses
-
-This structure allows the same source to be explored in different ways.
-
-For example, a user can ask:
-
-- What does this source teach?
-- What concepts appear in this source?
-- What problems does this source help solve?
-- What did this chapter teach?
-- What examples support this idea?
-- What decision rules can I apply?
-
----
-
-## Example Use Case
-
-A user has a real communication problem:
-
-> I need to ask a friend for help, but I do not know how to say it clearly.
-
-The system can apply knowledge extracted from communication books, such as:
-
-- Find the core message
-- Lead with the most important information
-- Be concrete
-- Make the ask clear
-- Use intent-based communication
-
-Instead of only summarizing a book, the system helps turn knowledge into action.
-
----
-
-## Current Scripts
-
-### Extraction
-
-- `src/extract_pdf.py` — extracts text from PDFs
-- `src/chunk_text.py` — splits text into manageable chunks
-- `src/analyze_chunks.py` — generates structured analysis prompts
-- `src/import_ai_result.py` — imports AI-generated JSON into the graph
-
-### Graph Management
-
-- `src/graph_manager.py` — handles adding graph objects
-- `src/clean_graph.py` — removes exact duplicate graph entries
-- `src/graph_validator.py` — checks graph health
-- `src/knowledge_audit.py` — audits duplicate patterns, examples, and other nested items
-- `src/find_similar_insights.py` — early experiment for similarity checking
-
-### Exploration
-
-- `src/explore_source.py` — explores a full source
-- `src/explore_concept.py` — explores a concept and related insights
-- `src/search_by_problem.py` — searches by problem
-- `src/explore_chapter.py` — explores a chapter or section
-- `src/explore_chapter_group.py` — explores a group of chapters
-- `src/summarize_source.py` — creates a source-level summary
-- `src/book_progress.py` — tracks extraction progress
-
-### App
-
-- `app.py` — early Streamlit interface
-
----
-
-## Streamlit App
-
-Install requirements:
+Requires Python 3.11+ on macOS or Linux. Windows users can use WSL. From the repository root:
 
 ```bash
-pip install -r requirements.txt
+bash scripts/setup.sh
+bash scripts/run.sh
 ```
 
-Run the app:
+Open http://127.0.0.1:8000. The same process serves both the API and web interface; Node and a frontend build are unnecessary. Interactive API documentation is at `/docs`.
+
+To verify the build:
 
 ```bash
-python -m streamlit run app.py
+.venv/bin/python -m pytest apps/api/tests -q
 ```
 
-The first interface includes:
+Setup installs the tested versions in `apps/api/requirements-lock.txt`. The tests use isolated temporary data and fake provider responses. They never consume an AI quota. The SDK contract test uses the installed Google SDK against an in-memory HTTP transport.
 
-- Source Overview
-- Explore Concept
-- Search by Problem
-- Apply Knowledge
+## Try it without an AI key
 
----
+With the app running, in another terminal:
 
-## Current Status
+```bash
+.venv/bin/python scripts/seed_demo.py
+```
 
-This is an active prototype.
+Refresh the Library screen and choose **Knowledge Engine — synthetic demo**. It contains two original sample sources, manually imported knowledge, and a saved playbook with two versions. Open Knowledge to inspect evidence; open Workshop to preview retrieval across both sources; open Saved outputs to revise or export the playbook. Re-running the seed command leaves an existing demo unchanged.
 
-The project currently uses one source as a test case and is being expanded carefully to validate the schema before scaling to more books and domains.
+The demo is explicitly synthetic and manually authored. It does not pretend to be a model response. See [the beta test checklist](docs/beta_test_checklist.md) for the full acceptance exercise.
 
-The priority is not only adding more sources. The priority is making sure the knowledge structure is useful, reusable, and applicable.
+## Use Gemini within the zero-cost rule
 
----
+Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FREE_TIER_CONFIRMED=true` only after checking that the key belongs to a project with billing disabled. The application cannot inspect your billing configuration.
 
-## Roadmap
+- No automatic paid upgrade or paid-model fallback.
+- Each extraction or generation request makes at most one provider attempt; the default local budget is 20 attempts per UTC day.
+- A quota error pauses further AI calls until you explicitly resume under **Data & usage**. Resuming cannot bypass the local daily cap.
+- Interpretation processes one chunk per browser action; the API supports batches of at most five.
+- A revision is either a manual edit with no provider call or one explicit AI request.
+- `GEMINI_MODEL` can override the configured model. Availability and free quota must be checked in your own project; no live-provider validation was performed for this implementation pass.
 
-Near-term:
+When you choose an AI action, the relevant source chunk or retrieved evidence and brief are sent to Google. Requests set `store=false` for interaction retrieval; this is not a guarantee about all provider logging or retention policies. Manual imports and the seeded demo do not send source content to an AI provider.
 
-- Improve Streamlit interface
-- Build Example Explorer
-- Build Decision Rule Explorer
-- Add graph normalization rules
-- Improve Apply Knowledge workflow
-- Add public-safe sample data
-- Strengthen portfolio documentation
+## Main workflow
 
-Medium-term:
+1. Create or select a library and add a supported file.
+2. Open its source page and choose **Extract & chunk**.
+3. Interpret small batches with Gemini, or download a structured prompt and import your result.
+4. Inspect the source audit, search consolidated knowledge, and select useful units.
+5. Enter a Workshop brief, preview the evidence and possible source tensions, then generate and save.
+6. Reopen saved work, make a new revision, compare versions, or export Markdown.
+7. Use Data & usage for quota state, integrity checks, and a private backup.
 
-- Support multiple sources on the same topic
-- Generate topic-level playbooks
-- Generate copywriting briefs
-- Generate founder messaging drafts
-- Generate learning paths
-- Improve problem-to-knowledge retrieval
+Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CSV, and JSON, up to 25 MB. Scanned PDFs need OCR, which is not implemented. Markdown, HTML, EPUB and DOCX headings are retained as section hints. EPUB follows spine reading order; DOCX preserves paragraph/table order. PDF chapter inference remains limited.
 
-Long-term:
+## Architecture and storage
 
-- Private upload workspace
-- Temporary source processing
-- User-controlled knowledge vault
-- Multi-source synthesis
-- Knowledge application assistant
+| Location | Responsibility |
+|---|---|
+| `apps/api/app` | API, extraction, retrieval, generation, persistence and controls |
+| `apps/web` | Dependency-free browser UI and API client |
+| `apps/api/tests` | API, error-path, SDK contract, backup and restart regression tests |
+| `examples` | Original, synthetic, public-safe source material |
+| `scripts` | Setup, local launcher and no-API demo seed |
+| `docs` | Roadmap, item-level sprint status, storage decision and beta checklist |
 
----
+Records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
 
-## Portfolio Focus
+Run exactly one server worker. A process lock prevents simultaneous servers using the same storage, and requests are serialized. This simple arrangement is suitable for a small local beta; long AI requests can temporarily delay other actions. The app has local host/origin restrictions but no user accounts, multi-user authorization, encryption at rest, or public hosting support. Keep it bound to localhost.
 
-This repo is intended to show more than code.
+Back up under Data & usage. The ZIP includes private source files and saved work; keep it private. Restore into a **new empty directory**, set `KNOWLEDGE_ENGINE_STORAGE` to the extracted storage folder, and start the server. Do not overwrite a live SQLite database. See [storage and privacy](docs/storage_and_privacy.md).
 
-It demonstrates:
+## Readiness
 
-- Product thinking
-- Knowledge architecture
-- AI-assisted workflow design
-- Information extraction
-- Structured data modeling
-- Iterative prototyping
-- Human-centered application of knowledge
+The implementation covers all eight remaining sprint areas. **The full v1 beta acceptance gates are not yet closed.** Live Gemini output review, the complete real-book run and quality audit, browser/mobile acceptance, and an external tester remain outstanding. Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
 
-The project is being built in public as both a working tool and a record of the reasoning behind the tool.
+- [Item-level sprint status](docs/sprint_status.md)
+- [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)
+- [Release decision and test checklist](docs/beta_test_checklist.md)
 
----
-
-## Copyright and Source Handling Note
-
-The intended product direction is a private, user-controlled processing model.
-
-Users should process sources they have the right to use. Future versions should avoid storing or redistributing copyrighted source text and should support temporary processing, deletion controls, and public-safe sample datasets.
-
----
-
-## License
-
-MIT License.
+MIT License. Process only sources you have the right to use. Keep copyrighted uploads, extracted source text, private backups, and API keys out of commits.

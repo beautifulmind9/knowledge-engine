@@ -5,6 +5,7 @@ from app.models.workshop import WorkshopPrepareRequest
 
 class WorkshopGenerateRequest(WorkshopPrepareRequest):
     tone_or_style: str | None = None
+    save: bool = True
 
 
 class AppliedKnowledgeReference(BaseModel):

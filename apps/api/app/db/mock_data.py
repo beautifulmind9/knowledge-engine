@@ -35,17 +35,20 @@ _default_sources = [
 
 _state = load_state()
 
-if _state:
+if _state is not None:
     libraries = _state.get("libraries", _default_libraries)
     sources = _state.get("sources", _default_sources)
     extraction_jobs = _state.get("extraction_jobs", [])
     knowledge_assets = _state.get("knowledge_assets", [])
 else:
     libraries = _default_libraries
-    sources = _default_sources
+    sources = []
     extraction_jobs = []
     knowledge_assets = []
 
+
+outputs = _state.get("outputs", []) if _state is not None else []
+usage = _state.get("usage", {}) if _state is not None else {}
 
 def create_id(prefix):
     return f"{prefix}_{uuid4().hex[:8]}"

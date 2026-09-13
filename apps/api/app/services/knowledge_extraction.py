@@ -57,8 +57,15 @@ def find_chunk(source_id: str, chunk_id: str):
     raise ValueError("Chunk not found for this source.")
 
 
-def create_extraction_job(source_id: str, chunk_id: str):
+def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False):
     find_chunk(source_id=source_id, chunk_id=chunk_id)
+
+    prior = [j for j in extraction_jobs if j["source_id"] == source_id and j["chunk_id"] == chunk_id]
+    for existing in reversed(prior):
+        if existing["status"] in ("pending_ai", "running"):
+            return existing
+    if any(j["status"] == "completed" for j in prior) and not reprocess:
+        raise ValueError("Chunk already completed. Set reprocess=true to intentionally create a replacement extraction.")
 
     job = KnowledgeExtractionJob(
         id=create_id("extraction"),
@@ -69,6 +76,7 @@ def create_extraction_job(source_id: str, chunk_id: str):
     )
 
     job_data = job.model_dump(mode="json")
+    job_data.update(schema_version=2, extraction_version=max((j.get("extraction_version", 1) for j in prior), default=0)+1)
     extraction_jobs.append(job_data)
     persist_state()
     return job_data
@@ -107,6 +115,9 @@ def mark_extraction_job_running(job_id: str, provider: str, model: str):
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
         raise ValueError("This knowledge extraction job is already completed.")
 
+    if job.get("status") == "running":
+        raise ValueError("Job is already running; recover it only after the stale timeout.")
+    job["started_at"] = utc_now().isoformat()
     job["status"] = KnowledgeExtractionStatus.RUNNING.value
     job["provider"] = provider
     job["model"] = model
@@ -129,6 +140,7 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
         raise ValueError("This knowledge extraction job is already completed.")
 
+    chunk = get_extraction_chunk(job_id)
     stored_assets = []
 
     for asset in assets:
@@ -140,21 +152,31 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
         if asset_data["chunk_id"] != job["chunk_id"]:
             raise ValueError("Asset chunk_id must match the extraction job chunk_id.")
 
-        if not asset_data.get("id"):
-            asset_data["id"] = create_id("asset")
+        asset_data["id"] = create_id("asset")
 
         if not asset_data.get("created_at"):
             asset_data["created_at"] = utc_now().isoformat()
 
         asset_data["extraction_job_id"] = job_id
-        knowledge_assets.append(asset_data)
+        asset_data.update(schema_version=2, extraction_version=job.get("extraction_version", 1), active=True)
+        asset_data["chapter_or_section"] = asset_data.get("chapter_or_section") or chunk.get("chapter_or_section")
         stored_assets.append(asset_data)
 
+    # Validate the entire batch first; only successful replacement supersedes prior assets.
+    for old in knowledge_assets:
+        if old["source_id"] == job["source_id"] and old["chunk_id"] == job["chunk_id"] and old.get("active", True):
+            old.update(active=False, superseded_by_job_id=job_id)
+    knowledge_assets.extend(stored_assets)
     job["status"] = KnowledgeExtractionStatus.COMPLETED.value
     job["asset_count"] = len(stored_assets)
     job["completed_at"] = utc_now().isoformat()
     job["model_response_id"] = model_response_id
     job["error"] = None
+    from app.services.source_interpretation import get_source_interpretation_summary
+    source = find_source(job["source_id"])
+    summary = get_source_interpretation_summary(job["source_id"])
+    source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
+    source["stopped_reason"] = None
     persist_state()
 
     return {
@@ -168,7 +190,7 @@ def list_knowledge_assets(
     chunk_id: str | None = None,
     asset_type: str | None = None,
 ):
-    items = knowledge_assets
+    items = [a for a in knowledge_assets if a.get("active", True)]
 
     if source_id:
         items = [item for item in items if item.get("source_id") == source_id]
@@ -251,6 +273,9 @@ def knowledge_asset_similarity(left: dict, right: dict) -> float:
     if left.get("asset_type") != right.get("asset_type"):
         return 0.0
 
+    if potential_tension(left, right):
+        return 0.0
+
     left_evidence = normalize_text(left.get("evidence"))
     right_evidence = normalize_text(right.get("evidence"))
     if left_evidence and left_evidence == right_evidence:
@@ -316,7 +341,9 @@ def consolidate_knowledge_assets(items: list[dict], similarity_threshold: float 
         matching_cluster = None
 
         for cluster in clusters:
-            if any(
+            if all(
+                not potential_tension(asset, existing) for existing in cluster
+            ) and any(
                 knowledge_asset_similarity(asset, existing) >= similarity_threshold
                 for existing in cluster
             ):
@@ -351,6 +378,8 @@ def consolidate_knowledge_assets(items: list[dict], similarity_threshold: float 
                 "asset_ids": asset_ids,
                 "chunk_ids": chunk_ids,
                 "supporting_evidence": evidence,
+                "source_ids": sorted({a["source_id"] for a in cluster}),
+                "evidence_trail": [{"asset_id":a["id"],"source_id":a["source_id"],"chunk_id":a["chunk_id"],"evidence":a.get("evidence"),"chapter_or_section":a.get("chapter_or_section")} for a in cluster],
                 "duplicate_asset_ids": [
                     asset_id
                     for asset_id in asset_ids
@@ -374,6 +403,7 @@ def search_knowledge_assets(
     source_id: str | None = None,
     asset_type: str | None = None,
     limit: int = 20,
+    library_id: str | None = None,
 ):
     tokens = query_tokens(query)
     if not tokens:
@@ -384,6 +414,14 @@ def search_knowledge_assets(
         source_id=source_id,
         asset_type=asset_type,
     )
+    if library_id:
+        from app.db.mock_data import libraries, sources
+        if not any(l["id"] == library_id for l in libraries):
+            raise ValueError("Library not found.")
+        allowed = {s["id"] for s in sources if s["library_id"] == library_id}
+        if source_id and source_id not in allowed:
+            raise ValueError("Selected source does not belong to this library.")
+        candidates = [a for a in candidates if a["source_id"] in allowed]
     ranked = []
 
     for asset in candidates:
@@ -453,12 +491,14 @@ def search_consolidated_knowledge_assets(
     source_id: str | None = None,
     asset_type: str | None = None,
     limit: int = 20,
+    library_id: str | None = None,
 ):
     raw_results = search_knowledge_assets(
         query=query,
         source_id=source_id,
         asset_type=asset_type,
         limit=max(limit * 3, 20),
+        library_id=library_id,
     )
     groups = consolidate_knowledge_assets(raw_results)
 
@@ -520,3 +560,56 @@ def summarize_knowledge_assets(source_id: str):
             for keyword, count in keyword_counts.most_common(15)
         ],
     }
+
+
+def potential_tension(left, right):
+    """Conservative review flag, never an assertion of semantic contradiction."""
+    ltext = normalize_text((left.get("what_it_says") or "") + " " + (left.get("action") or ""))
+    rtext = normalize_text((right.get("what_it_says") or "") + " " + (right.get("action") or ""))
+    lt,rt=set(ltext.split()),set(rtext.split())
+    if _jaccard(_meaningful_tokens(ltext), _meaningful_tokens(rtext)) < 0.35:
+        return False
+    neg={"not","never","avoid","without","stop","don","cannot"}
+    opposite=bool(lt & neg) != bool(rt & neg)
+    ln,rn=set(re.findall(r"\b\d+\b",ltext)),set(re.findall(r"\b\d+\b",rtext))
+    return opposite or bool(ln and rn and ln != rn)
+
+
+def recover_job(job_id):
+    job=get_extraction_job(job_id)
+    if job["status"] == "running":
+        started=datetime.fromisoformat(job.get("started_at") or job["created_at"])
+        if started.tzinfo is None:
+            started=started.replace(tzinfo=timezone.utc)
+        if (utc_now()-started).total_seconds() < 600:
+            raise ValueError("Job is still running. Recovery requires ten minutes without completion.")
+    elif job["status"] != "failed":
+        raise ValueError("Only failed or stale-running jobs can be recovered.")
+    job.update(status="pending_ai",error=None,recovered_at=utc_now().isoformat())
+    persist_state()
+    return job
+
+
+def audit_source(source_id):
+    from app.services.source_interpretation import get_source_interpretation_summary
+    overview=summarize_knowledge_assets(source_id)
+    source=find_source(source_id)
+    current=list_knowledge_assets(source_id=source_id)
+    all_assets=[a for a in knowledge_assets if a["source_id"]==source_id]
+    chunks=load_chunks(source["chunks_path"]) if source.get("chunks_path") else []
+    chunk_map={c["id"]:c for c in chunks}
+    evidence_review=[]
+    for a in current:
+        evidence=normalize_text(a.get("evidence"))
+        if evidence and evidence not in normalize_text(chunk_map.get(a["chunk_id"],{}).get("text")):
+            evidence_review.append(a["id"])
+    return {**overview, "interpretation":get_source_interpretation_summary(source_id) if source.get("chunks_path") else None,
+        "jobs":[j for j in extraction_jobs if j["source_id"]==source_id],
+        "missing_evidence":[a["id"] for a in current if not (a.get("evidence") or "").strip()],
+        "missing_keywords":[a["id"] for a in current if not a.get("keywords")],
+        "old_schema_assets":[a["id"] for a in all_assets if a.get("schema_version",1)<2],
+        "superseded_assets":[a["id"] for a in all_assets if not a.get("active",True)],
+        "confidence_distribution":dict(Counter(a.get("confidence_score",0) for a in current)),
+        "evidence_needing_review":evidence_review,
+        "overlap_rate":round(overview["overlapping_asset_count"]/max(len(current),1),3),
+        "note":"Non-verbatim evidence may be a valid paraphrase. Review it for source support; automatic matching cannot establish faithfulness or false positives."}

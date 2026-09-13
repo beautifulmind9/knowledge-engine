@@ -8,6 +8,8 @@ class WorkshopPrepareRequest(BaseModel):
     constraints: list[str] = Field(default_factory=list)
     output_type: str = Field(default="general")
     source_ids: list[str] = Field(default_factory=list)
+    library_id: str | None = None
+    asset_ids: list[str] = Field(default_factory=list)
     limit: int = Field(default=8, ge=1, le=20)
 
 

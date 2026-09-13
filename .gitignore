@@ -183,3 +183,9 @@ local_sources/
 # data/relationships.json
 # data/sources.json
 apps/api/storage/
+
+# Private API data at any launch location
+storage/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

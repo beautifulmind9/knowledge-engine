@@ -1,5 +1,9 @@
 # Knowledge Engine — Remaining Sprint Backlog
 
+## Execution status
+
+Implementation and verification were reviewed on 2026-09-13. See [item-level sprint status](sprint_status.md) for completed work, evidence, and remaining real-source/browser/external-test gates. The original acceptance criteria below remain authoritative.
+
 ## Purpose
 
 This backlog starts from the point where the first end-to-end Knowledge Engine workflow has been validated:

@@ -177,10 +177,24 @@ def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest) -> tuple[i
 
 
 def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
-    if payload.source_ids:
+    from app.db.mock_data import sources, libraries
+    selected = set(payload.source_ids)
+    known = {s["id"] for s in sources}
+    if selected - known:
+        raise ValueError("Selected source not found.")
+    if payload.library_id:
+        if not any(l["id"] == payload.library_id for l in libraries):
+            raise ValueError("Library not found.")
+        library_sources = {s["id"] for s in sources if s["library_id"] == payload.library_id}
+        if selected - library_sources:
+            raise ValueError("Selected sources do not belong to this library.")
+        selected = selected or library_sources
+        if not selected:
+            return []
+    if selected:
         candidates = []
         seen_ids = set()
-        for source_id in payload.source_ids:
+        for source_id in sorted(selected):
             for item in list_knowledge_assets(source_id=source_id):
                 item_id = item.get("id")
                 if item_id and item_id in seen_ids:
@@ -191,10 +205,23 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
     else:
         candidates = list_knowledge_assets()
 
+    if payload.asset_ids:
+        available = {a["id"] for a in candidates}
+        if set(payload.asset_ids) - available:
+            raise ValueError("Selected knowledge asset not found in the current source scope.")
+        # Selecting a consolidated unit must retain all its in-scope evidence,
+        # not just the canonical asset displayed by the browser.
+        selected_ids = set(payload.asset_ids)
+        contributing_ids = {
+            aid for group in consolidate_knowledge_assets(candidates)
+            if selected_ids.intersection(group["asset_ids"])
+            for aid in group["asset_ids"]
+        }
+        candidates = [a for a in candidates if a["id"] in contributing_ids]
     ranked = []
     for item in candidates:
         score, matched_terms = _workshop_relevance(item, payload)
-        if score <= 0:
+        if score <= 0 and not payload.asset_ids:
             continue
         ranked.append(
             {
@@ -259,13 +286,36 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
             "constraints": payload.constraints,
             "output_type": payload.output_type,
             "retrieval_query": query,
+            "source_ids": payload.source_ids,
+            "library_id": payload.library_id,
+            "asset_ids": payload.asset_ids,
+            "limit": payload.limit,
+            "tone_or_style": getattr(payload, "tone_or_style", None),
         },
         "source_ids": payload.source_ids,
         "knowledge_unit_count": len(groups),
         "knowledge_units": groups,
         "knowledge_by_type": dict(sorted(by_type.items())),
+        "synthesis_context": synthesis_context(groups),
         "message": (
             "Workshop preparation complete. Relevant consolidated knowledge is ready "
             "for an output-generation step."
         ),
     }
+
+
+
+def synthesis_context(groups):
+    from itertools import combinations
+    from app.services.knowledge_extraction import potential_tension
+    agreements=[{"asset_ids":g["asset_ids"],"source_ids":g["source_ids"],"idea":g["canonical_asset"]["what_it_says"],"status":"candidate agreement; inspect evidence"}
+                for g in groups if len(g["source_ids"])>1]
+    tensions=[]
+    for left,right in combinations(groups,2):
+        if any(a != b for a in left["source_ids"] for b in right["source_ids"]) and potential_tension(left["canonical_asset"],right["canonical_asset"]):
+            tensions.append({"asset_ids":[left["canonical_asset"]["id"],right["canonical_asset"]["id"]],
+                "source_ids":sorted(set(left["source_ids"]+right["source_ids"])),
+                "reason":"Potential difference in polarity or numeric guidance; inspect scope before resolving.","status":"needs review"})
+    return {"agreements":agreements, "tensions":tensions,
+        "distinct_contributions":[{"asset_ids":g["asset_ids"],"source_ids":g["source_ids"],"idea":g["canonical_asset"]["what_it_says"]} for g in groups if len(g["source_ids"])==1],
+        "limitations":"Deterministic lexical signals only. No flag does not imply no contradiction. Never infer consensus just from overlap."}

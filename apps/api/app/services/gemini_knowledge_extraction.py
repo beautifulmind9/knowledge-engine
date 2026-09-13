@@ -19,15 +19,9 @@ DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 
 def generate_structured_interaction(client, model: str, request: dict, payload: dict):
-    return client.interactions.create(
-        model=model,
-        input=json.dumps(payload, ensure_ascii=False),
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": request["expected_output_schema"],
-        },
-    )
+    from app.services.ai_gateway import generate
+    return generate(model, payload, request["expected_output_schema"])
+
 
 
 def validate_or_repair_result(client, model: str, request: dict, interaction):
@@ -40,6 +34,8 @@ def validate_or_repair_result(client, model: str, request: dict, interaction):
         )
         return result, interaction
     except ValidationError as validation_error:
+        if os.getenv("GEMINI_ALLOW_REPAIR") != "true":
+            raise RuntimeError("AI output failed validation. No assets saved. Repair calls are disabled; retry explicitly.") from validation_error
         repair_payload = {
             "task": "Repair the previous knowledge extraction so it passes validation.",
             "rules": [
@@ -91,7 +87,7 @@ def run_gemini_knowledge_extraction(job_id: str):
         model=model,
     )
 
-    client = genai.Client(api_key=api_key)
+    client = None
 
     model_input = {
         "instructions": request["instructions"],

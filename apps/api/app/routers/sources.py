@@ -3,7 +3,8 @@ from shutil import copyfileobj
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 
 from app.db.mock_data import (
     create_id,
@@ -22,7 +23,9 @@ from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
-UPLOAD_FOLDER = Path("storage/uploads")
+from app.db.persistence import STORAGE_ROOT
+
+UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",
@@ -39,7 +42,7 @@ ALLOWED_FILE_EXTENSIONS = {
 
 class SourceCreate(BaseModel):
     library_id: str
-    title: str
+    title: str = Field(min_length=1, max_length=500)
     author: str | None = None
     source_type: str = "book"
 
@@ -81,6 +84,8 @@ def get_sources(library_id: str | None = None):
 
 @router.post("")
 def create_source(payload: SourceCreate):
+    if not any(l["id"] == payload.library_id for l in libraries):
+        raise HTTPException(404, "Library not found.")
     source = {
         "id": create_id("source"),
         "library_id": payload.library_id,
@@ -93,7 +98,7 @@ def create_source(payload: SourceCreate):
         "file_type": None,
         "extracted_text_path": None,
         "chunks_path": None,
-        "created_at": None
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     sources.append(source)
@@ -152,15 +157,10 @@ def request_source_processing(source_id: str):
             detail="Upload a source file before requesting processing."
         )
 
-    source["processing_status"] = "processing_requested"
-    persist_state()
+    if not source.get("extracted_text_path"):
+        extract_source_text(source_id)
+    return chunk_source_text(source_id)
 
-    return {
-        "source_id": source["id"],
-        "title": source["title"],
-        "processing_status": source["processing_status"],
-        "message": "Processing has been requested. Background processing will be connected later."
-    }
 
 
 @router.post("/{source_id}/upload")
@@ -173,7 +173,9 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
             detail="Source not found"
         )
 
-    file_extension = get_file_extension(file.filename)
+    if any(j["source_id"] == source_id for j in extraction_jobs):
+        raise HTTPException(409, "This source already has interpretation history. Add a new source for a replacement file.")
+    file_extension = get_file_extension(file.filename or "")
 
     if file_extension not in ALLOWED_FILE_EXTENSIONS:
         raise HTTPException(
@@ -186,8 +188,28 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     safe_file_name = f"{source_id}{file_extension}"
     file_path = UPLOAD_FOLDER / safe_file_name
 
-    with file_path.open("wb") as buffer:
-        copyfileobj(file.file, buffer)
+    old_paths = [Path(source[key]).resolve() for key in ("file_path", "extracted_text_path", "chunks_path") if source.get(key)]
+    if any(not path.is_relative_to(STORAGE_ROOT) for path in old_paths):
+        raise HTTPException(409, "Move this source's legacy files into private storage before replacing its upload.")
+
+    temporary = file_path.with_suffix(file_path.suffix + ".tmp")
+    size = 0
+    try:
+        with temporary.open("wb") as buffer:
+            while data := file.file.read(1024 * 1024):
+                size += len(data)
+                if size > 25 * 1024 * 1024:
+                    raise HTTPException(413, "Upload limit is 25 MB.")
+                buffer.write(data)
+        if not size:
+            raise HTTPException(400, "The uploaded file is empty.")
+        temporary.replace(file_path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+    for old_path in old_paths:
+        if old_path != file_path.resolve():
+            old_path.unlink(missing_ok=True)
 
     source["file_name"] = file.filename
     source["file_path"] = str(file_path)
@@ -249,6 +271,8 @@ def extract_source_text(source_id: str):
             detail="Source not found"
         )
 
+    if source.get("chunks_path"):
+        raise HTTPException(409, "Chunks already exist; add a new source for changed content.")
     file_path = source.get("file_path")
     file_type = source.get("file_type")
 
@@ -263,7 +287,7 @@ def extract_source_text(source_id: str):
             file_path=file_path,
             file_type=file_type
         )
-    except UnsupportedExtractionTypeError as error:
+    except Exception as error:
         source["processing_status"] = "extraction_not_supported"
         persist_state()
 
@@ -272,6 +296,10 @@ def extract_source_text(source_id: str):
             detail=str(error)
         )
 
+    if not extracted_text.strip():
+        source["processing_status"] = "extraction_failed"
+        persist_state()
+        raise HTTPException(400, "No readable text found in the file.")
     extracted_text_path = save_extracted_text(
         source_id=source_id,
         text=extracted_text
@@ -347,6 +375,8 @@ def chunk_source_text(source_id: str):
             detail="Extracted text file not found on disk."
         )
 
+    if source.get("chunks_path"):
+        return {"source_id":source_id,"chunk_count":len(load_chunks(source["chunks_path"])),"processing_status":source["processing_status"],"message":"Existing chunks preserved."}
     extracted_text = path.read_text(encoding="utf-8", errors="ignore")
     chunks = chunk_text(
         source_id=source_id,

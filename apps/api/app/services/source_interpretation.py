@@ -99,7 +99,7 @@ def get_source_interpretation_summary(source_id: str):
             [
                 asset
                 for asset in knowledge_assets
-                if asset.get("source_id") == source_id
+                if asset.get("source_id") == source_id and asset.get("active", True)
             ]
         ),
         "job_counts": {
@@ -146,6 +146,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         raise ValueError("This source has no chunks to interpret.")
 
     source["processing_status"] = "knowledge_interpreting"
+    source["stopped_reason"] = None
     persist_state()
 
     completed_chunk_ids = _completed_chunk_ids(source_id)
@@ -170,7 +171,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         try:
             result = run_gemini_knowledge_extraction(job["id"])
         except Exception as error:
-            message = str(error)
+            message = str(getattr(error, "detail", error))
             lowered = message.lower()
             if "429" in message or "quota" in lowered or "too_many_requests" in lowered:
                 stopped_reason = (
@@ -187,6 +188,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         if len(processed_results) >= max_chunks:
             break
 
+    source["stopped_reason"] = stopped_reason
     summary = get_source_interpretation_summary(source_id)
 
     if summary["status"] == "completed":

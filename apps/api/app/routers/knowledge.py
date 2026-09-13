@@ -11,6 +11,8 @@ from app.services.knowledge_extraction import (
     get_extraction_job,
     get_extraction_request,
     list_knowledge_assets,
+    search_knowledge_assets,
+    summarize_knowledge_assets,
 )
 from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
 from app.services.source_interpretation import (
@@ -124,6 +126,29 @@ def read_knowledge_assets(
     }
 
 
+@router.get("/knowledge-assets/search")
+def search_assets(
+    q: str = Query(min_length=2, description="Words or phrase to retrieve."),
+    source_id: str | None = None,
+    asset_type: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    items = search_knowledge_assets(
+        query=q,
+        source_id=source_id,
+        asset_type=asset_type,
+        limit=limit,
+    )
+
+    return {
+        "query": q,
+        "source_id": source_id,
+        "asset_type": asset_type,
+        "items": items,
+        "count": len(items),
+    }
+
+
 @router.get("/sources/{source_id}/interpretation")
 def read_source_interpretation(source_id: str):
     try:
@@ -174,6 +199,37 @@ def read_source_knowledge_assets(
 
     return {
         "source_id": source_id,
+        "items": items,
+        "count": len(items),
+    }
+
+
+@router.get("/sources/{source_id}/knowledge-overview")
+def read_source_knowledge_overview(source_id: str):
+    try:
+        return summarize_knowledge_assets(source_id)
+    except ValueError as error:
+        service_error(error)
+
+
+@router.get("/sources/{source_id}/knowledge-search")
+def search_source_knowledge(
+    source_id: str,
+    q: str = Query(min_length=2, description="Words or phrase to retrieve."),
+    asset_type: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    items = search_knowledge_assets(
+        query=q,
+        source_id=source_id,
+        asset_type=asset_type,
+        limit=limit,
+    )
+
+    return {
+        "source_id": source_id,
+        "query": q,
+        "asset_type": asset_type,
         "items": items,
         "count": len(items),
     }

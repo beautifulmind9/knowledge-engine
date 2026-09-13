@@ -7,6 +7,28 @@ from google import genai
 from app.db.mock_data import usage
 
 
+# Gemini structured outputs support only a subset of JSON Schema. Keep the
+# internal Pydantic schema strict, but translate unsupported keywords before
+# sending it to the provider. In particular, Pydantic uses `const` for Literal
+# values and discriminated unions add `discriminator`; Gemini supports `enum`
+# plus oneOf/anyOf instead.
+def _gemini_response_schema(value):
+    if isinstance(value, list):
+        return [_gemini_response_schema(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    normalized = {}
+    for key, item in value.items():
+        if key in {"discriminator", "default", "minLength", "maxLength"}:
+            continue
+        if key == "const":
+            normalized["enum"] = [_gemini_response_schema(item)]
+            continue
+        normalized[key] = _gemini_response_schema(item)
+    return normalized
+
+
 def status():
     limit = max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "20")))
     calls = usage.get("calls", 0) if usage.get("day") == datetime.now(timezone.utc).date().isoformat() else 0
@@ -44,7 +66,7 @@ def generate(model, payload, schema):
             # Fail closed if this SDK surface changes; contract tests cover it.
             interactions.sdk_configuration.retry_config.strategy = "none"
             return interactions.create(model=model, input=json.dumps(payload, ensure_ascii=False), store=False,
-                response_format={"type":"text", "mime_type":"application/json", "schema":schema})
+                response_format={"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)})
     except Exception as error:
         quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
         if quota:

@@ -6,11 +6,13 @@ from app.models.knowledge_extraction import (
 )
 from app.services.knowledge_extraction import (
     complete_extraction_job,
+    consolidate_knowledge_assets,
     create_extraction_job,
     get_extraction_chunk,
     get_extraction_job,
     get_extraction_request,
     list_knowledge_assets,
+    search_consolidated_knowledge_assets,
     search_knowledge_assets,
     summarize_knowledge_assets,
 )
@@ -132,18 +134,28 @@ def search_assets(
     source_id: str | None = None,
     asset_type: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
+    consolidated: bool = Query(default=False),
 ):
-    items = search_knowledge_assets(
-        query=q,
-        source_id=source_id,
-        asset_type=asset_type,
-        limit=limit,
-    )
+    if consolidated:
+        items = search_consolidated_knowledge_assets(
+            query=q,
+            source_id=source_id,
+            asset_type=asset_type,
+            limit=limit,
+        )
+    else:
+        items = search_knowledge_assets(
+            query=q,
+            source_id=source_id,
+            asset_type=asset_type,
+            limit=limit,
+        )
 
     return {
         "query": q,
         "source_id": source_id,
         "asset_type": asset_type,
+        "consolidated": consolidated,
         "items": items,
         "count": len(items),
     }
@@ -204,6 +216,25 @@ def read_source_knowledge_assets(
     }
 
 
+@router.get("/sources/{source_id}/knowledge-units")
+def read_source_knowledge_units(
+    source_id: str,
+    asset_type: str | None = None,
+):
+    items = list_knowledge_assets(
+        source_id=source_id,
+        asset_type=asset_type,
+    )
+    groups = consolidate_knowledge_assets(items)
+
+    return {
+        "source_id": source_id,
+        "raw_asset_count": len(items),
+        "knowledge_unit_count": len(groups),
+        "items": groups,
+    }
+
+
 @router.get("/sources/{source_id}/knowledge-overview")
 def read_source_knowledge_overview(source_id: str):
     try:
@@ -218,18 +249,31 @@ def search_source_knowledge(
     q: str = Query(min_length=2, description="Words or phrase to retrieve."),
     asset_type: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
+    consolidated: bool = Query(
+        default=True,
+        description="Group overlapping raw assets into one knowledge unit.",
+    ),
 ):
-    items = search_knowledge_assets(
-        query=q,
-        source_id=source_id,
-        asset_type=asset_type,
-        limit=limit,
-    )
+    if consolidated:
+        items = search_consolidated_knowledge_assets(
+            query=q,
+            source_id=source_id,
+            asset_type=asset_type,
+            limit=limit,
+        )
+    else:
+        items = search_knowledge_assets(
+            query=q,
+            source_id=source_id,
+            asset_type=asset_type,
+            limit=limit,
+        )
 
     return {
         "source_id": source_id,
         "query": q,
         "asset_type": asset_type,
+        "consolidated": consolidated,
         "items": items,
         "count": len(items),
     }

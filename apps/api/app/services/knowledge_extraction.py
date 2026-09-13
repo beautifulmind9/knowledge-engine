@@ -1,4 +1,6 @@
+from collections import Counter
 from datetime import datetime, timezone
+import re
 
 from app.db.mock_data import (
     create_id,
@@ -170,3 +172,149 @@ def list_knowledge_assets(
         items = [item for item in items if item.get("asset_type") == asset_type]
 
     return items
+
+
+def normalize_text(value: str | None) -> str:
+    if not value:
+        return ""
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def query_tokens(query: str) -> list[str]:
+    return [token for token in normalize_text(query).split() if len(token) > 1]
+
+
+def _asset_special_text(asset: dict) -> str:
+    values = []
+    for field in (
+        "condition",
+        "action",
+        "rationale",
+        "consequence",
+        "prevention",
+        "what_happened",
+        "transferable_lesson",
+        "concept_demonstrated",
+        "adaptation_notes",
+    ):
+        value = asset.get(field)
+        if value:
+            values.append(str(value))
+
+    for field in (
+        "how_to_apply",
+        "when_to_use",
+        "when_not_to_use",
+        "tradeoffs",
+        "steps",
+        "components",
+    ):
+        values.extend(str(value) for value in asset.get(field, []) if value)
+
+    return " ".join(values)
+
+
+def search_knowledge_assets(
+    query: str,
+    source_id: str | None = None,
+    asset_type: str | None = None,
+    limit: int = 20,
+):
+    tokens = query_tokens(query)
+    if not tokens:
+        return []
+
+    normalized_query = normalize_text(query)
+    candidates = list_knowledge_assets(
+        source_id=source_id,
+        asset_type=asset_type,
+    )
+    ranked = []
+
+    for asset in candidates:
+        title = normalize_text(asset.get("title"))
+        what_it_says = normalize_text(asset.get("what_it_says"))
+        why_it_matters = normalize_text(asset.get("why_it_matters"))
+        evidence = normalize_text(asset.get("evidence"))
+        keywords = [normalize_text(value) for value in asset.get("keywords", [])]
+        special = normalize_text(_asset_special_text(asset))
+
+        score = 0
+        matched_terms = set()
+
+        if normalized_query and normalized_query in title:
+            score += 12
+        if normalized_query and normalized_query in what_it_says:
+            score += 8
+
+        for token in tokens:
+            token_matched = False
+            if token in title.split():
+                score += 5
+                token_matched = True
+            if any(token in keyword.split() for keyword in keywords):
+                score += 4
+                token_matched = True
+            if token in what_it_says.split():
+                score += 3
+                token_matched = True
+            if token in special.split():
+                score += 2
+                token_matched = True
+            if token in why_it_matters.split():
+                score += 1
+                token_matched = True
+            if token in evidence.split():
+                score += 1
+                token_matched = True
+
+            if token_matched:
+                matched_terms.add(token)
+
+        if score <= 0:
+            continue
+
+        ranked.append(
+            {
+                **asset,
+                "relevance_score": score,
+                "matched_terms": sorted(matched_terms),
+            }
+        )
+
+    ranked.sort(
+        key=lambda item: (
+            item["relevance_score"],
+            item.get("confidence_score", 0),
+            item.get("created_at") or "",
+        ),
+        reverse=True,
+    )
+    return ranked[:limit]
+
+
+def summarize_knowledge_assets(source_id: str):
+    source = find_source(source_id)
+    if not source:
+        raise ValueError("Source not found.")
+
+    items = list_knowledge_assets(source_id=source_id)
+    type_counts = Counter(item.get("asset_type", "unknown") for item in items)
+    keyword_counts = Counter()
+
+    for item in items:
+        for keyword in item.get("keywords", []):
+            normalized = normalize_text(keyword)
+            if normalized:
+                keyword_counts[normalized] += 1
+
+    return {
+        "source_id": source_id,
+        "title": source.get("title"),
+        "asset_count": len(items),
+        "asset_types": dict(sorted(type_counts.items())),
+        "top_keywords": [
+            {"keyword": keyword, "count": count}
+            for keyword, count in keyword_counts.most_common(15)
+        ],
+    }

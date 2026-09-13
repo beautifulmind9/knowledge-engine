@@ -18,14 +18,23 @@ class BaseKnowledgeAsset(BaseModel):
     source_id: str
     chunk_id: str
     chapter_or_section: str | None = None
-    evidence: str | None = None
+    evidence: str = Field(
+        min_length=1,
+        description=(
+            "Short source-grounded excerpt or close paraphrase that supports the asset."
+        ),
+    )
 
     # Application guidance learned from the Made to Stick prototype.
     how_to_apply: list[str] = Field(default_factory=list)
     when_to_use: list[str] = Field(default_factory=list)
     when_not_to_use: list[str] = Field(default_factory=list)
     tradeoffs: list[str] = Field(default_factory=list)
-    keywords: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(
+        min_length=1,
+        max_length=8,
+        description="Grounded retrieval terms for this asset.",
+    )
 
     confidence_score: int = Field(default=3, ge=1, le=5)
     created_at: datetime | None = None

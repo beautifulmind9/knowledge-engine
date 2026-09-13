@@ -33,7 +33,7 @@ def save_output(result, parent=None, instruction=None):
         applied_asset_ids=applied, knowledge_snapshot=snapshot, provider=result["provider"], model=result.get("model"),
         created_at=now, updated_at=now, root_output_id=root, parent_output_id=parent["id"] if parent else None,
         version=version, revision_instruction=instruction,
-        generation_metadata={"model_response_id":result.get("model_response_id"), "quality":quality_report(output)})
+        generation_metadata={"model_response_id":result.get("model_response_id"), "quality":quality_report(output, result["brief"], snapshot)})
     data=record.model_dump(mode="json")
     outputs.append(data)
     persist_state()
@@ -68,6 +68,8 @@ def compare_outputs(left_id, right_id):
 
 def export_markdown(output):
     lines=["# "+output["title"], "", output["content"], "", "## Applied knowledge"]
+    quality = quality_report(output, output["brief"], output["knowledge_snapshot"])
+    lines[2:2] = ["## Quality review", quality["validation_status"], quality["note"]] + ["- "+i["message"] for i in quality["issues"]] + [""]
     for ref in output["applied_knowledge"]:
         lines.append(f"- {ref['asset_id']}: {ref['usage_note']}")
     lines += ["", "## Design choices"]+["- "+v for v in output["design_choices"]]

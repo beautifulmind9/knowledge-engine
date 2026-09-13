@@ -43,6 +43,12 @@ def history(output_id:str):
     root=get_output(output_id)["root_output_id"]
     return {"items":sorted([o for o in outputs if o["root_output_id"]==root],key=lambda o:o["version"])}
 
+@router.get("/{output_id}/quality")
+def review_quality(output_id:str):
+    from app.services.output_modes import quality_report
+    output = get_output(output_id)
+    return quality_report(output, output["brief"], output["knowledge_snapshot"])
+
 @router.get("/{output_id}/compare/{other_id}")
 def compare(output_id:str,other_id:str):
     return compare_outputs(output_id,other_id)

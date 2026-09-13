@@ -146,3 +146,11 @@ Final local run on 2026-09-13: **44 tests passed**, with two upstream Starlette/
 - `.venv/bin/python -m pytest apps/api/tests -q` passed, including live-server demo/restart, backup relocation, all six mode fixtures, selected-unit provenance, quota/timeout behavior through the installed SDK, and EPUB/DOCX structure.
 - `node --check apps/web/app.js`, shell syntax checks, Python compilation, dependency consistency, and `git diff --check` passed.
 - Browser verification remains blocked by the cloud browser's localhost restriction. No visual, mobile or external-user acceptance result is claimed.
+
+## Follow-up — Workshop timing validator
+
+Added local timing and numeric format-switch review after the reported live-test failure. This strengthens R4-03 and R8-02/R8-03: supported agenda totals, gaps/overlaps, contradictory repeated activity timings, and unverified format-switch intervals now produce explicit quality issues. Reports are available on generation, saved drafts, revisions, old-output review, and Markdown exports. Human validity is never inferred from heading checks.
+
+See [workshop_timing_validation.md](workshop_timing_validation.md) for supported input formats, limitations, and the next explicitly chosen live test. Full-source and external acceptance gates remain open. No Gemini calls were made during this follow-up.
+
+Follow-up verification: **81 tests passed**, zero live provider calls; JavaScript syntax and patch whitespace checks passed. Browser/mobile acceptance remains pending.

@@ -89,6 +89,10 @@ class WarningKnowledgeAsset(BaseKnowledgeAsset):
 
 class FrameworkKnowledgeAsset(BaseKnowledgeAsset):
     asset_type: Literal["framework"]
+    components: list[str] = Field(
+        min_length=1,
+        description="Named source-supported parts that make up the framework.",
+    )
     steps: list[str] = Field(default_factory=list)
     adaptation_notes: str | None = None
 

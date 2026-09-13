@@ -16,7 +16,10 @@ class WorkshopGeneratedOutput(BaseModel):
     title: str = Field(min_length=2)
     output_type: str = Field(min_length=2)
     content: str = Field(min_length=20)
-    applied_knowledge: list[AppliedKnowledgeReference] = Field(default_factory=list)
+    applied_knowledge: list[AppliedKnowledgeReference] = Field(
+        min_length=1,
+        description="Knowledge assets that materially grounded the generated output.",
+    )
     design_choices: list[str] = Field(
         default_factory=list,
         description=(

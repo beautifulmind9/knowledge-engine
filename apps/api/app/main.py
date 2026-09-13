@@ -4,6 +4,7 @@ from app.routers.health import router as health_router
 from app.routers.knowledge import router as knowledge_router
 from app.routers.libraries import router as libraries_router
 from app.routers.sources import router as sources_router
+from app.routers.workshop_output import router as workshop_output_router
 from app.routers.workshops import router as workshops_router
 
 app = FastAPI(
@@ -16,3 +17,4 @@ app.include_router(libraries_router)
 app.include_router(sources_router)
 app.include_router(knowledge_router)
 app.include_router(workshops_router)
+app.include_router(workshop_output_router)

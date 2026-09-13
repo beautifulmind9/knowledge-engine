@@ -4,6 +4,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 from ebooklib import epub
+from pypdf import PdfReader
 
 
 TEXT_OUTPUT_FOLDER = Path("storage/extracted_text")
@@ -20,6 +21,27 @@ def clean_html_to_text(html_content: str) -> str:
         tag.decompose()
 
     return soup.get_text(separator="\n", strip=True)
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    reader = PdfReader(file_path)
+    pages = []
+
+    for page in reader.pages:
+        text = page.extract_text() or ""
+        text = text.strip()
+
+        if text:
+            pages.append(text)
+
+    extracted_text = "\n\n".join(pages)
+
+    if not extracted_text.strip():
+        raise UnsupportedExtractionTypeError(
+            "This PDF does not contain extractable text. OCR is not implemented yet."
+        )
+
+    return extracted_text
 
 
 def extract_text_from_epub(file_path: str) -> str:
@@ -70,6 +92,9 @@ def extract_text_from_file(file_path: str, file_type: str) -> str:
                 rows.append(" | ".join(row))
 
         return "\n".join(rows)
+
+    if extension == ".pdf":
+        return extract_text_from_pdf(str(path))
 
     if extension == ".epub":
         return extract_text_from_epub(str(path))

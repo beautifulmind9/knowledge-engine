@@ -52,6 +52,11 @@ Rules:
 28. process requires steps. framework requires components. pattern may use steps and adaptation_notes. example may use what_happened, transferable_lesson, and concept_demonstrated.
 29. concept, problem, principle, insight, and mental_model use only the shared fields; do not attach action, consequence, prevention, steps, components, or example-only fields to them.
 30. Follow the response schema literally. asset_type determines the exact subtype schema for that asset.
+31. Keep assets atomic enough to be independently retrieved and applied. If the source presents multiple distinct rules, principles, or recommendations that remain useful on their own, extract them as separate assets unless the source explicitly defines them as one named framework or they lose meaning when separated.
+32. Treat a concrete numeric, timing, threshold, or other prescriptive recommendation as a decision_rule when it tells the future user what to do. Do not bury a standalone action rule inside a broad principle merely because nearby text also states a general principle.
+33. Evidence must directly support every core claim in the asset. If one evidence passage does not support all combined claims, split the asset or choose evidence that does. Do not use a nearby but materially different formula, label, or statement as evidence for another claim.
+34. Preserve distinctions in source terminology. Do not silently treat related labels as interchangeable unless the chunk itself clearly establishes that equivalence.
+35. Use confidence 5 only when the core claim and any populated subtype-specific claims are directly stated or demonstrated by the source. If an important populated field requires synthesis or a strong inference, use confidence 4 or lower.
 """
 
     return {

@@ -17,3 +17,10 @@ class WorkshopGeneratedOutput(BaseModel):
     output_type: str = Field(min_length=2)
     content: str = Field(min_length=20)
     applied_knowledge: list[AppliedKnowledgeReference] = Field(default_factory=list)
+    design_choices: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Generator-created choices or derived recommendations that are useful for "
+            "the requested output but are not direct claims from a supplied knowledge asset."
+        ),
+    )

@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
 from app.services.ai_gateway import _gemini_response_schema
 from app.services.gemini_knowledge_extraction import validate_or_repair_result
+from app.services.knowledge_extraction_prompt import build_knowledge_extraction_request
 
 
 def test_invalid_extraction_reports_schema_locations_without_raw_input(monkeypatch):
@@ -101,3 +102,20 @@ def test_subtype_fields_do_not_bleed_between_asset_types():
                 ]
             }
         )
+
+
+def test_prompt_requires_atomic_assets_direct_evidence_and_calibrated_confidence():
+    request = build_knowledge_extraction_request(
+        {
+            "id": "chunk_test",
+            "source_id": "source_test",
+            "text": "Switch formats every 20 minutes and match the format to the lesson.",
+        }
+    )
+    instructions = request["instructions"]
+
+    assert "independently retrieved and applied" in instructions
+    assert "numeric, timing, threshold" in instructions
+    assert "Evidence must directly support every core claim" in instructions
+    assert "Do not silently treat related labels as interchangeable" in instructions
+    assert "Use confidence 5 only" in instructions

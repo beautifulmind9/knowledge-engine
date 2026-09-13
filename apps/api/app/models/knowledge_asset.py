@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Union
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -110,18 +110,22 @@ class ProcessKnowledgeAsset(BaseKnowledgeAsset):
     adaptation_notes: str | None = None
 
 
-# Each type has its own structure. This prevents a generic concept from
-# carrying decision-rule fields such as condition, action, and rationale.
-KnowledgeAsset = Union[
-    DecisionRuleKnowledgeAsset,
-    ProcessKnowledgeAsset,
-    WarningKnowledgeAsset,
-    ExampleKnowledgeAsset,
-    PatternKnowledgeAsset,
-    FrameworkKnowledgeAsset,
-    ConceptKnowledgeAsset,
-    ProblemKnowledgeAsset,
-    PrincipleKnowledgeAsset,
-    InsightKnowledgeAsset,
-    MentalModelKnowledgeAsset,
+# The discriminator makes the generated JSON schema choose exactly one subtype
+# from asset_type. This prevents a provider from blending subtype-only fields
+# (for example warning consequence/prevention with decision-rule action).
+KnowledgeAsset = Annotated[
+    Union[
+        DecisionRuleKnowledgeAsset,
+        ProcessKnowledgeAsset,
+        WarningKnowledgeAsset,
+        ExampleKnowledgeAsset,
+        PatternKnowledgeAsset,
+        FrameworkKnowledgeAsset,
+        ConceptKnowledgeAsset,
+        ProblemKnowledgeAsset,
+        PrincipleKnowledgeAsset,
+        InsightKnowledgeAsset,
+        MentalModelKnowledgeAsset,
+    ],
+    Field(discriminator="asset_type"),
 ]

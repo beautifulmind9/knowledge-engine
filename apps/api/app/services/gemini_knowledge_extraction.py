@@ -23,6 +23,24 @@ def generate_structured_interaction(client, model: str, request: dict, payload: 
     return generate(model, payload, request["expected_output_schema"])
 
 
+def _validation_summary(error: ValidationError, limit: int = 8) -> str:
+    """Return useful schema diagnostics without persisting generated/source text."""
+    details = error.errors(
+        include_url=False,
+        include_context=False,
+        include_input=False,
+    )
+    parts = []
+    for detail in details[:limit]:
+        location = ".".join(str(part) for part in detail.get("loc", ())) or "result"
+        parts.append(
+            f"{location}: {detail.get('msg', 'validation error')} "
+            f"[{detail.get('type', 'unknown')}]"
+        )
+    if len(details) > limit:
+        parts.append(f"... plus {len(details) - limit} more validation error(s)")
+    return "; ".join(parts) or "unknown schema validation error"
+
 
 def validate_or_repair_result(client, model: str, request: dict, interaction):
     if not interaction.output_text:
@@ -34,8 +52,13 @@ def validate_or_repair_result(client, model: str, request: dict, interaction):
         )
         return result, interaction
     except ValidationError as validation_error:
+        validation_summary = _validation_summary(validation_error)
         if os.getenv("GEMINI_ALLOW_REPAIR") != "true":
-            raise RuntimeError("AI output failed validation. No assets saved. Repair calls are disabled; retry explicitly.") from validation_error
+            raise RuntimeError(
+                "AI output failed validation: "
+                f"{validation_summary}. No assets saved. "
+                "Repair calls are disabled; retry explicitly."
+            ) from validation_error
         repair_payload = {
             "task": "Repair the previous knowledge extraction so it passes validation.",
             "rules": [
@@ -48,7 +71,7 @@ def validate_or_repair_result(client, model: str, request: dict, interaction):
                 "For process assets, steps must contain at least one source-supported step.",
                 "Return only the corrected structured result.",
             ],
-            "validation_error": str(validation_error),
+            "validation_error": validation_summary,
             "previous_output": interaction.output_text,
             "source_id": request["source_id"],
             "chunk_id": request["chunk_id"],
@@ -65,9 +88,15 @@ def validate_or_repair_result(client, model: str, request: dict, interaction):
         if not repaired_interaction.output_text:
             raise RuntimeError("The AI repair attempt returned no structured output.")
 
-        repaired_result = KnowledgeExtractionResultSubmission.model_validate_json(
-            repaired_interaction.output_text
-        )
+        try:
+            repaired_result = KnowledgeExtractionResultSubmission.model_validate_json(
+                repaired_interaction.output_text
+            )
+        except ValidationError as repair_error:
+            raise RuntimeError(
+                "AI repair output failed validation: "
+                f"{_validation_summary(repair_error)}. No assets saved."
+            ) from repair_error
         return repaired_result, repaired_interaction
 
 

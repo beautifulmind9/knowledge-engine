@@ -18,6 +18,14 @@ from app.services.knowledge_extraction_prompt import build_knowledge_extraction_
 from app.services.text_chunking import load_chunks
 
 
+STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "before", "by", "for",
+    "from", "has", "have", "if", "in", "into", "is", "it", "its", "of",
+    "on", "or", "that", "the", "their", "them", "they", "this", "to",
+    "use", "using", "when", "where", "which", "with", "you", "your",
+}
+
+
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -184,6 +192,14 @@ def query_tokens(query: str) -> list[str]:
     return [token for token in normalize_text(query).split() if len(token) > 1]
 
 
+def _meaningful_tokens(value: str | None) -> set[str]:
+    return {
+        token
+        for token in normalize_text(value).split()
+        if len(token) > 2 and token not in STOPWORDS
+    }
+
+
 def _asset_special_text(asset: dict) -> str:
     values = []
     for field in (
@@ -212,6 +228,145 @@ def _asset_special_text(asset: dict) -> str:
         values.extend(str(value) for value in asset.get(field, []) if value)
 
     return " ".join(values)
+
+
+def _asset_similarity_text(asset: dict) -> str:
+    parts = [
+        asset.get("title") or "",
+        asset.get("what_it_says") or "",
+        asset.get("why_it_matters") or "",
+        " ".join(asset.get("keywords", [])),
+        _asset_special_text(asset),
+    ]
+    return " ".join(parts)
+
+
+def _jaccard(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def knowledge_asset_similarity(left: dict, right: dict) -> float:
+    if left.get("asset_type") != right.get("asset_type"):
+        return 0.0
+
+    left_evidence = normalize_text(left.get("evidence"))
+    right_evidence = normalize_text(right.get("evidence"))
+    if left_evidence and left_evidence == right_evidence:
+        return 1.0
+
+    left_title = normalize_text(left.get("title"))
+    right_title = normalize_text(right.get("title"))
+    if left_title and left_title == right_title:
+        return 0.98
+
+    title_similarity = _jaccard(
+        _meaningful_tokens(left.get("title")),
+        _meaningful_tokens(right.get("title")),
+    )
+    content_similarity = _jaccard(
+        _meaningful_tokens(_asset_similarity_text(left)),
+        _meaningful_tokens(_asset_similarity_text(right)),
+    )
+
+    if title_similarity >= 0.65 and content_similarity >= 0.35:
+        return max(0.80, (title_similarity + content_similarity) / 2)
+
+    return (title_similarity * 0.35) + (content_similarity * 0.65)
+
+
+def _asset_quality_score(asset: dict) -> int:
+    score = int(asset.get("confidence_score") or 0) * 10
+
+    for field in (
+        "why_it_matters",
+        "evidence",
+        "condition",
+        "action",
+        "rationale",
+        "consequence",
+        "prevention",
+        "what_happened",
+        "transferable_lesson",
+        "concept_demonstrated",
+        "adaptation_notes",
+    ):
+        if asset.get(field):
+            score += 2
+
+    for field in (
+        "keywords",
+        "how_to_apply",
+        "when_to_use",
+        "when_not_to_use",
+        "tradeoffs",
+        "steps",
+        "components",
+    ):
+        score += min(len(asset.get(field, [])), 5)
+
+    return score
+
+
+def consolidate_knowledge_assets(items: list[dict], similarity_threshold: float = 0.78):
+    clusters: list[list[dict]] = []
+
+    for asset in items:
+        matching_cluster = None
+
+        for cluster in clusters:
+            if any(
+                knowledge_asset_similarity(asset, existing) >= similarity_threshold
+                for existing in cluster
+            ):
+                matching_cluster = cluster
+                break
+
+        if matching_cluster is None:
+            clusters.append([asset])
+        else:
+            matching_cluster.append(asset)
+
+    consolidated = []
+
+    for cluster in clusters:
+        canonical = max(cluster, key=_asset_quality_score)
+        evidence = []
+        asset_ids = []
+        chunk_ids = []
+
+        for asset in cluster:
+            if asset.get("id"):
+                asset_ids.append(asset["id"])
+            if asset.get("chunk_id") and asset["chunk_id"] not in chunk_ids:
+                chunk_ids.append(asset["chunk_id"])
+            if asset.get("evidence") and asset["evidence"] not in evidence:
+                evidence.append(asset["evidence"])
+
+        consolidated.append(
+            {
+                "canonical_asset": canonical,
+                "support_count": len(cluster),
+                "asset_ids": asset_ids,
+                "chunk_ids": chunk_ids,
+                "supporting_evidence": evidence,
+                "duplicate_asset_ids": [
+                    asset_id
+                    for asset_id in asset_ids
+                    if asset_id != canonical.get("id")
+                ],
+            }
+        )
+
+    consolidated.sort(
+        key=lambda group: (
+            group["support_count"],
+            _asset_quality_score(group["canonical_asset"]),
+        ),
+        reverse=True,
+    )
+    return consolidated
 
 
 def search_knowledge_assets(
@@ -293,6 +448,47 @@ def search_knowledge_assets(
     return ranked[:limit]
 
 
+def search_consolidated_knowledge_assets(
+    query: str,
+    source_id: str | None = None,
+    asset_type: str | None = None,
+    limit: int = 20,
+):
+    raw_results = search_knowledge_assets(
+        query=query,
+        source_id=source_id,
+        asset_type=asset_type,
+        limit=max(limit * 3, 20),
+    )
+    groups = consolidate_knowledge_assets(raw_results)
+
+    for group in groups:
+        members = [
+            item for item in raw_results if item.get("id") in group["asset_ids"]
+        ]
+        group["relevance_score"] = max(
+            (item.get("relevance_score", 0) for item in members),
+            default=0,
+        )
+        group["matched_terms"] = sorted(
+            {
+                term
+                for item in members
+                for term in item.get("matched_terms", [])
+            }
+        )
+
+    groups.sort(
+        key=lambda group: (
+            group["relevance_score"],
+            group["support_count"],
+            _asset_quality_score(group["canonical_asset"]),
+        ),
+        reverse=True,
+    )
+    return groups[:limit]
+
+
 def summarize_knowledge_assets(source_id: str):
     source = find_source(source_id)
     if not source:
@@ -308,10 +504,16 @@ def summarize_knowledge_assets(source_id: str):
             if normalized:
                 keyword_counts[normalized] += 1
 
+    consolidated = consolidate_knowledge_assets(items)
+    overlap_groups = [group for group in consolidated if group["support_count"] > 1]
+
     return {
         "source_id": source_id,
         "title": source.get("title"),
         "asset_count": len(items),
+        "knowledge_unit_count": len(consolidated),
+        "overlapping_asset_count": len(items) - len(consolidated),
+        "overlap_group_count": len(overlap_groups),
         "asset_types": dict(sorted(type_counts.items())),
         "top_keywords": [
             {"keyword": keyword, "count": count}

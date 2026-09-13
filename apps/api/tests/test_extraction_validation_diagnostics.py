@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
+from app.services.ai_gateway import _gemini_response_schema
 from app.services.gemini_knowledge_extraction import validate_or_repair_result
 
 
@@ -45,6 +46,22 @@ def test_knowledge_asset_schema_is_discriminated_by_asset_type():
     assert asset_schema["discriminator"]["propertyName"] == "asset_type"
     assert "warning" in asset_schema["discriminator"]["mapping"]
     assert "decision_rule" in asset_schema["discriminator"]["mapping"]
+
+
+def test_gemini_schema_uses_supported_branch_constraints():
+    internal = KnowledgeExtractionResultSubmission.model_json_schema()
+    provider = _gemini_response_schema(internal)
+    asset_schema = provider["properties"]["assets"]["items"]
+    assert "discriminator" not in asset_schema
+    assert "oneOf" in asset_schema
+
+    serialized = json.dumps(provider)
+    assert '"const"' not in serialized
+    assert '"discriminator"' not in serialized
+    assert '"minLength"' not in serialized
+    assert '"maxLength"' not in serialized
+    assert '"enum": ["warning"]' in serialized
+    assert '"enum": ["decision_rule"]' in serialized
 
 
 def test_subtype_fields_do_not_bleed_between_asset_types():

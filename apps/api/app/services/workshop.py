@@ -2,7 +2,9 @@ from collections import defaultdict
 
 from app.models.workshop import WorkshopPrepareRequest
 from app.services.knowledge_extraction import (
+    STOPWORDS,
     consolidate_knowledge_assets,
+    normalize_text,
     search_knowledge_assets,
 )
 
@@ -10,7 +12,21 @@ from app.services.knowledge_extraction import (
 def build_workshop_query(payload: WorkshopPrepareRequest) -> str:
     parts = [payload.situation, payload.goal, payload.audience or "", payload.output_type]
     parts.extend(payload.constraints)
-    return " ".join(part.strip() for part in parts if part and part.strip())
+    raw_query = " ".join(part.strip() for part in parts if part and part.strip())
+
+    # Workshop inputs are full sentences, so remove common filler words and
+    # repeated terms before retrieval. Otherwise words such as "and", "for",
+    # "is", and repeated uses of "workshop" can overwhelm the useful signals
+    # in the user's goal and constraints.
+    tokens = []
+    seen = set()
+    for token in normalize_text(raw_query).split():
+        if len(token) <= 1 or token in STOPWORDS or token in seen:
+            continue
+        seen.add(token)
+        tokens.append(token)
+
+    return " ".join(tokens)
 
 
 def _retrieve_raw_assets(payload: WorkshopPrepareRequest, query: str) -> list[dict]:

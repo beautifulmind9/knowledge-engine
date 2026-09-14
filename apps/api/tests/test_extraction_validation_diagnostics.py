@@ -118,4 +118,5 @@ def test_prompt_requires_atomic_assets_direct_evidence_and_calibrated_confidence
     assert "numeric, timing, threshold" in instructions
     assert "Evidence must directly support every core claim" in instructions
     assert "Do not silently treat related labels as interchangeable" in instructions
-    assert "Use confidence 5 only" in instructions
+    assert "Confidence measures how directly the source supports the asset" in instructions
+    assert "Before returning, calibrate each confidence score against the rubric above" in instructions

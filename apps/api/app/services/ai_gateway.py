@@ -86,12 +86,14 @@ def _provider_diagnostic(error):
         if isinstance(value, str) and value in known_statuses:
             diagnostic['provider_' + field] = value
 
+    # Preserve the provider's original allowlisted spelling/casing for diagnostics
+    # while normalizing only for internal category selection below.
     provider_code = metadata.get('code')
     if isinstance(provider_code, str) and provider_code.lower() in known_codes:
-        diagnostic['provider_code'] = provider_code.lower()
+        diagnostic['provider_code'] = provider_code
     provider_type = metadata.get('type')
     if isinstance(provider_type, str) and provider_type.lower() in known_codes:
-        diagnostic['provider_type'] = provider_type.lower()
+        diagnostic['provider_type'] = provider_type
 
     direct_message = getattr(error, 'message', None)
     if isinstance(direct_message, str):
@@ -105,6 +107,7 @@ def _provider_diagnostic(error):
 
     # Inspect provider prose only in memory. Emit a fixed category, never prose.
     text = '\n'.join(message_candidates)[:8192].lower()
+    normalized_provider_code = str(diagnostic.get('provider_code', '')).lower()
     schema_signal = any(word in text for word in ('schema', 'response_format', 'response format', 'json schema'))
     complexity_signal = any(word in text for word in (
         'complex', 'nested', 'depth', 'too large', 'too many', 'size', 'simplif',
@@ -113,7 +116,17 @@ def _provider_diagnostic(error):
     rejection_signal = any(word in text for word in (
         'invalid', 'unsupported', 'not supported', 'invalid_argument', 'bad request',
     ))
-    if schema_signal and complexity_signal:
+
+    # Explicit provider codes are more actionable than overlapping prose. For
+    # example, "unknown parameter in response_format" mentions response_format
+    # but is fundamentally an unsupported request parameter, not a bad schema.
+    if normalized_provider_code == 'parameter_unknown':
+        category = 'unknown_request_parameter'
+    elif normalized_provider_code == 'failed_precondition':
+        category = 'provider_precondition_failed'
+    elif normalized_provider_code == 'content_blocked':
+        category = 'content_blocked'
+    elif schema_signal and complexity_signal:
         category = 'response_schema_complexity_or_size'
     elif schema_signal and rejection_signal:
         category = 'response_schema_rejected'
@@ -122,13 +135,7 @@ def _provider_diagnostic(error):
         'token limit', 'too many input tokens', 'context length',
     )):
         category = 'request_size_limit'
-    elif diagnostic.get('provider_code') == 'parameter_unknown':
-        category = 'unknown_request_parameter'
-    elif diagnostic.get('provider_code') == 'failed_precondition':
-        category = 'provider_precondition_failed'
-    elif diagnostic.get('provider_code') == 'content_blocked':
-        category = 'content_blocked'
-    elif diagnostic.get('provider_code') in {'invalid_request', 'invalid_request_error', 'invalid_argument'}:
+    elif normalized_provider_code in {'invalid_request', 'invalid_request_error', 'invalid_argument'}:
         category = 'invalid_request_generic'
     elif 'Timeout' in diagnostic['exception_type']:
         category = 'transport_timeout'

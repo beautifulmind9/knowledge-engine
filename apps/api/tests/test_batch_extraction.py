@@ -6,7 +6,10 @@ import pytest
 
 from app.db import mock_data as db
 from app.services import ai_gateway
-from app.services.batch_knowledge_extraction import run_gemini_knowledge_extraction_batch as run_batch
+from app.services.batch_knowledge_extraction import (
+    BATCH_REQUIRED_ASSET_FIELDS,
+    run_gemini_knowledge_extraction_batch as run_batch,
+)
 from app.services.knowledge_extraction import create_extraction_job, persist_state, complete_extraction_job
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
 from app.services.text_chunking import save_chunks
@@ -62,6 +65,11 @@ def test_ten_chunks_one_gateway_call_and_usage_increment(client, batch, monkeypa
     payload = json.loads(calls[0]['input'])
     assert [c['chunk_id'] for c in payload['chunks']] == [j['chunk_id'] for j in jobs]
     assert all(c['source_id'] == s['id'] and c['chunk_text'] for c in payload['chunks'])
+    instructions = payload['instructions']
+    for field in BATCH_REQUIRED_ASSET_FIELDS:
+        assert field in instructions
+    assert 'omit that candidate rather than returning an incomplete object' in instructions
+    assert 'verify that all six required fields are present' in instructions
     for i, job in enumerate(jobs):
         saved = next(a for a in db.knowledge_assets if a['extraction_job_id'] == job['id'])
         assert (saved['source_id'], saved['chunk_id'], saved['title']) == (s['id'], job['chunk_id'], f'Chunk {i}')

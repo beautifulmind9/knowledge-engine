@@ -57,6 +57,7 @@ Rules:
 33. Evidence must directly support every core claim in the asset. If one evidence passage does not support all combined claims, split the asset or choose evidence that does. Do not use a nearby but materially different formula, label, or statement as evidence for another claim.
 34. Preserve distinctions in source terminology. Do not silently treat related labels as interchangeable unless the chunk itself clearly establishes that equivalence.
 35. Use confidence 5 only when the core claim and any populated subtype-specific claims are directly stated or demonstrated by the source. If an important populated field requires synthesis or a strong inference, use confidence 4 or lower.
+36. Scan the entire chunk before deciding it has no reusable knowledge. A chunk may begin with title pages, table-of-contents material, publication details, or other front matter and then continue into substantive prose. Ignore the non-reusable front matter, but still extract supported reusable knowledge from substantive text later in the same chunk. Do not return an empty assets list solely because the chunk begins with front matter.
 """
 
     return {

@@ -64,47 +64,15 @@ GEMINI_BATCH_ASSET_TYPES = [
 
 
 def gemini_batch_response_schema():
-    """Small provider-facing schema; strict KnowledgeAsset validation stays local.
+    """Minimal provider contract; all asset structure is validated locally.
 
-    Gemini only needs a flat formatting contract. Conditional subtype rules and
-    provenance ownership are intentionally enforced after the response returns.
+    Gemini's structured-output compiler only has to route one string payload per
+    chunk. ``assets_json`` contains a JSON-encoded array of candidate asset
+    objects. Knowledge Engine parses that string and validates every candidate
+    against the unchanged strict discriminated ``KnowledgeAsset`` models before
+    anything is persisted.
     """
 
-    string_array = {"type": "array", "items": {"type": "string"}}
-    asset_schema = {
-        "type": "object",
-        "properties": {
-            "asset_type": {"type": "string", "enum": GEMINI_BATCH_ASSET_TYPES},
-            "title": {"type": "string"},
-            "what_it_says": {"type": "string"},
-            "why_it_matters": {"type": "string"},
-            "chapter_or_section": {"type": "string"},
-            "evidence": {"type": "string"},
-            "how_to_apply": string_array,
-            "when_to_use": string_array,
-            "when_not_to_use": string_array,
-            "tradeoffs": string_array,
-            "keywords": {
-                "type": "array",
-                "items": {"type": "string"},
-                "minItems": 1,
-                "maxItems": 8,
-            },
-            "confidence_score": {"type": "integer", "minimum": 1, "maximum": 5},
-            "condition": {"type": "string"},
-            "action": {"type": "string"},
-            "rationale": {"type": "string"},
-            "steps": string_array,
-            "adaptation_notes": {"type": "string"},
-            "what_happened": {"type": "string"},
-            "transferable_lesson": {"type": "string"},
-            "concept_demonstrated": {"type": "string"},
-            "consequence": {"type": "string"},
-            "prevention": {"type": "string"},
-            "components": string_array,
-        },
-        "required": ["asset_type", "title", "what_it_says", "evidence", "keywords"],
-    }
     return {
         "type": "object",
         "properties": {
@@ -116,9 +84,15 @@ def gemini_batch_response_schema():
                     "type": "object",
                     "properties": {
                         "chunk_id": {"type": "string"},
-                        "assets": {"type": "array", "items": asset_schema},
+                        "assets_json": {
+                            "type": "string",
+                            "description": (
+                                "JSON-encoded array of candidate knowledge asset objects "
+                                "for this chunk; use [] when none are supported."
+                            ),
+                        },
                     },
-                    "required": ["chunk_id", "assets"],
+                    "required": ["chunk_id", "assets_json"],
                 },
             }
         },

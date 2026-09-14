@@ -253,3 +253,33 @@ def test_multiple_practice_tasks_are_not_assumed_identical():
     report = review('Agenda\n0–40 min | Cycle\n  - 10 minutes of practice\n  - 15 minutes of practice\n40–60 min | Break\n### Activities\n5-minute role-play')
     assert 'practice_identity_unknown' in codes(report)
     assert 'practice_duration_needs_review' not in codes(report)
+
+
+
+def test_saved_v2_feedback_roleplay_wording():
+    report = review("""Agenda
+0–40 min | Guided Practice
+  - Rotation: 10 minutes practice, 5 minutes observer feedback, 5 minutes swap/reset...
+40–60 min | Break
+### Activities & Completion Checks
+Task: Conduct a 5-minute feedback role-play using the framework.
+""")
+    flags = [i for i in report['issues'] if i['code'] == 'practice_duration_needs_review']
+    assert len(flags) == 1
+    assert flags[0]['agenda_minutes'] == 10
+    assert flags[0]['detail_minutes'] == 5
+    assert flags[0]['severity'] == 'review'
+    assert 'format_switch_needs_review' in codes(report)
+
+
+@pytest.mark.parametrize('detail', [
+    'Optional: Conduct a 5-minute feedback role-play using the framework.',
+    'Alternative: Conduct a 5-minute feedback role-play using the framework.',
+    'Conduct 5-minute feedback before the role-play.',
+    'Conduct a 5-minute observer feedback discussion before practice.',
+])
+def test_feedback_modifier_does_not_match_alternatives_or_separate_tasks(detail):
+    report = review('Agenda\n0–40 min | Guided Practice\n'
+                    '  - Rotation: 10 minutes practice, 5 minutes observer feedback, 5 minutes swap/reset...\n'
+                    '40–60 min | Break\n### Activities & Completion Checks\n' + detail)
+    assert 'practice_duration_needs_review' not in codes(report)

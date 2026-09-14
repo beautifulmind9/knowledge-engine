@@ -99,8 +99,10 @@ def _practice_timings(line):
     """Extract explicit practice/role-play durations, without inferring identity."""
     clean = re.sub(r'[*`]', '', line)
     activity = r'(?:practice|role[- ]play)'
+    # Allow only the observed modifier, directly before role-play.
+    duration_activity = r'(?:practice|(?:feedback[ \t]+)?role[- ]play)'
     patterns = [
-        rf'(?P<n>{NUMBER})\s*[- ]?\s*(?P<unit>{MINUTES})\s+(?:of\s+)?(?P<activity>{activity})\b',
+        rf'(?P<n>{NUMBER})\s*[- ]?\s*(?P<unit>{MINUTES})\s+(?:of\s+)?(?P<activity>{duration_activity})\b',
         rf'\b(?P<activity>{activity})\s*(?:\(\s*|:\s*|for\s+)(?P<n>{NUMBER})\s*(?P<unit>{MINUTES})',
     ]
     results = []

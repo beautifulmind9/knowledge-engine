@@ -95,6 +95,23 @@ def _block(line, number):
     return None
 
 
+def _practice_timings(line):
+    """Extract explicit practice/role-play durations, without inferring identity."""
+    clean = re.sub(r'[*`]', '', line)
+    activity = r'(?:practice|role[- ]play)'
+    patterns = [
+        rf'(?P<n>{NUMBER})\s*[- ]?\s*(?P<unit>{MINUTES})\s+(?:of\s+)?(?P<activity>{activity})\b',
+        rf'\b(?P<activity>{activity})\s*(?:\(\s*|:\s*|for\s+)(?P<n>{NUMBER})\s*(?P<unit>{MINUTES})',
+    ]
+    results = []
+    for pattern in patterns:
+        for match in re.finditer(pattern, clean, re.I):
+            item = {'label': match['activity'].lower(), 'duration_minutes': _minutes(match)}
+            if item not in results:
+                results.append(item)
+    return results
+
+
 def validate_workshop(output, brief, knowledge_snapshot):
     checks, issues = [], []
     def issue(code, severity, message, **evidence):
@@ -156,7 +173,17 @@ def validate_workshop(output, brief, knowledge_snapshot):
                   line_number=block['line_number'], text=block['text'])
         if block['duration_minutes'] <= 0:
             issue('nonpositive_block', 'error', 'An agenda block ends before it starts or has zero duration.', line_number=block['line_number'])
-        if any(abs(d-block['duration_minutes']) >= .01 for d in block['declared_durations']):
+        declared = block['declared_durations']
+        if len(declared) > 1:
+            # Multiple timings may describe components, or a total plus components.
+            parts = list(declared)
+            if len(parts) > 2 and abs(parts[0]-block['duration_minutes']) < .01:
+                parts = parts[1:]
+            if abs(sum(parts)-block['duration_minutes']) >= .01:
+                issue('block_components_need_review', 'review',
+                      'Multiple durations do not reconcile as a complete block breakdown. Clarify components, repeats, or alternatives.',
+                      line_number=block['line_number'], component_minutes=parts, block_minutes=block['duration_minutes'])
+        elif any(abs(d-block['duration_minutes']) >= .01 for d in declared):
             issue('block_duration_conflict', 'error', 'The stated block duration disagrees with its time range.', line_number=block['line_number'])
     ranged = [b for b in blocks if b['start_minute'] is not None]
     if ranged and len(ranged) != len(blocks):
@@ -178,6 +205,27 @@ def validate_workshop(output, brief, knowledge_snapshot):
         if len(matches) == 1 and abs(matches[0]['duration_minutes']-detail['duration_minutes']) >= .01:
             issue('activity_duration_conflict', 'error', f'{matches[0]["label"]} has inconsistent agenda and activity-detail timings.',
                   line_number=index, agenda_minutes=matches[0]['duration_minutes'], detail_minutes=detail['duration_minutes'])
+    # Practice and role-play can refer to the same task, but also to a parent
+    # and subtask. Surface differing timings as review evidence, never proof.
+    agenda_practice = []
+    for index in sorted(agenda_lines):
+        for item in _practice_timings(lines[index-1]):
+            agenda_practice.append({**item, 'line_number': index})
+    for index, line in enumerate(lines, 1):
+        if index in agenda_lines or re.search(r'\b(optional|alternative|for example|could|instead)\b', line, re.I):
+            continue
+        for detail in _practice_timings(line):
+            if len(agenda_practice) == 1:
+                candidate = agenda_practice[0]
+                if abs(candidate['duration_minutes']-detail['duration_minutes']) >= .01:
+                    issue('practice_duration_needs_review', 'review',
+                          'Agenda practice timing differs from a later practice/role-play detail. Confirm whether these describe the same task or a separately timed subtask.',
+                          line_number=index, agenda_line_number=candidate['line_number'],
+                          agenda_minutes=candidate['duration_minutes'], detail_minutes=detail['duration_minutes'])
+            elif agenda_practice and any(abs(c['duration_minutes']-detail['duration_minutes']) >= .01 for c in agenda_practice):
+                issue('practice_identity_unknown', 'review',
+                      'Multiple agenda practice timings could match this detail. Use explicit task labels to reconcile durations.',
+                      line_number=index, candidates=agenda_practice, detail_minutes=detail['duration_minutes'])
     rules = []
     for group in knowledge_snapshot:
         asset = group['canonical_asset']

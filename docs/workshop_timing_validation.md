@@ -55,3 +55,11 @@ Report version 3 counts only agenda rows at the section's base indentation. Inde
 Malformed timestamps such as `0:35–0:75` are explicitly flagged as `malformed_elapsed_time`. The report provisionally interprets these as elapsed minutes (40 minutes in this example), preserving the source-rule warning, but the total check remains `unknown` until notation is corrected. Use `35–75 min` or `0:35–1:15`. Incomplete parsed agendas likewise cannot claim a verified total or a definite total mismatch.
 
 An original regression reconstructs the reported 90-to-185-minute counting failure using nested notes and later activity details. It now calculates 90 minutes, retains the 40-minute format-switch review flag, and requires correction of malformed notation. Verification: **92 tests passed**, zero live provider calls. Recheck saved outputs through `GET /outputs/{id}/quality`; no regeneration is required.
+
+## Component and cross-section follow-up
+
+Report version 4 reconciles multiple inline durations as a potential block breakdown rather than comparing every part with the whole. A 30-minute range containing 10 + 5 + 15 minutes passes this arithmetic check. A leading repeated total is supported; unreconciled multiple durations require review because repeats, alternatives, and incomplete breakdowns cannot be inferred safely.
+
+Explicit practice timings (such as `10 minutes of practice`, `10-minute practice`, or `Practice (10 minutes)`) in agenda rows or nested notes are compared with later practice/role-play timings. Differing durations produce `practice_duration_needs_review`, with both durations and line references. This is not a definitive identity match: a role-play could be a subtask. Multiple candidate practice tasks produce `practice_identity_unknown`; optional alternatives are skipped. This limited vocabulary is not a general semantic contradiction detector.
+
+Verification: **102 tests passed**, zero live provider calls. Fixtures reconstruct the screenshot patterns; the private saved V1/V2 text was not available here. Recheck both saved quality endpoints after pulling/restarting before closing the acceptance gate.

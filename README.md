@@ -81,7 +81,7 @@ Back up under Data & usage. The ZIP includes private source files and saved work
 
 The implementation covers all eight remaining sprint areas. **The full v1 beta acceptance gates are not yet closed.** Live Gemini output review, the complete real-book run and quality audit, browser/mobile acceptance, and an external tester remain outstanding. Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
 
-Workshop quality reports check top-level agenda timings and exclude nested notes and later sections. Malformed timestamps require review; saved outputs can be rechecked without a Gemini call. See [timing validation](docs/workshop_timing_validation.md).
+Workshop quality reports check top-level agenda timings and exclude nested notes and later sections. Component durations are reconciled, and differing practice/role-play timings across sections are flagged for review. Malformed timestamps require review; saved outputs can be rechecked without a Gemini call. See [timing validation](docs/workshop_timing_validation.md).
 
 - [Item-level sprint status](docs/sprint_status.md)
 - [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)

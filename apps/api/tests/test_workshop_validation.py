@@ -214,3 +214,42 @@ def test_valid_clock_notation_is_not_flagged_as_malformed():
     report = review('Agenda\n0:00–0:20 | Welcome\n0:20–0:40 | Practice\n0:40–1:00 | Break')
     assert report['validation_status'] == 'checks_passed'
     assert 'malformed_elapsed_time' not in codes(report)
+
+
+@pytest.mark.parametrize('parts', ['10 minutes demonstration + 5 minutes practice + 15 minutes discussion',
+                                  '30 minutes total: 10 minutes demonstration + 5 minutes practice + 15 minutes discussion'])
+def test_parent_duration_is_not_compared_to_each_component(parts):
+    report = review('Agenda\n0–30 min | Learning cycle: ' + parts, '30 minutes total', rules=[])
+    assert report['validation_status'] == 'checks_passed', report
+
+
+def test_unreconciled_components_require_review():
+    report = review('Agenda\n0–30 min | Cycle: 10 minutes demonstration + 5 minutes practice + 10 minutes discussion',
+                    '30 minutes total', rules=[])
+    assert 'block_components_need_review' in codes(report)
+    assert 'block_duration_conflict' not in codes(report)
+
+
+@pytest.mark.parametrize('practice', ['10 minutes of practice', '10-minute practice', 'Practice (10 minutes)'])
+def test_cross_section_practice_roleplay_difference_requires_review(practice):
+    report = review('Agenda\n0–40 min | Guided Practice\n  - Cycle: ' + practice +
+                    '\n40–60 min | Break\n### Activities & Completion Checks\nUse a 5-minute role-play.')
+    assert 'practice_duration_needs_review' in codes(report)
+    assert 'format_switch_needs_review' in codes(report)
+    assert report['timing_checks'][0]['calculated_minutes'] == 60
+    flag = next(i for i in report['issues'] if i['code'] == 'practice_duration_needs_review')
+    assert (flag['agenda_minutes'], flag['detail_minutes']) == (10, 5)
+    assert flag['severity'] == 'review'
+
+
+@pytest.mark.parametrize('detail', ['Use a 10-minute role-play.', 'Optional: use a 5-minute role-play.',
+                                   '5-minute reflection'])
+def test_matching_optional_or_unrelated_detail_does_not_raise_practice_conflict(detail):
+    report = review('Agenda\n0–40 min | Cycle\n  - 10 minutes of practice\n40–60 min | Break\n### Activities\n' + detail)
+    assert 'practice_duration_needs_review' not in codes(report)
+
+
+def test_multiple_practice_tasks_are_not_assumed_identical():
+    report = review('Agenda\n0–40 min | Cycle\n  - 10 minutes of practice\n  - 15 minutes of practice\n40–60 min | Break\n### Activities\n5-minute role-play')
+    assert 'practice_identity_unknown' in codes(report)
+    assert 'practice_duration_needs_review' not in codes(report)

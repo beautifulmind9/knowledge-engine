@@ -158,3 +158,7 @@ Follow-up verification: **81 tests passed**, zero live provider calls; JavaScrip
 ### Parser correction — nested notes and section boundaries
 
 Quality report v3 excludes nested agenda notes and stops at every Markdown heading level. Malformed elapsed timestamps are explicitly flagged and totals remain provisional; genuine format-switch warnings remain visible. A reconstructed 90-minute agenda no longer totals 185 minutes. Full local suite: **92 tests passed**, zero Gemini calls. Existing saved outputs can be rechecked without changing their history. Live and external acceptance gates remain open.
+
+### Component timing follow-up
+
+Report v4 fixes the 30-minute versus 10+5+15 subduration false positive and adds evidence-bearing review flags for differing agenda practice and later role-play durations. Ambiguous task identities remain explicit review items. **102 local tests passed**, no Gemini calls. Rechecking the actual saved V1/V2 outputs remains pending; screenshot-based reconstructed regressions do not close that acceptance gate.

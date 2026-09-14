@@ -8,6 +8,7 @@ from app.db import mock_data as db
 from app.services import ai_gateway
 from app.services.batch_knowledge_extraction import (
     BATCH_REQUIRED_ASSET_FIELDS,
+    _evidence_supported_by_text,
     run_gemini_knowledge_extraction_batch as run_batch,
 )
 from app.services.knowledge_extraction import create_extraction_job, persist_state, complete_extraction_job
@@ -70,6 +71,7 @@ def test_ten_chunks_one_gateway_call_and_usage_increment(client, batch, monkeypa
         assert field in instructions
     assert 'omit that candidate rather than returning an incomplete object' in instructions
     assert 'verify that all six required fields are present' in instructions
+    assert 'Evidence copied from or grounded in another supplied chunk will be rejected' in instructions
     for i, job in enumerate(jobs):
         saved = next(a for a in db.knowledge_assets if a['extraction_job_id'] == job['id'])
         assert (saved['source_id'], saved['chunk_id'], saved['title']) == (s['id'], job['chunk_id'], f'Chunk {i}')
@@ -112,6 +114,39 @@ def test_invalid_chunk_preserves_old_extraction_and_other_replacements(batch, mo
         active = [a for a in db.knowledge_assets if a['chunk_id'] == job['chunk_id'] and a['active']]
         assert len(active) == 1 and active[0]['extraction_version'] == 2
         assert next(a for a in db.knowledge_assets if a['chunk_id'] == job['chunk_id'] and not a['active'])['superseded_by_job_id'] == job['id']
+
+
+def test_cross_chunk_evidence_is_rejected_without_superseding_old_assets(batch, monkeypatch):
+    _, jobs, groups = batch
+    old, replacements = seed_replacements(jobs, groups)
+    groups[0]['assets'][0]['evidence'] = 'Original chunk 1: practice breaks.'
+    calls = provider(monkeypatch, {'results': groups})
+
+    result = run_batch([j['id'] for j in replacements])
+
+    assert len(calls) == 1
+    assert len(result['results']) == 9 and len(result['failures']) == 1
+    failure = result['failures'][0]
+    assert failure['job_id'] == replacements[0]['id']
+    assert 'Evidence provenance mismatch' in failure['error']
+    assert jobs[1]['chunk_id'] in failure['error']
+    assert db.knowledge_assets[0] == old[0]
+    assert db.knowledge_assets[0]['active']
+    assert replacements[0]['status'] == 'failed'
+    assert not any(a.get('extraction_job_id') == replacements[0]['id'] for a in db.knowledge_assets)
+
+
+def test_ellipsis_evidence_fragments_are_accepted_in_order():
+    text = (
+        'A clear workshop prompt should tell people exactly what to discuss. '
+        'Several supporting examples may appear between the useful excerpts. '
+        'The answer should remain personal and open to multiple perspectives.'
+    )
+    evidence = (
+        'A clear workshop prompt should tell people exactly what to discuss... '
+        'The answer should remain personal and open to multiple perspectives.'
+    )
+    assert _evidence_supported_by_text(evidence, text)
 
 
 @pytest.mark.parametrize('failure', ['provider', 'quota', 'local_cap'])

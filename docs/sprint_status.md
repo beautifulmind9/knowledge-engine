@@ -154,3 +154,7 @@ Added local timing and numeric format-switch review after the reported live-test
 See [workshop_timing_validation.md](workshop_timing_validation.md) for supported input formats, limitations, and the next explicitly chosen live test. Full-source and external acceptance gates remain open. No Gemini calls were made during this follow-up.
 
 Follow-up verification: **81 tests passed**, zero live provider calls; JavaScript syntax and patch whitespace checks passed. Browser/mobile acceptance remains pending.
+
+### Parser correction — nested notes and section boundaries
+
+Quality report v3 excludes nested agenda notes and stops at every Markdown heading level. Malformed elapsed timestamps are explicitly flagged and totals remain provisional; genuine format-switch warnings remain visible. A reconstructed 90-minute agenda no longer totals 185 minutes. Full local suite: **92 tests passed**, zero Gemini calls. Existing saved outputs can be rechecked without changing their history. Live and external acceptance gates remain open.

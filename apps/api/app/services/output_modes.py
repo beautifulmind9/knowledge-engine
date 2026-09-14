@@ -11,7 +11,7 @@ MODES = {
 def quality_report(output, brief=None, knowledge_snapshot=None):
     mode = MODES.get(output["output_type"], {"checks": []})
     structural = [{"criterion": word, "passed": word.lower() in output["content"].lower()} for word in mode["checks"]]
-    report = {"report_version": 2, "validation_status": "not_evaluated", "issues": [],
+    report = {"report_version": 3, "validation_status": "not_evaluated", "issues": [],
             "structure_checks": structural, "has_provenance": bool(output["applied_knowledge"]),
             "human_review_required": True, "human_review_criteria": ["Ready-to-use artifact", "Audience and channel fit", "Source faithfulness", "Design choices separated"],
             "note": "Headings and citation IDs do not establish that a plan is valid. Even passed timing checks require human review of meaning and source faithfulness."}

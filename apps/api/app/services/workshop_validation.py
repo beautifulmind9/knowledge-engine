@@ -8,7 +8,7 @@ import re
 NUMBER = r'\d+(?:\.\d+)?'
 MINUTES = r'(?:minutes?|mins?)\b'
 DURATION = re.compile(rf'(?P<n>{NUMBER})\s*[- ]?\s*(?P<unit>hours?|hrs?|minutes?|mins?)\b', re.I)
-RANGE = re.compile(r'(?<![\d:])(?P<a>\d{1,3}(?::[0-5]\d)?)\s*[-–—]\s*(?P<b>\d{1,3}(?::[0-5]\d)?)(?:\s*(?:minutes?|mins?))?(?![\d:])', re.I)
+RANGE = re.compile(r'(?<![\d:])(?P<a>\d{1,3}(?::\d{2})?)\s*[-–—]\s*(?P<b>\d{1,3}(?::\d{2})?)(?:\s*(?:minutes?|mins?))?(?![\d:])', re.I)
 FORMAT_RULE = re.compile(rf'\b(?:switch|change|vary|alternate)\b[^.!?\n]{{0,100}}?\b(?:teaching\s+)?formats?\b[^.!?\n]{{0,45}}?\b(?:every|at most|no more than)\s+({NUMBER})\s*{MINUTES}', re.I)
 STOP_SECTIONS = {'activities','activity details','facilitator notes','breaks','learning goals','materials','design choices','applied knowledge','checks','completion checks','review questions','notes'}
 
@@ -83,7 +83,9 @@ def _block(line, number):
             return None
         declared = [_minutes(m) for m in durations if m.start() >= time_range.end()]
         return {'label': label, 'duration_minutes': end-start, 'start_minute': start,
-                'end_minute': end, 'line_number': number, 'text': line, 'declared_durations': declared}
+                'end_minute': end, 'line_number': number, 'text': line, 'declared_durations': declared,
+                'malformed_time': any(':' in value and int(value.split(':')[1]) >= 60
+                                      for value in (time_range['a'], time_range['b']))}
     if len(durations) == 1:
         match = durations[0]
         label = (clean[:match.start()] + ' ' + clean[match.end():]).strip(' |:—–-()')
@@ -103,16 +105,25 @@ def validate_workshop(output, brief, knowledge_snapshot):
     lines = output['content'].splitlines()
     inside, found = False, False
     blocks, agenda_lines, declared_totals = [], set(), []
+    # Preserve indentation: nested notes belong to their parent block.
+    agenda_indent = None
     for index, line in enumerate(lines, 1):
         heading = _heading(line)
         if re.match(r'^(?:timed\s+)?agenda(?:\s*\(.*\))?$', heading):
             inside, found = True, True
+            agenda_indent = None
             continue
-        if inside and (heading in STOP_SECTIONS or (line.startswith('## ') and not DURATION.search(line) and not RANGE.search(line))):
+        if inside and (heading in STOP_SECTIONS or re.match(r'^\s{0,3}#{1,6}\s+', line)):
             inside = False
         if not inside or not line.strip():
             continue
         agenda_lines.add(index)
+        indent = len(line.expandtabs(4)) - len(line.expandtabs(4).lstrip())
+        if agenda_indent is None:
+            agenda_indent = indent
+        if indent > agenda_indent:
+            continue
+        agenda_indent = min(agenda_indent, indent)
         if re.match(r'^[\s|:\-]+$', line) or re.match(r'^\s*\|?\s*(?:time|duration)\s*\|', line, re.I):
             continue
         if re.match(r'^\s*[*| ]*total\b', line, re.I):
@@ -130,13 +141,19 @@ def validate_workshop(output, brief, knowledge_snapshot):
     if not found or not blocks:
         issue('agenda_unparsed', 'review', 'No supported timed Agenda section was found. Use one row per block with elapsed minute ranges.')
     total = sum(b['duration_minutes'] for b in blocks) if blocks else None
-    checks.append({'criterion':'agenda_total', 'status': 'unknown' if target is None or total is None else ('passed' if abs(total-target)<.01 else 'failed'),
+    incomplete = any(i['code'] == 'unparsed_agenda_line' for i in issues)
+    provisional = incomplete or any(b.get('malformed_time') for b in blocks)
+    checks.append({'criterion':'agenda_total', 'status': 'unknown' if target is None or total is None or provisional else ('passed' if abs(total-target)<.01 else 'failed'),
                    'requested_minutes':target, 'calculated_minutes':total})
-    if target is not None and total is not None and abs(total-target) >= .01:
+    if not provisional and target is not None and total is not None and abs(total-target) >= .01:
         issue('agenda_total_mismatch', 'error', f'Agenda blocks total {total:g} minutes; the brief requests {target:g}.')
-    if total is not None and any(abs(value-total) >= .01 for value in declared_totals):
+    if not provisional and total is not None and any(abs(value-total) >= .01 for value in declared_totals):
         issue('declared_total_mismatch', 'error', 'The agenda’s stated total disagrees with the sum of its blocks.', declared_minutes=declared_totals, calculated_minutes=total)
     for block in blocks:
+        if block.get('malformed_time'):
+            issue('malformed_elapsed_time', 'review',
+                  'A timestamp has a minute component of 60 or more. The displayed duration is provisional, interpreting it as elapsed minutes; rewrite using minute ranges or valid HH:MM notation.',
+                  line_number=block['line_number'], text=block['text'])
         if block['duration_minutes'] <= 0:
             issue('nonpositive_block', 'error', 'An agenda block ends before it starts or has zero duration.', line_number=block['line_number'])
         if any(abs(d-block['duration_minutes']) >= .01 for d in block['declared_durations']):

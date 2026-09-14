@@ -47,3 +47,11 @@ Run `.venv/bin/python -m pytest apps/api/tests -q`. The tests include the report
 After the user's quota resets, one explicitly chosen generation OR revision call can test the new behavior. Those are separate actions; testing both takes two calls. Inspect its quality report and the actual plan before deciding whether to resume book interpretation. No live call or future automatic run is scheduled by this change.
 
 Verification result: **81 tests passed** in the full suite, with two upstream deprecation warnings. JavaScript syntax and `git diff --check` also passed. The UI change was not visually verified because this session's cloud browser cannot access the localhost app.
+
+## Parser correction after local acceptance feedback
+
+Report version 3 counts only agenda rows at the section's base indentation. Indented notes and nested exercise ranges do not add to the total. Any new Markdown heading (levels 1–6), including `### Activities & Completion Checks`, ends the agenda section.
+
+Malformed timestamps such as `0:35–0:75` are explicitly flagged as `malformed_elapsed_time`. The report provisionally interprets these as elapsed minutes (40 minutes in this example), preserving the source-rule warning, but the total check remains `unknown` until notation is corrected. Use `35–75 min` or `0:35–1:15`. Incomplete parsed agendas likewise cannot claim a verified total or a definite total mismatch.
+
+An original regression reconstructs the reported 90-to-185-minute counting failure using nested notes and later activity details. It now calculates 90 minutes, retains the 40-minute format-switch review flag, and requires correction of malformed notation. Verification: **92 tests passed**, zero live provider calls. Recheck saved outputs through `GET /outputs/{id}/quality`; no regeneration is required.

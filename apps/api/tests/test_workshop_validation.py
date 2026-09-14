@@ -166,3 +166,51 @@ def test_stated_agenda_total_must_match_its_blocks():
     report=review('Agenda\n0–20 min | Demonstration\n20–40 min | Practice\n40–60 min | Break\nTotal: 50 minutes')
     assert report['validation_status']=='failed'
     assert 'declared_total_mismatch' in codes(report)
+
+
+@pytest.mark.parametrize('boundary',[
+    '# Activities & Completion Checks', '## Activities & Completion Checks',
+    '### Activities & Completion Checks', '#### Practice (5 minutes)',
+    '##### Task Time Limit', '###### Follow-up',
+])
+def test_reported_90_minute_agenda_does_not_become_185(boundary):
+    # Reconstruction of the screenshot's failure pattern, not the private output.
+    report = review('''## Agenda
+- 0:00–0:15 | Welcome
+- 0:15–0:35 | Demonstration
+- 0:35–0:75 | Guided Practice
+  - At the 85-minute mark, remind participants to wrap up.
+- 0:75–0:85 | Break
+- 0:85–0:90 | Reflection
+''' + boundary + '''
+5-minute role-play
+Task Time Limit: 5 minutes
+''', '90 minutes total')
+    assert len(report['agenda_blocks']) == 5
+    assert report['timing_checks'][0]['calculated_minutes'] == 90
+    assert report['timing_checks'][0]['status'] == 'unknown'
+    assert 'agenda_total_mismatch' not in codes(report)
+    assert 'malformed_elapsed_time' in codes(report)
+    assert report['validation_status'] == 'needs_review'
+    assert any(i['code'] == 'format_switch_needs_review' and '40 minutes' in i['message']
+               for i in report['issues'])
+
+
+@pytest.mark.parametrize('prefix,nested', [('- ', '  - '), ('1. ', '   - '), ('', '    '), ('  - ', '    - ')])
+def test_nested_notes_and_ranges_do_not_add_agenda_blocks(prefix, nested):
+    content = ('## Agenda\n' + prefix + '0–20 min | Welcome\n'
+               + nested + '10–15 min | Short exercise\n'
+               + nested + 'Reminder at the 85-minute mark\n'
+               + prefix + '20–40 min | Practice\n'
+               + prefix + '40–60 min | Break\n### Activities & Completion Checks\n'
+               + '5-minute role-play')
+    report = review(content)
+    assert report['validation_status'] == 'checks_passed', report
+    assert len(report['agenda_blocks']) == 3
+    assert report['timing_checks'][0]['calculated_minutes'] == 60
+
+
+def test_valid_clock_notation_is_not_flagged_as_malformed():
+    report = review('Agenda\n0:00–0:20 | Welcome\n0:20–0:40 | Practice\n0:40–1:00 | Break')
+    assert report['validation_status'] == 'checks_passed'
+    assert 'malformed_elapsed_time' not in codes(report)

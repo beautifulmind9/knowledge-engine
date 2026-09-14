@@ -1,6 +1,7 @@
 """One provider request; strict routing before independent chunk validation."""
 import json
 import os
+import re
 
 from pydantic import ValidationError
 
@@ -57,6 +58,65 @@ def _candidate_assets_for_group(group: dict):
     raise ValueError("Each batch result must contain only chunk_id and assets_json.")
 
 
+def _normalize_evidence(value: str | None) -> str:
+    if not value:
+        return ""
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _evidence_supported_by_text(evidence: str | None, chunk_text: str | None) -> bool:
+    """Conservative deterministic evidence match for provenance guardrails.
+
+    Exact normalized excerpts are accepted. Evidence that joins multiple source
+    excerpts with an ellipsis is also accepted when each meaningful fragment
+    occurs in order. Paraphrases are intentionally not rejected here.
+    """
+    evidence_text = _normalize_evidence(evidence)
+    source_text = _normalize_evidence(chunk_text)
+    if not evidence_text or not source_text:
+        return False
+    if evidence_text in source_text:
+        return True
+
+    parts = re.split(r"(?:\.{3,}|…)", evidence or "")
+    fragments = [
+        _normalize_evidence(part)
+        for part in parts
+        if len(_normalize_evidence(part).split()) >= 5
+    ]
+    if len(fragments) < 2:
+        return False
+
+    position = 0
+    for fragment in fragments:
+        found = source_text.find(fragment, position)
+        if found == -1:
+            return False
+        position = found + len(fragment)
+    return True
+
+
+def _cross_chunk_evidence_source(
+    evidence: str | None,
+    own_chunk_id: str,
+    chunk_text_by_id: dict[str, str],
+) -> str | None:
+    """Return another batch chunk that clearly owns the evidence, if any.
+
+    We only reject when evidence does not match its assigned chunk but does
+    clearly match another supplied chunk. This catches deterministic routing
+    leakage without rejecting legitimate close paraphrases that match neither.
+    """
+    if _evidence_supported_by_text(evidence, chunk_text_by_id.get(own_chunk_id)):
+        return None
+    for chunk_id, chunk_text in chunk_text_by_id.items():
+        if chunk_id == own_chunk_id:
+            continue
+        if _evidence_supported_by_text(evidence, chunk_text):
+            return chunk_id
+    return None
+
+
 def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
     if not 1 <= len(job_ids) <= MAX_BATCH_CHUNKS or len(set(job_ids)) != len(job_ids):
         raise ValueError("Supply 1 to 10 distinct extraction jobs.")
@@ -67,12 +127,17 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
     if len(set(chunk_ids)) != len(chunk_ids):
         raise ValueError("Batch chunk IDs must be unique.")
     requests = [get_extraction_request(job_id) for job_id in job_ids]
+    chunk_text_by_id = {
+        job['chunk_id']: request['chunk_text']
+        for job, request in zip(jobs, requests)
+    }
     model = os.getenv('GEMINI_MODEL', DEFAULT_MODEL)
     required_fields = ', '.join(BATCH_REQUIRED_ASSET_FIELDS)
     payload = {
         'instructions': requests[0]['instructions'] + '\nBatch-specific response rules (these override single-chunk output formatting): '
         'Treat each chunks entry as a separate source boundary. Use only that entry’s chunk_text for its assets; '
-        'never combine evidence across chunks. Return exactly one results group for every supplied chunk_id, in input order. '
+        'never combine evidence across chunks. Evidence copied from or grounded in another supplied chunk will be rejected. '
+        'Return exactly one results group for every supplied chunk_id, in input order. '
         'Each results item must contain chunk_id and assets_json only. assets_json must itself be a valid JSON-encoded array '
         'of candidate asset objects, or the exact string [] when the chunk has no reusable knowledge. '
         f'CRITICAL INNER-ASSET CONTRACT: every candidate object, regardless of asset_type, must include all six common required fields: {required_fields}. '
@@ -114,6 +179,19 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
             candidate_assets = _candidate_assets_for_group(group)
             if not isinstance(candidate_assets, list):
                 raise ValueError('Candidate assets must be an array.')
+            for asset in candidate_assets:
+                if not isinstance(asset, dict):
+                    continue
+                foreign_chunk_id = _cross_chunk_evidence_source(
+                    asset.get('evidence'),
+                    job['chunk_id'],
+                    chunk_text_by_id,
+                )
+                if foreign_chunk_id:
+                    raise ValueError(
+                        'Evidence provenance mismatch: evidence assigned to '
+                        f"{job['chunk_id']} matches supplied chunk {foreign_chunk_id} instead."
+                    )
             # System-owned provenance is assigned before STRICT internal asset
             # validation. The minimal Gemini schema is only a transport contract.
             hydrated = {

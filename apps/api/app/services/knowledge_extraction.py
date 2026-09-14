@@ -210,6 +210,39 @@ def normalize_text(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
 
 
+def _evidence_supported_by_text(evidence: str | None, chunk_text: str | None) -> bool:
+    """Conservative deterministic evidence support used by source audits.
+
+    Exact normalized excerpts are accepted. Evidence that joins multiple source
+    excerpts with an ellipsis is also accepted when each meaningful fragment
+    occurs in order. Close paraphrases remain reviewable rather than being
+    automatically treated as verified.
+    """
+    evidence_text = normalize_text(evidence)
+    source_text = normalize_text(chunk_text)
+    if not evidence_text or not source_text:
+        return False
+    if evidence_text in source_text:
+        return True
+
+    parts = re.split(r"(?:\.{3,}|…)", evidence or "")
+    fragments = [
+        normalize_text(part)
+        for part in parts
+        if len(normalize_text(part).split()) >= 5
+    ]
+    if len(fragments) < 2:
+        return False
+
+    position = 0
+    for fragment in fragments:
+        found = source_text.find(fragment, position)
+        if found == -1:
+            return False
+        position = found + len(fragment)
+    return True
+
+
 def query_tokens(query: str) -> list[str]:
     return [token for token in normalize_text(query).split() if len(token) > 1]
 
@@ -600,8 +633,9 @@ def audit_source(source_id):
     chunk_map={c["id"]:c for c in chunks}
     evidence_review=[]
     for a in current:
-        evidence=normalize_text(a.get("evidence"))
-        if evidence and evidence not in normalize_text(chunk_map.get(a["chunk_id"],{}).get("text")):
+        evidence=a.get("evidence")
+        chunk_text=chunk_map.get(a["chunk_id"],{}).get("text")
+        if evidence and not _evidence_supported_by_text(evidence, chunk_text):
             evidence_review.append(a["id"])
     return {**overview, "interpretation":get_source_interpretation_summary(source_id) if source.get("chunks_path") else None,
         "jobs":[j for j in extraction_jobs if j["source_id"]==source_id],

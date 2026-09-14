@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 def _provider_diagnostic(error):
     """Allowlisted metadata only. Never serialize an exception/body/request.
 
-    Raw messages can echo private inputs even when short. Emit a fixed category
-    instead of attempting to redact arbitrary source text from provider prose.
+    Raw messages can echo private inputs even when short. They may be inspected
+    in memory only to choose a fixed category; they are never returned or logged.
     """
     known_types = {
         'BadRequestError', 'RateLimitError', 'InternalServerError', 'APITimeoutError',
@@ -40,27 +40,56 @@ def _provider_diagnostic(error):
         value = getattr(error, field, None)
         if type(value) is int and 0 <= value <= 599:
             diagnostic[field] = value
-    nested = getattr(getattr(error, 'data', None), 'error', None)
-    body = getattr(error, 'body', None)
-    metadata = body.get('error', body) if type(body) is dict else {}
-    if type(metadata) is not dict:
-        metadata = {}
+
+    metadata = {}
+    message_candidates = []
+    for container in (getattr(error, 'body', None), getattr(error, 'data', None)):
+        if type(container) is dict:
+            nested = container.get('error', container)
+            if type(nested) is dict:
+                for key, value in nested.items():
+                    metadata.setdefault(key, value)
+                if type(nested.get('message')) is str:
+                    message_candidates.append(nested['message'])
+
+    nested_object = getattr(getattr(error, 'data', None), 'error', None)
     for field in ('status', 'reason', 'code'):
         value = getattr(error, field, None)
-        if value is None:
-            value = getattr(nested, field, None)
+        if value is None and nested_object is not None:
+            value = getattr(nested_object, field, None)
         if value is None:
             value = metadata.get(field)
         if type(value) is str and value in known_statuses:
             diagnostic['provider_' + field] = value
-    # Classify a few actionable failures without copying any provider wording.
-    message = getattr(error, 'message', None)
-    text = message[:4096].lower() if type(message) is str else ''
-    if 'schema' in text and any(word in text for word in ('complex', 'nested', 'depth', 'size', 'large')):
+
+    direct_message = getattr(error, 'message', None)
+    if type(direct_message) is str:
+        message_candidates.append(direct_message)
+    try:
+        rendered = str(error)
+    except Exception:
+        rendered = ''
+    if rendered:
+        message_candidates.append(rendered)
+
+    # Inspect provider prose only in memory. Emit a fixed category, never prose.
+    text = '\n'.join(message_candidates)[:8192].lower()
+    schema_signal = any(word in text for word in ('schema', 'response_format', 'response format', 'json schema'))
+    complexity_signal = any(word in text for word in (
+        'complex', 'nested', 'depth', 'too large', 'too many', 'size', 'simplif',
+        'combinatorial', 'states for serving',
+    ))
+    rejection_signal = any(word in text for word in (
+        'invalid', 'unsupported', 'not supported', 'invalid_argument', 'bad request',
+    ))
+    if schema_signal and complexity_signal:
         category = 'response_schema_complexity_or_size'
-    elif 'schema' in text and any(word in text for word in ('invalid', 'unsupported', 'invalid_argument')):
+    elif schema_signal and rejection_signal:
         category = 'response_schema_rejected'
-    elif any(word in text for word in ('request too large', 'payload too large', 'token limit')):
+    elif any(word in text for word in (
+        'request too large', 'payload too large', 'request payload size',
+        'token limit', 'too many input tokens', 'context length',
+    )):
         category = 'request_size_limit'
     elif 'Timeout' in diagnostic['exception_type']:
         category = 'transport_timeout'

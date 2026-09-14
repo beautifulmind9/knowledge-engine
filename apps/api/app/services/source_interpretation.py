@@ -1,6 +1,6 @@
 from app.db.mock_data import extraction_jobs, knowledge_assets
 from app.models.knowledge_extraction import KnowledgeExtractionStatus
-from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
+from app.services.batch_knowledge_extraction import MAX_BATCH_CHUNKS, run_gemini_knowledge_extraction_batch
 from app.services.knowledge_extraction import (
     create_extraction_job,
     find_source,
@@ -9,7 +9,7 @@ from app.services.knowledge_extraction import (
 from app.services.text_chunking import load_chunks
 
 
-MAX_CHUNKS_PER_RUN = 5
+MAX_CHUNKS_PER_RUN = MAX_BATCH_CHUNKS
 
 
 def get_source_chunks(source_id: str):
@@ -153,6 +153,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
     processed_results = []
     stopped_reason = None
 
+    selected_jobs = []
     for chunk in chunks:
         chunk_id = chunk.get("id")
         if chunk_id in completed_chunk_ids:
@@ -168,25 +169,19 @@ def interpret_source(source_id: str, max_chunks: int = 1):
             chunk_id=chunk_id,
         )
 
+        selected_jobs.append(job["id"])
+        if len(selected_jobs) >= max_chunks:
+            break
+
+    if selected_jobs:
         try:
-            result = run_gemini_knowledge_extraction(job["id"])
+            batch = run_gemini_knowledge_extraction_batch(selected_jobs)
+            processed_results = batch['results']
+            if batch['failures']:
+                stopped_reason = f"{len(batch['failures'])} chunk result(s) failed validation. Valid chunks were saved; retry failed chunks explicitly."
         except Exception as error:
             message = str(getattr(error, "detail", error))
-            lowered = message.lower()
-            if "429" in message or "quota" in lowered or "too_many_requests" in lowered:
-                stopped_reason = (
-                    "Gemini free-tier rate limit reached. Progress was saved; "
-                    "retry later to continue with the remaining chunks."
-                )
-            else:
-                stopped_reason = f"Interpretation stopped after an extraction error: {message}"
-            break
-
-        processed_results.append(result)
-        completed_chunk_ids.add(chunk_id)
-
-        if len(processed_results) >= max_chunks:
-            break
+            stopped_reason = f"Interpretation stopped after an extraction error: {message}"
 
     source["stopped_reason"] = stopped_reason
     summary = get_source_interpretation_summary(source_id)

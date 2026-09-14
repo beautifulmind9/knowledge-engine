@@ -181,10 +181,10 @@ def interpret_source_knowledge(
     max_chunks: int = Query(
         default=1,
         ge=1,
-        le=5,
+        le=10,
         description=(
             "Maximum number of source chunks to interpret in this run. "
-            "Small batches protect the free AI quota and make the workflow resumable."
+            "Up to 10 chunks share one provider call; progress remains per chunk."
         ),
     ),
 ):

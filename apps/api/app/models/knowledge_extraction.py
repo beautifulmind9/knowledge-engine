@@ -35,3 +35,14 @@ class KnowledgeExtractionJob(BaseModel):
 
 class KnowledgeExtractionResultSubmission(BaseModel):
     assets: list[KnowledgeAsset] = Field(default_factory=list)
+
+
+class KnowledgeExtractionBatchGroup(BaseModel):
+    model_config = {"extra": "forbid"}
+    chunk_id: str
+    assets: list[KnowledgeAsset]
+
+
+class KnowledgeExtractionBatchResponse(BaseModel):
+    model_config = {"extra": "forbid"}
+    results: list[KnowledgeExtractionBatchGroup] = Field(min_length=1, max_length=10)

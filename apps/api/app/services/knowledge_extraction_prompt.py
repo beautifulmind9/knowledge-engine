@@ -43,7 +43,13 @@ Rules:
 19. For a process, always provide ordered steps.
 20. For a framework, always provide its named components. Only use steps as well if the source presents an ordered procedure for using the framework.
 21. For a pattern, provide steps and adaptation_notes when supported.
-22. Confidence is 1 to 5. Use 5 when the asset is explicitly stated and directly supported by the evidence; use 4 when it is strongly implied; use 3 when meaningful interpretation is required. Do not default to 3 when the source states the asset plainly.
+22. Confidence measures how directly the source supports the asset, not how useful, complex, specific, or novel the asset is. Use this rubric:
+   - 5: the core claim and every populated subtype-specific claim are explicitly stated or directly demonstrated by the source. A faithful paraphrase or near-verbatim restatement can and should be 5.
+   - 4: the asset is not stated in one place, but it is strongly supported by combining nearby explicit statements. Only minimal synthesis is required and no substantive inference is needed.
+   - 3: meaningful interpretation, generalization, or inference is required. The evidence supports the conclusion, but the source does not state the core claim directly.
+   - 2: support is partial, weak, or materially uncertain. Prefer omitting the asset if a key claim cannot be supported clearly.
+   - 1: support is speculative or tenuous. Do not extract such an asset.
+   Never default to 3. If the evidence is an exact or near-exact statement of the core claim and all populated subtype-specific fields are directly supported, use 5.
 23. Do not force every asset type to appear. Extract only what the chunk actually supports.
 24. Return an empty assets list if the chunk contains no reusable knowledge.
 25. Each asset must contain only fields valid for its chosen asset_type. Do not mix subtype-only fields across asset types.
@@ -56,7 +62,7 @@ Rules:
 32. Treat a concrete numeric, timing, threshold, or other prescriptive recommendation as a decision_rule when it tells the future user what to do. Do not bury a standalone action rule inside a broad principle merely because nearby text also states a general principle.
 33. Evidence must directly support every core claim in the asset. If one evidence passage does not support all combined claims, split the asset or choose evidence that does. Do not use a nearby but materially different formula, label, or statement as evidence for another claim.
 34. Preserve distinctions in source terminology. Do not silently treat related labels as interchangeable unless the chunk itself clearly establishes that equivalence.
-35. Use confidence 5 only when the core claim and any populated subtype-specific claims are directly stated or demonstrated by the source. If an important populated field requires synthesis or a strong inference, use confidence 4 or lower.
+35. Before returning, calibrate each confidence score against the rubric above. Do not lower a plainly stated asset to 3 merely because it is a principle, warning, framework, process, or decision rule. Use 4 for minimal source-supported synthesis and 3 only when meaningful interpretation is actually required. Do not force any confidence score to appear.
 36. Scan the entire chunk before deciding it has no reusable knowledge. A chunk may begin with title pages, table-of-contents material, publication details, or other front matter and then continue into substantive prose. Ignore the non-reusable front matter, but still extract supported reusable knowledge from substantive text later in the same chunk. Do not return an empty assets list solely because the chunk begins with front matter.
 """
 

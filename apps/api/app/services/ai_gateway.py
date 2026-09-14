@@ -1,10 +1,73 @@
 """Explicit free-project opt-in, bounded calls, no automatic quota retries."""
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from google import genai
 from app.db.mock_data import usage
+
+
+logger = logging.getLogger(__name__)
+
+
+def _provider_diagnostic(error):
+    """Allowlisted metadata only. Never serialize an exception/body/request.
+
+    Raw messages can echo private inputs even when short. Emit a fixed category
+    instead of attempting to redact arbitrary source text from provider prose.
+    """
+    known_types = {
+        'BadRequestError', 'RateLimitError', 'InternalServerError', 'APITimeoutError',
+        'APIConnectionError', 'APIStatusError', 'APIResponseValidationError',
+        'AuthenticationError', 'PermissionDeniedError', 'NotFoundError', 'ConflictError',
+        'UnprocessableEntityError',
+        'APIError', 'ClientError', 'ServerError', 'GenAiError', 'GenAiDefaultError',
+        'CreateInteractionClientError', 'CreateInteractionServerError',
+        'ResponseValidationError', 'NoResponseError', 'ReadTimeout', 'ConnectTimeout',
+        'WriteTimeout', 'PoolTimeout', 'ConnectError', 'ReadError', 'WriteError',
+        'RemoteProtocolError', 'TimeoutError', 'RuntimeError', 'ValueError', 'TypeError',
+    }
+    known_statuses = {
+        'INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'OUT_OF_RANGE', 'UNAUTHENTICATED',
+        'PERMISSION_DENIED', 'NOT_FOUND', 'ALREADY_EXISTS', 'RESOURCE_EXHAUSTED',
+        'CANCELLED', 'ABORTED', 'DEADLINE_EXCEEDED', 'INTERNAL', 'UNAVAILABLE',
+        'DATA_LOSS', 'UNKNOWN', 'UNIMPLEMENTED',
+    }
+    name = type(error).__name__
+    diagnostic = {'exception_type': name if name in known_types else 'OtherProviderError'}
+    for field in ('status_code', 'code'):
+        value = getattr(error, field, None)
+        if type(value) is int and 0 <= value <= 599:
+            diagnostic[field] = value
+    nested = getattr(getattr(error, 'data', None), 'error', None)
+    body = getattr(error, 'body', None)
+    metadata = body.get('error', body) if type(body) is dict else {}
+    if type(metadata) is not dict:
+        metadata = {}
+    for field in ('status', 'reason', 'code'):
+        value = getattr(error, field, None)
+        if value is None:
+            value = getattr(nested, field, None)
+        if value is None:
+            value = metadata.get(field)
+        if type(value) is str and value in known_statuses:
+            diagnostic['provider_' + field] = value
+    # Classify a few actionable failures without copying any provider wording.
+    message = getattr(error, 'message', None)
+    text = message[:4096].lower() if type(message) is str else ''
+    if 'schema' in text and any(word in text for word in ('complex', 'nested', 'depth', 'size', 'large')):
+        category = 'response_schema_complexity_or_size'
+    elif 'schema' in text and any(word in text for word in ('invalid', 'unsupported', 'invalid_argument')):
+        category = 'response_schema_rejected'
+    elif any(word in text for word in ('request too large', 'payload too large', 'token limit')):
+        category = 'request_size_limit'
+    elif 'Timeout' in diagnostic['exception_type']:
+        category = 'transport_timeout'
+    else:
+        category = 'provider_message_omitted'
+    diagnostic['message_category'] = category
+    return diagnostic
 
 
 # Gemini structured outputs support only a subset of JSON Schema. Keep the
@@ -68,6 +131,7 @@ def generate(model, payload, schema):
             return interactions.create(model=model, input=json.dumps(payload, ensure_ascii=False), store=False,
                 response_format={"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)})
     except Exception as error:
+        logger.warning("Gemini provider failure diagnostic: %s", json.dumps(_provider_diagnostic(error), sort_keys=True))
         quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
         if quota:
             usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")

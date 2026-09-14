@@ -11,11 +11,24 @@ from app.db.mock_data import usage
 logger = logging.getLogger(__name__)
 
 
+def _response_json_in_memory(error):
+    """Best-effort provider error JSON for classification only; never log it."""
+    response = getattr(error, "response", None)
+    if response is None:
+        return None
+    candidate = getattr(response, "json", None)
+    try:
+        value = candidate() if callable(candidate) else candidate
+    except Exception:
+        value = None
+    return value if isinstance(value, dict) else None
+
+
 def _provider_diagnostic(error):
     """Allowlisted metadata only. Never serialize an exception/body/request.
 
-    Raw messages can echo private inputs even when short. They may be inspected
-    in memory only to choose a fixed category; they are never returned or logged.
+    Raw messages can echo private inputs. They may be inspected in memory only
+    to choose a fixed category; they are never returned or logged.
     """
     known_types = {
         'BadRequestError', 'RateLimitError', 'InternalServerError', 'APITimeoutError',
@@ -34,6 +47,12 @@ def _provider_diagnostic(error):
         'CANCELLED', 'ABORTED', 'DEADLINE_EXCEEDED', 'INTERNAL', 'UNAVAILABLE',
         'DATA_LOSS', 'UNKNOWN', 'UNIMPLEMENTED',
     }
+    known_codes = {
+        'invalid_request', 'invalid_request_error', 'invalid_argument',
+        'failed_precondition', 'parameter_unknown', 'content_blocked',
+        'resource_exhausted', 'rate_limit_exceeded',
+    }
+
     name = type(error).__name__
     diagnostic = {'exception_type': name if name in known_types else 'OtherProviderError'}
     for field in ('status_code', 'code'):
@@ -43,27 +62,39 @@ def _provider_diagnostic(error):
 
     metadata = {}
     message_candidates = []
-    for container in (getattr(error, 'body', None), getattr(error, 'data', None)):
-        if type(container) is dict:
+    containers = [
+        getattr(error, 'body', None),
+        getattr(error, 'data', None),
+        _response_json_in_memory(error),
+    ]
+    for container in containers:
+        if isinstance(container, dict):
             nested = container.get('error', container)
-            if type(nested) is dict:
+            if isinstance(nested, dict):
                 for key, value in nested.items():
                     metadata.setdefault(key, value)
-                if type(nested.get('message')) is str:
+                if isinstance(nested.get('message'), str):
                     message_candidates.append(nested['message'])
 
     nested_object = getattr(getattr(error, 'data', None), 'error', None)
-    for field in ('status', 'reason', 'code'):
+    for field in ('status', 'reason'):
         value = getattr(error, field, None)
         if value is None and nested_object is not None:
             value = getattr(nested_object, field, None)
         if value is None:
             value = metadata.get(field)
-        if type(value) is str and value in known_statuses:
+        if isinstance(value, str) and value in known_statuses:
             diagnostic['provider_' + field] = value
 
+    provider_code = metadata.get('code')
+    if isinstance(provider_code, str) and provider_code.lower() in known_codes:
+        diagnostic['provider_code'] = provider_code.lower()
+    provider_type = metadata.get('type')
+    if isinstance(provider_type, str) and provider_type.lower() in known_codes:
+        diagnostic['provider_type'] = provider_type.lower()
+
     direct_message = getattr(error, 'message', None)
-    if type(direct_message) is str:
+    if isinstance(direct_message, str):
         message_candidates.append(direct_message)
     try:
         rendered = str(error)
@@ -91,6 +122,14 @@ def _provider_diagnostic(error):
         'token limit', 'too many input tokens', 'context length',
     )):
         category = 'request_size_limit'
+    elif diagnostic.get('provider_code') == 'parameter_unknown':
+        category = 'unknown_request_parameter'
+    elif diagnostic.get('provider_code') == 'failed_precondition':
+        category = 'provider_precondition_failed'
+    elif diagnostic.get('provider_code') == 'content_blocked':
+        category = 'content_blocked'
+    elif diagnostic.get('provider_code') in {'invalid_request', 'invalid_request_error', 'invalid_argument'}:
+        category = 'invalid_request_generic'
     elif 'Timeout' in diagnostic['exception_type']:
         category = 'transport_timeout'
     else:

@@ -1,6 +1,6 @@
 from app.db.mock_data import extraction_jobs, knowledge_assets
 from app.models.knowledge_extraction import KnowledgeExtractionStatus
-from app.services.batch_knowledge_extraction import MAX_BATCH_CHUNKS, run_gemini_knowledge_extraction_batch
+from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
 from app.services.knowledge_extraction import (
     create_extraction_job,
     find_source,
@@ -9,7 +9,10 @@ from app.services.knowledge_extraction import (
 from app.services.text_chunking import load_chunks
 
 
-MAX_CHUNKS_PER_RUN = MAX_BATCH_CHUNKS
+# Source-level orchestration may process several chunks in one explicit run,
+# but every chunk gets its own normal Gemini request. Chunks never share model
+# context. The AI gateway still enforces the global daily free-tier call cap.
+MAX_CHUNKS_PER_RUN = 10
 
 
 def get_source_chunks(source_id: str):
@@ -173,15 +176,16 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         if len(selected_jobs) >= max_chunks:
             break
 
-    if selected_jobs:
+    # Each selected chunk is a separate provider request with the original
+    # strict single-chunk response schema. Stop on the first failure so one bad
+    # response cannot automatically spend the rest of the user's daily budget.
+    for job_id in selected_jobs:
         try:
-            batch = run_gemini_knowledge_extraction_batch(selected_jobs)
-            processed_results = batch['results']
-            if batch['failures']:
-                stopped_reason = f"{len(batch['failures'])} chunk result(s) failed validation. Valid chunks were saved; retry failed chunks explicitly."
+            processed_results.append(run_gemini_knowledge_extraction(job_id))
         except Exception as error:
             message = str(getattr(error, "detail", error))
             stopped_reason = f"Interpretation stopped after an extraction error: {message}"
+            break
 
     source["stopped_reason"] = stopped_reason
     summary = get_source_interpretation_summary(source_id)

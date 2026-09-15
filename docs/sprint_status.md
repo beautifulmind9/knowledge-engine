@@ -1,164 +1,142 @@
-# Remaining sprint status — 2026-09-13
+# Remaining sprint status — 2026-09-15
 
-The checkout on `codex/remaining-sprints` already contained substantial uncommitted implementation across R1–R8 when this pass began. That work was preserved, tested, and extended. This report reflects the combined working tree; it does not claim all of it was newly written during this pass.
+This document records the current state of the active `feature/knowledge-assets` implementation. **Verified** means implemented and exercised by automated checks and/or the stated real-source acceptance work. **Implemented** means code exists but a material acceptance check remains. **Pending** means the original acceptance criterion is not yet satisfied.
 
-**Verified** means implemented and exercised by relevant local automated checks. **Implemented** means code exists but a material acceptance check remains. **Pending** means the original acceptance criterion is not satisfied. A mocked provider response does not establish real-world AI output quality.
+A mocked provider response proves software behavior, not real-world output usefulness. Real-provider evidence is called out explicitly below.
 
 ## R1 — Save outputs
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R1-01 | Verified | OutputRecord stores brief, provenance snapshot, mode, provider/model and timestamps. |
-| R1-02 | Verified | SQLite persistence; fresh-process and live server restart tests. |
-| R1-03 | Verified | Generate saves by default; `save=false` remains available. Provider output uses fixtures in tests. |
-| R1-04 | Verified | Compact saved-output list. |
-| R1-05 | Verified | Full saved record with brief and evidence snapshot. |
-| R1-06 | Verified | Type, source and creation-date filters implemented. |
-| R1-07 | Verified | Generated fixture persistence plus saved demo restart retrieval; original records preserved. |
+| R1-01 | Verified | Output records store brief, provenance snapshot, mode, provider/model, and timestamps. |
+| R1-02 | Verified | SQLite persistence survives restart. |
+| R1-03 | Verified | Generation can save by default; `save=false` remains available. |
+| R1-04 | Verified | Compact saved-output list exists. |
+| R1-05 | Verified | Full saved records preserve brief and evidence snapshot. |
+| R1-06 | Verified | Type, source, and creation-date filters exist. |
+| R1-07 | Verified | Generated fixture persistence and saved-demo restart retrieval are covered. |
 
 ## R2 — Revisions
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R2-01 | Verified | Root/parent IDs, monotonically increasing version, created/updated timestamps. |
-| R2-02 | Verified | Bounded revision instruction and manual edit schema. |
-| R2-03 | Verified | New records for manual or model-assisted revisions; original unchanged. |
-| R2-04 | Verified | Immutable knowledge snapshot and validated applied IDs. |
-| R2-05 | Verified | Grounding prompt, design-choice separation and manual-review annotation; semantic review remains required. |
-| R2-06 | Verified | Chronological history endpoint and UI. |
-| R2-07 | Verified | Changed fields and content diff within one history. |
-| R2-08 | Verified | One explicit model request per revision; no automatic repair call. |
+| R2-01 | Verified | Root/parent IDs, versions, and timestamps are stored. |
+| R2-02 | Verified | Revision instructions/manual edits are bounded and validated. |
+| R2-03 | Verified | Revisions create new records; originals remain unchanged. |
+| R2-04 | Verified | Knowledge snapshots and applied IDs are validated. |
+| R2-05 | Verified | Grounding prompt and design-choice separation exist; semantic human review remains necessary. |
+| R2-06 | Verified | Chronological history is available. |
+| R2-07 | Verified | Changed fields/content diff are available within one history. |
+| R2-08 | Verified | One explicit provider request per AI revision; no automatic repair call. |
 
 ## R3 — Interpretation and audit
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R3-01 | Verified | Intentional replacement supersedes old assets only after full batch validation. |
-| R3-02 | Verified | Schema/extraction versions and active/superseded records. |
-| R3-03 | Verified | Audit endpoint and UI report jobs, active assets, overlap, evidence/keywords and old schema. |
-| R3-04 | Verified | Failed jobs and running jobs older than the stale threshold can be explicitly recovered. |
-| R3-05 | Verified | Markdown/HTML/EPUB/DOCX heading hints, EPUB reading order and DOCX table order tested. PDF chapter inference remains limited. |
-| R3-06 | Pending | Full Workshop Survival Guide source/run not available in this checkout; no live provider calls made. |
-| R3-07 | Pending | Audit tooling exists; actual full-book duplicate/evidence/false-positive review is not complete. |
-| R3-08 | Verified | TXT, Markdown and HTML pipeline coverage, plus EPUB/DOCX structure tests and a live two-format demo. |
+| R3-01 | Verified | Intentional replacement supersedes old assets only after the complete replacement validates. Failed replacements preserve the prior active set. |
+| R3-02 | Verified | Schema/extraction versions plus active/superseded history are stored. |
+| R3-03 | Verified | Audit reports jobs, active assets, overlap/evidence/keyword issues, and historical schema state. |
+| R3-04 | Verified | Failed and stale-running jobs can be explicitly recovered. |
+| R3-05 | Verified | Markdown/HTML/EPUB/DOCX structure hints and reading order are tested. PDF chapter inference remains limited. |
+| R3-06 | **Verified** | Real *Workshop Survival Guide* source is complete at **46/46 chunks**. |
+| R3-07 | **Verified** | Full-source audit and targeted qualitative review completed: **121 active assets**, **0 missing evidence**, **0 missing keywords**, confidence **83×5 / 38×3**, and **13 evidence-review items** retained as a manual review queue rather than known defects. Historical provenance defects were repaired. |
+| R3-08 | Verified | TXT, Markdown, HTML, EPUB, and DOCX pipeline behavior is covered; PDF with selectable text is supported. |
+
+### R3 architecture decision
+
+Production extraction is **one chunk per Gemini request**. Source-level orchestration may select multiple chunks, but each chunk receives an independent model context and provider attempt.
+
+This decision is based on live provider testing:
+
+- shared-context multi-chunk extraction showed under-extraction and cross-chunk evidence leakage;
+- simplifying the Gemini-facing schema fixed missing common-field enforcement but did not eliminate shared-context routing/coverage problems;
+- a strict isolated single-chunk control on chunk 007 returned **5 valid assets**, matching its historical active count, all at confidence 5;
+- Gemini asynchronous Batch API submission was rejected with `FAILED_PRECONDITION` on the billing-disabled/free-tier setup, consistent with Batch not being available on the current Developer API free tier, so Batch is not part of the production path.
+
+The known chunk-025 compound crowd-recovery asset was repaired deterministically with zero Gemini calls. Chunk 025 now has `Talking in circles to recover attention`; chunk 026 separately retains `Borrowing goodwill to reclaim attention`. The active source count remained 121.
 
 ## R4 — Output modes
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R4-01 | Verified | Explicit output mode persisted with each record and revision. |
-| R4-02 | Verified | Six mode-specific prompt instruction sets; requests exercised using fixtures. |
-| R4-03 | Implemented | Lightweight structure hints and human-review criteria; not semantic validation. |
-| R4-04 | Implemented | Distinct writing fixture generated/saved/revised; live output review pending. |
-| R4-05 | Implemented | Distinct decision-brief fixture generated/saved/revised; live review pending. |
-| R4-06 | Implemented | Study/playbook fixtures and manually authored demo; live review pending. |
-| R4-07 | Verified | Lightweight heading templates in mode metadata. |
-| R4-08 | Verified | All six modes exercise generate/save/revise with fixture responses. |
+| R4-01 | Verified | Explicit output mode is persisted with each record and revision. |
+| R4-02 | Verified | Six mode-specific prompt instruction sets exist. |
+| R4-03 | Implemented | Structural quality checks and workshop timing validation exist; they do not prove semantic correctness. |
+| R4-04 | Implemented | Writing workflow is implemented; real-provider usefulness review remains. |
+| R4-05 | Implemented | Decision-brief workflow is implemented; real-provider usefulness review remains. |
+| R4-06 | Implemented | Study/playbook workflows are implemented; real-provider usefulness review remains. |
+| R4-07 | Verified | Mode metadata contains structural guidance. |
+| R4-08 | Verified | All six modes exercise generate/save/revise in automated tests. |
 
-Exit gate remains open until at least four real model outputs meet usefulness and grounding acceptance.
+**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure, including real revisions.
 
 ## R5 — Multi-source synthesis
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R5-01 | Verified | Source-list and library-scoped retrieval. |
-| R5-02 | Verified | Each consolidated unit preserves source, asset, chunk and evidence trails. |
-| R5-03 | Implemented | Lexical candidate agreements; semantic agreement requires review. |
-| R5-04 | Implemented | Polarity/numeric tension flags prevent some unsafe merges; not comprehensive contradiction detection. |
-| R5-05 | Verified | Agreement, distinct-contribution and tension context supplied to generation and revisions. |
-| R5-06 | Verified | Two-source generated fixture validates materially applied IDs and source provenance. |
-| R5-07 | Verified | Library scope in Workshop and knowledge search, including empty/out-of-scope cases. |
-| R5-08 | Pending | Synthetic scenario demonstrates complementary guidance; real-task comparison and quality judgment still needed. |
+| R5-01 | Verified | Source-list and library-scoped retrieval exist. |
+| R5-02 | Verified | Consolidated units preserve source, asset, chunk, and evidence trails. |
+| R5-03 | Implemented | Lexical candidate agreements exist; semantic agreement still requires review. |
+| R5-04 | Implemented | Polarity/numeric tension checks prevent some unsafe merges; contradiction detection is not comprehensive. |
+| R5-05 | Verified | Agreement, distinct-contribution, and tension context is supplied to generation/revisions. |
+| R5-06 | Verified | Two-source fixtures validate materially applied IDs and provenance. |
+| R5-07 | Verified | Library scope is enforced in Workshop and knowledge search. |
+| R5-08 | Pending | A meaningful **real** two-source comparison and quality judgment is still required. |
 
 ## R6 — Web interface
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R6-01 | Implemented | Active HTML/CSS/JS app in apps/web; served by FastAPI. |
-| R6-02 | Implemented | Shared request helper for JSON, uploads and readable errors. |
-| R6-03 | Implemented | Library/source creation, upload, process and source view. |
-| R6-04 | Implemented | Chunk progress, audit, recovery, batch stop and quota messages. |
-| R6-05 | Implemented | Knowledge search, evidence and explicit selection; library scope corrected. |
-| R6-06 | Implemented | Situation/goal/audience/constraints/mode/tone/library/source form. |
-| R6-07 | Implemented | Output content, applied evidence and design choices shown separately. |
-| R6-08 | Implemented | Saved outputs, manual/AI revision, history and comparison. |
-| R6-09 | Implemented | Busy/live feedback, disabled submit actions, errors and empty states. |
+| R6-01 | Implemented | Active HTML/CSS/JS browser app is served by FastAPI. |
+| R6-02 | Implemented | Shared request helper handles JSON/uploads/errors. |
+| R6-03 | Implemented | Library/source creation, upload, processing, and source view exist. |
+| R6-04 | Implemented | Interpretation progress, audit, recovery, and quota messages exist. |
+| R6-05 | Implemented | Knowledge search, evidence, explicit selection, and library scope exist. |
+| R6-06 | Implemented | Workshop brief captures situation/goal/audience/constraints/mode/tone/scope. |
+| R6-07 | Implemented | Output, applied evidence, and design choices are displayed separately. |
+| R6-08 | Implemented | Saved outputs, revisions, history, and comparison exist. |
+| R6-09 | Implemented | Busy/live feedback, disabled submit actions, errors, and empty states exist. |
 
-Static routes and JS syntax are checked. The cloud browser could not access localhost, so the full visual/browser acceptance gate is pending.
+Full desktop/mobile/keyboard acceptance is still pending.
 
 ## R7 — Storage and control
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R7-01 | Verified | Local SQLite decision and trade-offs in storage_and_privacy.md; no paid infrastructure. |
-| R7-02 | Verified | Core records, outputs and usage survive restart; legacy migration/corruption covered. |
-| R7-03 | Verified | Source files/assets/jobs and intentionally selected dependent output histories removed. |
-| R7-04 | Verified | Explicit whole-output-history deletion. |
-| R7-05 | Verified | Markdown provenance export and portable private ZIP; restore into renamed folder tested. |
-| R7-06 | Verified | Quota pause/resume and local budget; provider failures do not trigger paid fallbacks. |
-| R7-07 | Implemented | Private data ignored by git, local host/origin checks, synthetic public examples, store=false on AI interactions. Provider-wide privacy requires separate review. |
-| R7-08 | Verified | Missing files, orphan sources and broken output links detected in covered cases. |
-
-Local durability is verified; hosting, multi-user access and encrypted storage remain out of scope.
+| R7-01 | Verified | Local SQLite architecture is documented; no paid infrastructure is required. |
+| R7-02 | Verified | Core records, outputs, and usage state survive restart. |
+| R7-03 | Verified | Source files/assets/jobs and selected dependent output histories can be deleted safely. |
+| R7-04 | Verified | Whole output histories can be deleted explicitly. |
+| R7-05 | Verified | Markdown provenance export and portable private backup/restore exist. |
+| R7-06 | Verified | Quota pause/resume and local budget exist; no paid fallback. |
+| R7-07 | Implemented | Private data is git-ignored; localhost/origin protections exist; provider-wide privacy remains a separate policy consideration. |
+| R7-08 | Verified | Covered integrity failures such as missing files and broken links are detected. |
 
 ## R8 — Hardening and release
 
 | ID | Status | Evidence / remaining work |
 |---|---|---|
-| R8-01 | Verified | Automated API workflow, persistence, revision, backup restore and live-server demo tests. |
-| R8-02 | Verified | Small original snippets, distinct mode responses and two-source fixtures. |
-| R8-03 | Verified | Quota, missing configuration/source/files, unsupported/empty files, invalid AI output, stale recovery and corruption cases. |
-| R8-04 | Verified | Original synthetic MD/HTML sources and idempotent no-API demo seed. |
-| R8-05 | Verified | Root, API and web docs describe the active architecture. |
-| R8-06 | Verified | Dependencies installed in a clean venv; setup/launcher and live-demo path exercised. macOS-specific install still needs user-machine acceptance. |
-| R8-07 | Implemented | Labels, skip link, busy/live feedback, responsive CSS and focus styling; browser/mobile pass pending. |
-| R8-08 | Pending | External tester must complete the workflow and provide feedback; nobody was contacted. |
-| R8-09 | Verified | Explicit internal-candidate decision and remaining release gates in beta_test_checklist.md. |
+| R8-01 | Verified | Automated workflow/persistence/revision/backup tests exist. |
+| R8-02 | Verified | Original synthetic snippets and mode/two-source fixtures exist. |
+| R8-03 | Verified | Quota, missing configuration/files, invalid AI output, recovery, and corruption paths are covered. |
+| R8-04 | Verified | Synthetic public-safe demo is idempotent. |
+| R8-05 | Verified | README, product vision, architecture, sprint status, and release documents describe the active product. |
+| R8-06 | Verified | Setup/launcher and dependency lock are exercised; platform-specific acceptance may still reveal issues. |
+| R8-07 | Implemented | Accessibility/responsive foundations exist; manual browser/mobile pass remains. |
+| R8-08 | Pending | External tester must complete the workflow and provide feedback. |
+| R8-09 | Verified | Release decision and remaining gates are explicit. |
 
-## Changes added in this pass
+## Current automated verification
 
-- Preserved tone and retrieval limit in saved briefs; rebuilt synthesis context during revisions.
-- Scoped knowledge search to libraries and cleared incompatible browser selections.
-- Removed redundant trailing chunks while preserving full text coverage.
-- Updated source completion status after manual imports.
-- Corrected backup restoration into renamed storage folders.
-- Cleaned up superseded files when replacing uninterpreted uploads.
-- Added setup, launcher, original demo sources, idempotent demo seeding and release documentation.
-- Preserved all contributing source evidence when a consolidated unit is explicitly selected; retained tensions even when both groups share the same source set.
-- Preserved HTML/EPUB/DOCX section hints and document reading order.
-- Made exhausted daily budgets visibly paused and prevented resume from bypassing them.
-- Disabled the pinned SDK’s hidden retry behavior; actual-SDK tests cover success, quota errors, server errors and transport timeouts without external calls.
-- Expanded regression coverage and pinned the tested dependency set.
+Latest local suite on 2026-09-15: **153 passed, 2 upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
 
-## Release blockers
+The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction validation was run separately within the explicit free-tier budget.
 
-1. Complete and audit the real-book interpretation.
-2. Review real Gemini outputs and revisions across four modes, then compare a real two-source task.
-3. Complete desktop/mobile/keyboard browser acceptance and one external beta test.
+## Remaining release blockers
 
-No production deployment, paid API call, or public source upload was performed. See the test run record below for exact verification results.
+1. Review real Gemini outputs across at least four materially different modes and revise at least two of them.
+2. Run one meaningful real two-source task and compare it with the corresponding single-source results.
+3. Complete desktop/mobile/keyboard browser acceptance.
+4. Have at least one external tester complete the core workflow and record feedback.
 
-## Verification record
-
-Final local run on 2026-09-13: **44 tests passed**, with two upstream Starlette/AnyIO deprecation warnings. No external AI requests were made.
-
-- `bash scripts/setup.sh` completed in a fresh local virtual environment using the locked dependency set.
-- `.venv/bin/python -m pytest apps/api/tests -q` passed, including live-server demo/restart, backup relocation, all six mode fixtures, selected-unit provenance, quota/timeout behavior through the installed SDK, and EPUB/DOCX structure.
-- `node --check apps/web/app.js`, shell syntax checks, Python compilation, dependency consistency, and `git diff --check` passed.
-- Browser verification remains blocked by the cloud browser's localhost restriction. No visual, mobile or external-user acceptance result is claimed.
-
-## Follow-up — Workshop timing validator
-
-Added local timing and numeric format-switch review after the reported live-test failure. This strengthens R4-03 and R8-02/R8-03: supported agenda totals, gaps/overlaps, contradictory repeated activity timings, and unverified format-switch intervals now produce explicit quality issues. Reports are available on generation, saved drafts, revisions, old-output review, and Markdown exports. Human validity is never inferred from heading checks.
-
-See [workshop_timing_validation.md](workshop_timing_validation.md) for supported input formats, limitations, and the next explicitly chosen live test. Full-source and external acceptance gates remain open. No Gemini calls were made during this follow-up.
-
-Follow-up verification: **81 tests passed**, zero live provider calls; JavaScript syntax and patch whitespace checks passed. Browser/mobile acceptance remains pending.
-
-### Parser correction — nested notes and section boundaries
-
-Quality report v3 excludes nested agenda notes and stops at every Markdown heading level. Malformed elapsed timestamps are explicitly flagged and totals remain provisional; genuine format-switch warnings remain visible. A reconstructed 90-minute agenda no longer totals 185 minutes. Full local suite: **92 tests passed**, zero Gemini calls. Existing saved outputs can be rechecked without changing their history. Live and external acceptance gates remain open.
-
-### Component timing follow-up
-
-Report v4 fixes the 30-minute versus 10+5+15 subduration false positive and adds evidence-bearing review flags for differing agenda practice and later role-play durations. Ambiguous task identities remain explicit review items. **102 local tests passed**, no Gemini calls. Rechecking the actual saved V1/V2 outputs remains pending; screenshot-based reconstructed regressions do not close that acceptance gate.
+The real-book interpretation/audit is **no longer a release blocker**.

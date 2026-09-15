@@ -184,7 +184,7 @@ def interpret_source_knowledge(
         le=10,
         description=(
             "Maximum number of source chunks to interpret in this run. "
-            "Up to 10 chunks share one provider call; progress remains per chunk."
+            "Each chunk uses a separate Gemini request and never shares source text with another chunk."
         ),
     ),
 ):

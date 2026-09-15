@@ -44,9 +44,13 @@ def revise_output(output_id, request):
     parent = get_output(output_id)
     if request.content is not None:
         result = {"brief":parent["brief"], "knowledge_snapshot":parent["knowledge_snapshot"], "provider":"manual", "model":None,
-                  "output":{key:deepcopy(parent[key]) for key in ("title","output_type","content","applied_knowledge","design_choices")}}
+                  "output":{key:deepcopy(parent[key]) for key in ("title","output_type","content","applied_knowledge")}}
+        # A manual content edit can invalidate the generator's earlier rationale.
+        # Do not silently carry old design choices into the new version. Callers
+        # may explicitly provide revised design choices when they remain valid.
+        manual_choices = deepcopy(request.design_choices) if request.design_choices is not None else []
         result["output"].update(content=request.content, title=request.title or parent["title"],
-            design_choices=request.design_choices if request.design_choices is not None else deepcopy(parent["design_choices"]))
+            design_choices=manual_choices)
         result["output"]["design_choices"].append("Manual revision: " + request.instruction + ". Source attribution requires review.")
     else:
         from app.services.workshop_generation import generate_workshop_output

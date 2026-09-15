@@ -10,24 +10,69 @@ from app.services.knowledge_extraction import (
 
 
 # These terms describe the Workshop interaction itself more than the user's
-# actual problem. Excluding them prevents generic words such as "workshop" and
-# "plan" from outranking specific constraints such as "breaks" or "cramming".
+# actual problem. Excluding them prevents broad facilitation language and filler
+# words from outranking specific task concepts such as timing, practice or Q&A.
 WORKSHOP_GENERIC_TERMS = {
+    "am",
     "avoid",
+    "can",
+    "could",
     "create",
     "design",
+    "did",
     "different",
+    "do",
+    "does",
     "educational",
+    "facilitation",
+    "facilitator",
+    "facilitators",
     "include",
+    "just",
+    "keep",
+    "keeping",
+    "little",
     "material",
+    "me",
+    "more",
+    "most",
     "much",
     "must",
+    "my",
     "need",
+    "not",
+    "only",
+    "participant",
+    "participants",
     "plan",
     "professionals",
+    "selected",
+    "session",
+    "sessions",
+    "should",
+    "source",
     "total",
     "useful",
+    "want",
+    "would",
     "workshop",
+    "workshops",
+}
+
+
+# Output-format wording can otherwise dominate retrieval even though it is not
+# source subject matter. Keep these terms available in the user's actual
+# situation/goal; suppress them only when they occur as structural constraints.
+MODE_CONSTRAINT_GENERIC_TERMS = {
+    "study_guide": {
+        "answer",
+        "answers",
+        "checking",
+        "guidance",
+        "question",
+        "questions",
+        "review",
+    },
 }
 
 
@@ -46,13 +91,19 @@ TERM_EXPANSIONS = {
     "hours": {"hour", "time", "timing", "schedule", "scheduling"},
     "hour": {"hours", "time", "timing", "schedule", "scheduling"},
     "focused": {"focus", "sharp", "specific"},
+    "engaged": {"engagement", "attention", "participation"},
+    "engagement": {"engaged", "attention", "participation"},
+    "timing": {"time", "schedule", "scheduling"},
+    "practice": {"exercise", "exercises", "activity", "activities", "application"},
+    "practical": {"practice", "exercise", "exercises", "application"},
 }
 
 
-def _meaningful_terms(value: str | None) -> list[str]:
+def _meaningful_terms(value: str | None, extra_generic_terms=None) -> list[str]:
     if not value:
         return []
 
+    extra_generic_terms = extra_generic_terms or set()
     terms = []
     seen = set()
     for token in normalize_text(value).split():
@@ -60,6 +111,7 @@ def _meaningful_terms(value: str | None) -> list[str]:
             len(token) <= 1
             or token in STOPWORDS
             or token in WORKSHOP_GENERIC_TERMS
+            or token in extra_generic_terms
             or token in seen
         ):
             continue
@@ -69,13 +121,19 @@ def _meaningful_terms(value: str | None) -> list[str]:
 
 
 def build_workshop_query(payload: WorkshopPrepareRequest) -> str:
-    parts = [payload.situation, payload.goal, payload.audience or "", payload.output_type]
-    parts.extend(payload.constraints)
-
     terms = []
     seen = set()
-    for part in parts:
+
+    for part in (payload.situation, payload.goal, payload.audience or ""):
         for term in _meaningful_terms(part):
+            if term in seen:
+                continue
+            seen.add(term)
+            terms.append(term)
+
+    constraint_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
+    for constraint in payload.constraints:
+        for term in _meaningful_terms(constraint, constraint_generic):
             if term in seen:
                 continue
             seen.add(term)
@@ -148,19 +206,20 @@ def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest) -> tuple[i
     score = 0
     matched_terms = set()
 
-    # Constraints and goals should drive selection more strongly than generic
-    # situation wording. This keeps task-critical knowledge near the top.
+    # Situation and goal describe the problem. Constraints remain strong, but
+    # output-format terms are filtered per mode so they do not masquerade as
+    # source topics (for example, "review questions" in a Study Guide brief).
     sections = [
-        (payload.goal, 6),
-        (payload.audience or "", 5),
-        (payload.situation, 4),
-        (payload.output_type, 2),
+        (payload.goal, 6, set()),
+        (payload.audience or "", 5, set()),
+        (payload.situation, 4, set()),
     ]
-    sections.extend((constraint, 10) for constraint in payload.constraints)
+    constraint_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
+    sections.extend((constraint, 10, constraint_generic) for constraint in payload.constraints)
 
-    for text, section_weight in sections:
+    for text, section_weight, extra_generic in sections:
         section_matched = False
-        for term in _meaningful_terms(text):
+        for term in _meaningful_terms(text, extra_generic):
             strength = _term_match_strength(term, fields)
             if strength <= 0:
                 continue

@@ -4,7 +4,7 @@
 
 ### Milestone
 
-Real-source extraction architecture and audit stabilized.
+Real-source extraction architecture and audit stabilized, followed by first real-model output acceptance work.
 
 ### Completed
 
@@ -19,13 +19,25 @@ Real-source extraction architecture and audit stabilized.
 - Ran a live strict single-chunk control on chunk 007: 5 valid assets, matching the historical active count, all confidence 5.
 - Repaired the known compound chunk-025 crowd-recovery asset deterministically with zero Gemini calls.
 - Verified final real-source state: 121 active assets, 0 missing evidence, 0 missing keywords, confidence distribution 83×5 / 38×3, and 13 evidence-review items retained as a manual review queue.
-- Brought the full local suite back to **153 passing tests** after the architecture change.
+- Cleaned the completed-source browser state so completed sources no longer invite another Gemini interpretation and old resolved failures do not clutter recovery actions.
+- Ran the first real-provider A2 retrieval test for a 90-minute SOP-writing workshop; the same eight relevant Knowledge Units were retrieved consistently across repeated previews.
+- Ran two real-provider Workshop-plan generations against the same brief and retrieved knowledge.
+- First live output exposed three useful defects: a false-positive Markdown agenda-header warning, a 25-minute practice block that conflicted with the retrieved 20-minute format-switch rule, and unsupported SOP-domain content.
+- Fixed the agenda-header parser regression and tightened the Workshop generation prompt to require explicit timed format changes and avoid unsupported domain frameworks.
+- Second live output produced a valid 90-minute agenda with separate 15-minute independent-practice and peer-review blocks; timing checks passed.
+- The second output still invented an unsupported SOP component list: `Title; Scope; Steps; Troubleshooting`.
+- Added a deterministic grounding-review heuristic so the saved output is now correctly reported as **needs review** while its agenda timing remains **passed**.
+- Tightened generation guidance again to use neutral placeholders when required domain knowledge is not supplied and require traceable applied Knowledge Asset IDs for material source guidance.
+- Preserved both live outputs unchanged as acceptance evidence; no automatic repair call was used.
+- Brought the full local suite to **157 passing tests** with two unrelated upstream deprecation warnings.
 
 ### Key learning
 
 Provider-call efficiency is not the same thing as extraction quality. Putting several chunks in one model context reduced structural reliability and created provenance risk even when token limits were not the bottleneck.
 
-The safer architecture is to treat the chunk as the unit of AI interpretation and the source-level run as orchestration only.
+The safer extraction architecture is to treat the chunk as the unit of AI interpretation and the source-level run as orchestration only.
+
+The first output-quality acceptance run produced a second lesson: **passing structural/timing checks is not the same thing as being grounded**. A useful-looking plan can still smuggle in plausible domain knowledge that was never supplied. Quality review therefore needs separate checks for timing/structure and grounding, with human review still required.
 
 ### Product decision
 
@@ -35,12 +47,15 @@ Knowledge Engine's current definition is:
 
 Short form: **Knowledge in. Useful outputs out.**
 
+The current quality posture is intentionally conservative: when an output is structurally valid but introduces unsupported domain detail, the system should surface **needs review** rather than treating the artifact as approved.
+
 ### Next acceptance work
 
-- Review real Gemini outputs across at least four materially different modes.
+- Test at least three additional materially different real-provider output modes.
+- Produce or revise toward a fully grounded Workshop sample while preserving the existing acceptance artifacts.
 - Revise at least two real outputs and verify lineage/grounding.
 - Run one meaningful real two-source comparison.
-- Complete desktop/mobile/keyboard browser acceptance.
+- Complete the remaining desktop happy path plus mobile/keyboard browser acceptance.
 - Run one external beta test.
 
 ---

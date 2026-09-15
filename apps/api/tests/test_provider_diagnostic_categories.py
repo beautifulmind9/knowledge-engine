@@ -57,6 +57,19 @@ def test_provider_body_can_classify_request_size_without_leaking_message():
     assert PRIVATE_TEXT not in json.dumps(diagnostic)
 
 
+def test_provider_status_can_classify_failed_precondition_without_leaking_message():
+    message = "Precondition check failed. " + PRIVATE_TEXT
+    error = BadRequestError(
+        message,
+        body={"error": {"status": "FAILED_PRECONDITION", "message": message}},
+    )
+    diagnostic = ai_gateway._provider_diagnostic(error)
+
+    assert diagnostic["provider_status"] == "FAILED_PRECONDITION"
+    assert diagnostic["message_category"] == "provider_precondition_failed"
+    assert PRIVATE_TEXT not in json.dumps(diagnostic)
+
+
 def test_response_json_can_classify_real_interactions_error_without_leaking_message():
     message = "Unknown parameter in response_format. " + PRIVATE_TEXT + PRIVATE_KEY
     error = BadRequestError(

@@ -108,6 +108,7 @@ def _provider_diagnostic(error):
     # Inspect provider prose only in memory. Emit a fixed category, never prose.
     text = '\n'.join(message_candidates)[:8192].lower()
     normalized_provider_code = str(diagnostic.get('provider_code', '')).lower()
+    normalized_provider_status = str(diagnostic.get('provider_status', '')).lower()
     schema_signal = any(word in text for word in ('schema', 'response_format', 'response format', 'json schema'))
     complexity_signal = any(word in text for word in (
         'complex', 'nested', 'depth', 'too large', 'too many', 'size', 'simplif',
@@ -117,12 +118,12 @@ def _provider_diagnostic(error):
         'invalid', 'unsupported', 'not supported', 'invalid_argument', 'bad request',
     ))
 
-    # Explicit provider codes are more actionable than overlapping prose. For
-    # example, "unknown parameter in response_format" mentions response_format
+    # Explicit provider codes/statuses are more actionable than overlapping prose.
+    # For example, "unknown parameter in response_format" mentions response_format
     # but is fundamentally an unsupported request parameter, not a bad schema.
     if normalized_provider_code == 'parameter_unknown':
         category = 'unknown_request_parameter'
-    elif normalized_provider_code == 'failed_precondition':
+    elif normalized_provider_code == 'failed_precondition' or normalized_provider_status == 'failed_precondition':
         category = 'provider_precondition_failed'
     elif normalized_provider_code == 'content_blocked':
         category = 'content_blocked'

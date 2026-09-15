@@ -1,6 +1,6 @@
 # v1 beta release decision and acceptance checklist
 
-Date: 2026-09-13. Decision: **internal local candidate; not yet an externally validated v1 beta**.
+Date: 2026-09-15. Decision: **internal local candidate; not yet an externally validated v1 beta**.
 
 In scope: source upload/processing, validated knowledge extraction and reprocessing, deterministic retrieval, six output modes, saved output revisions, multi-source context, browser screens, quota controls, private local storage, deletion and export. Deferred: public hosting/authentication, team access, embeddings, paid integrations, OCR, native mobile, and semantic contradiction guarantees.
 
@@ -13,14 +13,29 @@ In scope: source upload/processing, validated knowledge extraction and reprocess
 5. Export Markdown and verify source/chunk/asset references. Download a private backup, stop the server, restore into a new folder, and check history.
 6. Run `.venv/bin/python -m pytest apps/api/tests -q`.
 
-## Remaining real-source / model acceptance
+## Real-source extraction acceptance — completed
 
-- [ ] Restore the owner's actual Workshop Survival Guide source and existing jobs into the candidate safely.
-- [ ] Confirm free-tier project settings and the intended model. No provider credentials or billing settings were verified in this pass.
-- [ ] Run one chunk per action; stop at quota, resume later, and finish all remaining chunks.
-- [ ] Audit a representative spread of chapters and asset types: evidence faithfulness, duplicates, confidence, false positives, missing keywords, and chapter hints. Record concrete counts and examples.
-- [ ] Generate and revise at least four materially different modes with the real provider. Check format, practical usefulness, source claims and design choices. Automated provider fixtures do not close this gate.
-- [ ] Run a meaningful two-source task and compare it against each single-source result. Record what improves and what remains in tension.
+- [x] Restore the owner's actual *Workshop Survival Guide* source and existing jobs without losing history.
+- [x] Use a billing-disabled/free-tier Gemini project with `GEMINI_FREE_TIER_CONFIRMED=true`; no paid fallback exists. The application still cannot independently inspect billing configuration.
+- [x] Finish the real source. Current state: **46/46 chunks interpreted**.
+- [x] Audit the resulting knowledge. Latest active state: **121 assets**, **0 missing evidence**, **0 missing keywords**, confidence distribution **83 at 5 / 38 at 3**.
+- [x] Review provenance defects and evidence support. Historical cross-chunk evidence leaks were reprocessed; the current cross-chunk provenance diagnostic is clean.
+- [x] Review the evidence queue. **13 items remain intentionally flagged for manual review**, but inspection found them source-supported compressed or near-exact evidence rather than known defects.
+- [x] Repair the known compound crowd-recovery asset. Chunk 025 now contains `Talking in circles to recover attention`; chunk 026 separately retains `Borrowing goodwill to reclaim attention`.
+- [x] Validate the production extraction contract with the real provider. A strict isolated single-chunk control on chunk 007 returned **5 valid assets**, matching its historical active count, all at confidence 5.
+
+### Extraction architecture decision
+
+Production extraction is **one chunk per Gemini request**. Source-level orchestration may select several chunks, but each chunk has its own model context and provider attempt. Shared-context multi-chunk probes produced under-extraction and cross-chunk evidence leakage, so that path is not used for production extraction.
+
+Gemini's asynchronous Batch API is also not used because the current Gemini Developer API free tier does not include Batch processing. The application remains within the zero-cost rule: no paid fallback, no automatic repair call, and no hidden application-level retry loop.
+
+## Remaining real-model output acceptance
+
+- [ ] Generate and review at least four materially different output modes with the real provider. Check structure, practical usefulness, source claims, applied asset IDs, and design-choice separation.
+- [ ] Revise at least two real generated outputs and verify lineage, provenance, and preservation of the original version.
+- [ ] Run one meaningful real two-source task and compare it against each single-source result. Record what improves, what remains distinct, and what remains in tension.
+- [ ] Record any missed semantic conflicts or false lexical agreement/tension flags instead of treating current lexical checks as proof.
 
 ## Browser and external tester acceptance
 
@@ -36,8 +51,8 @@ Tester: ______  Date: ______  OS/browser: ______  Result: ______
 - [ ] Check desktop and narrow mobile widths for clipped fields, unreadable text, and horizontal page overflow.
 - [ ] Have someone other than the builder complete the main workflow and record feedback below.
 
-The cloud browser in this work session could not open the localhost app (`ERR_BLOCKED_BY_CLIENT`); no visual/mobile pass is claimed. The automated suite exercises a live localhost server, demo seeding and server restart within its test process.
+The automated suite exercises a live localhost server, demo seeding and server restart within its test process. Full visual/mobile acceptance and external-user acceptance remain separate manual gates.
 
 Feedback: task attempted, expected result, actual result, screenshot if useful, severity, and suggested change. Do not attach private source books or API keys to public issues.
 
-Release gate: close the above checks, resolve critical defects, and explicitly change the release decision. Do not mark all eight sprints complete based only on code existence or mocked AI results.
+Release gate: close the remaining real-output, browser, and external-tester checks, resolve critical defects, and explicitly change the release decision. The completed real-book extraction/audit work is no longer a release blocker.

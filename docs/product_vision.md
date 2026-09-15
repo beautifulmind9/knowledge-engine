@@ -1,224 +1,89 @@
 # Product Vision
 
-## Working Name
+## Product definition
 
-Knowledge Engine
+**Knowledge Engine transforms source material into structured, reusable knowledge assets that can be connected, retrieved, and assembled into useful outputs.**
 
-## Core Idea
+Short form: **Knowledge in. Useful outputs out.**
 
-Knowledge Engine turns books, articles, PDFs, and other sources into reusable knowledge that can be searched, explored, and applied to real problems.
+## What the product is for
 
-The goal is not only to summarize books. The goal is to extract concepts, problems, insights, patterns, examples, decision rules, warnings, and application methods so users can apply knowledge without needing to reread or manually synthesize every source.
+People often read books, reports, articles, notes, and research but struggle to retrieve the right idea later and apply it to a real task. Knowledge Engine is designed to reduce that gap between consuming information and using it.
 
-## Core Product Shift
+The product is not primarily a summarizer or a chat-with-PDF tool. It creates a reusable knowledge layer that can support writing, decisions, study, planning, messaging, playbooks, workshops, and other practical outputs.
 
-Traditional reading tools help users store information.
-
-This product helps users apply information.
-
-The product is moving from a knowledge graph prototype toward a combined system:
+## Core product model
 
 ```text
-Personal Knowledge Library
-+
-Knowledge Workshop
-```
-
-## Main User Need
-
-Users often consume books, courses, articles, and research but struggle to retrieve and apply what they learned when facing a real decision, writing task, communication problem, business challenge, or learning goal.
-
-Many users also do not want to read every book cover to cover. They want to benefit from trusted sources, understand the useful ideas, and apply those ideas to their own goals.
-
-## Core Workflow
-
-1. User uploads or processes a source.
-2. The system extracts reusable knowledge.
-3. The user organizes sources into a personal library.
-4. The user searches by source, concept, problem, chapter, chapter group, example, or decision rule.
-5. The user chooses what they want to do with the gathered knowledge.
-6. The system helps transform relevant knowledge into a usable output.
-
-## Key Differentiator
-
-The product is not only a chat-with-PDF tool.
-
-It builds a structured knowledge layer:
-
-- Sources
-- Concepts
-- Problems
-- Insights
-- Decision Rules
-- Patterns
-- Examples
-- Warnings
-- Application Patterns
-- Relationships
-
-The product then uses that structured layer inside a workshop experience where users can create, edit, decide, study, plan, and communicate.
-
-## Personal Knowledge Library
-
-Each user should eventually be able to create their own private library of sources.
-
-Example libraries:
-
-- Copywriting
-- Product Strategy
-- Finance
-- Founder Storytelling
-- Research
-- Learning
-
-A user might upload books, PDFs, reports, papers, articles, notes, or internal documents and organize them around topics they care about.
-
-The library is not meant to be a shared public archive of books. It is a private workspace where users process and apply their own sources.
-
-## Knowledge Workshop
-
-The Knowledge Workshop is where retrieved knowledge becomes useful output.
-
-Instead of only asking:
-
-```text
-What does this source say?
-```
-
-The user can ask:
-
-```text
-What do I want to do with this knowledge?
-```
-
-Possible workshop modes:
-
-- Create or edit writing
-- Generate a copywriting brief
-- Make a decision
-- Create a study guide
-- Build a playbook
-- Prepare a presentation
-- Generate product messaging
-- Create a founder narrative
-
-## Example Use Case: Asking for Help
-
-A user wants to ask a friend for help but is unsure how to communicate clearly.
-
-The system retrieves ideas from communication books such as:
-
-- Find the core
-- Lead with the most important message
-- Be concrete
-- Make the ask clear
-- Use intent-based communication
-
-The system then helps the user draft a clearer message.
-
-## Example Use Case: Ovara Messaging
-
-A user wants to explain Ovara clearly on LinkedIn, in website copy, or in a founder story.
-
-The system retrieves relevant ideas from communication, copywriting, business, and strategy sources.
-
-It then produces a workshop brief with:
-
-- Core message
-- Audience problem
-- Concepts to use
-- Writing rules
-- Examples to borrow from
-- Warnings to avoid
-- Draft starter
-- Revision checklist
-
-## Long-Term Vision
-
-A user should be able to ask:
-
-- How do I communicate Ovara clearly?
-- How do I validate this product idea?
-- How do I write a better landing page?
-- How do I make this message more persuasive?
-- How do I apply what I learned from my copywriting library?
-- How do I use my product strategy library to make a decision?
-
-The system should synthesize relevant knowledge from multiple books and sources into:
-
-- Recommendations
-- Drafts
-- Decision rules
-- Playbooks
-- Examples
-- Action plans
-- Study guides
-- Copywriting briefs
-- Founder messaging
-
-## Product Direction
-
-The strongest direction is a Knowledge Application Engine.
-
-The user does not only ask what a book says. The user describes a real problem, chooses a goal, and the system retrieves relevant knowledge and helps them apply it.
-
-The strongest product model is:
-
-```text
-User
-↓
 Private Library
 ↓
 Sources
 ↓
-Extracted Knowledge
+Chunks
 ↓
-Workshop
+Validated Knowledge Assets
 ↓
-Saved Outputs
+Consolidated Knowledge Units
+↓
+Retrieval / Selection
+↓
+Knowledge Workshop
+↓
+Saved Outputs + Revisions
 ```
 
-## Interface Direction
+Knowledge Assets retain source and chunk provenance, evidence, retrieval keywords, confidence, and type-specific structure. Current asset types include concepts, problems, principles, insights, decision rules, patterns, examples, warnings, frameworks, mental models, and processes.
 
-The current Streamlit app is a prototype interface. It is useful for validating the workflows quickly.
+## Main workflow
 
-The long-term interface should likely move toward a custom web application because the product experience is becoming a workspace, not a dashboard.
+1. Add a source to a private library.
+2. Extract and chunk the source while preserving useful section hints where possible.
+3. Interpret each chunk into structured Knowledge Assets.
+4. Validate the result locally before storing or superseding existing assets.
+5. Search or retrieve relevant knowledge across one source or a library.
+6. Consolidate overlapping raw assets into Knowledge Units while preserving evidence trails.
+7. Use selected knowledge in the Workshop to create a useful output.
+8. Save, revise, compare, and export outputs with provenance.
 
-Future interface needs may include:
+## AI role
 
-- User accounts
-- Private libraries
-- Source upload flows
-- Processing status
-- Search across a library
-- Side-by-side knowledge and writing panels
-- Editable writing canvas
-- Saved drafts
-- Export options
-- Project folders
-- Better navigation and visual hierarchy
+AI is used as an interpretation and generation layer, not as the system of record.
 
-## Copyright and Source Handling Direction
+For source interpretation, each chunk is sent to Gemini independently. Chunks do not share model context. The returned structure is validated against strict internal Pydantic models before it can become active knowledge.
 
-The intended product direction is private, user-controlled processing:
+For Workshop generation, the model receives the task brief plus retrieved knowledge and must distinguish source-grounded claims from design choices. Saved records retain the applied Knowledge Asset references.
 
-- Users upload their own legally accessed materials.
-- The app processes sources privately for that user.
-- The system avoids storing or redistributing original copyrighted text.
-- The product stores structured user-generated knowledge only where appropriate and with user control.
-- Future versions should support temporary workspaces, deletion controls, source retention settings, and public-safe sample data.
+## Reliability rules
 
-## Why This Matters
+The current architecture deliberately favors isolation and auditability over provider-call efficiency:
 
-People do not only need more information.
+- one source chunk per Gemini extraction request;
+- no shared multi-chunk model context;
+- no automatic repair calls;
+- no automatic paid fallback;
+- one provider attempt per explicit extraction/generation request;
+- strict local schema validation before replacement;
+- failed replacements do not supersede good active assets;
+- local daily call cap for zero-cost use.
 
-They need better ways to turn information into:
+Shared-context multi-chunk extraction was tested and produced under-extraction and cross-chunk provenance leakage. Gemini's asynchronous Batch API is not used because it is not available on the current Gemini Developer API free tier.
 
-- Clearer writing
-- Better decisions
-- Stronger communication
-- Faster learning
-- Practical action
-- More confident execution
+## Current interface
 
-Knowledge Engine exists to help users move from reading and collecting knowledge to actually using it.
+The active product is a local single-owner FastAPI application with a browser interface in `apps/web`. The earlier Streamlit implementation is archived under `legacy/streamlit_prototype` and is no longer the active application.
+
+The browser currently supports library/source management, uploads, extraction/chunking, Gemini interpretation, knowledge browsing and search, Workshop generation, saved outputs, revisions, comparison, export, quota controls, audit views, and data backup.
+
+## Current validation state
+
+The real *Workshop Survival Guide* source has been fully interpreted at 46/46 chunks. The latest audited active set contains 121 Knowledge Assets, with no missing evidence and no missing keywords. The remaining 13 evidence-review items are retained as a manual review queue rather than classified defects; they were inspected as source-supported compressed or near-exact evidence.
+
+A live strict single-chunk control on chunk 007 returned five valid assets, matching its historical active count. A known compound crowd-recovery asset in chunk 025 was repaired deterministically so `Talking in circles` and `Borrowing goodwill` are now separate atomic assets with correct provenance.
+
+This closes the real-source extraction/audit acceptance area, but it does not close the overall v1 beta. Real-output usefulness across multiple modes, a meaningful real two-source comparison, browser/mobile acceptance, and an external tester are still required.
+
+## Long-term direction
+
+The product can expand from a private local workspace into a broader Knowledge Application Engine: richer library organization, stronger semantic retrieval and relationship modeling, more output types, and eventually multi-user/private-account infrastructure if that becomes a product requirement.
+
+The central principle should remain the same: source material is converted into traceable reusable knowledge first, and outputs are assembled from that knowledge rather than treating every task as a fresh unstructured chat.

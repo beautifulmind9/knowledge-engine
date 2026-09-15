@@ -15,6 +15,12 @@ def get_output(output_id):
     return output
 
 
+def _manual_revision_note(instruction):
+    cleaned = instruction.strip()
+    separator = "" if cleaned.endswith((".", "!", "?")) else "."
+    return f"Manual revision: {cleaned}{separator} Source attribution requires review."
+
+
 def save_output(result, parent=None, instruction=None):
     output = result["output"]
     snapshot = deepcopy(result["knowledge_snapshot"])
@@ -55,7 +61,7 @@ def revise_output(output_id, request):
         manual_choices = [] if supplied_choices is None or supplied_choices == parent["design_choices"] else supplied_choices
         result["output"].update(content=request.content, title=request.title or parent["title"],
             design_choices=manual_choices)
-        result["output"]["design_choices"].append("Manual revision: " + request.instruction + ". Source attribution requires review.")
+        result["output"]["design_choices"].append(_manual_revision_note(request.instruction))
     else:
         from app.services.workshop_generation import generate_workshop_output
         payload=WorkshopGenerateRequest(**{k:v for k,v in parent["brief"].items() if k != "retrieval_query"})

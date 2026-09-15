@@ -104,3 +104,91 @@ def test_generation_prompt_blocks_unsupported_domain_frameworks_and_uncited_sour
     instructions = captured["model_input"]["instructions"]
     assert "Do not invent domain-specific facts, definitions, frameworks, templates" in instructions
     assert "include its asset_id in applied_knowledge" in instructions
+    assert "your organization's required SOP fields" in instructions
+    assert "scan the draft for specific multi-part lists" in instructions
+
+
+def _workshop_output(domain_line):
+    return {
+        "title": "SOP workshop",
+        "output_type": "workshop_plan",
+        "content": f"""## Learning Goals
+Draft an SOP.
+## Agenda
+| Elapsed Minute Range | Activity |
+| --- | --- |
+| 0–15 min | Introduction |
+| 15–30 min | Core concept |
+| 30–45 min | Guided practice |
+| 45–50 min | Break |
+| 50–70 min | Independent practice |
+| 70–90 min | Review and Q&A |
+## Activities
+{domain_line}
+""",
+        "applied_knowledge": [
+            {"asset_id": "asset_1", "usage_note": "Used the supplied workshop guidance."}
+        ],
+        "design_choices": [],
+    }
+
+
+def _knowledge(what_it_says):
+    return [
+        {
+            "canonical_asset": {
+                "id": "asset_1",
+                "asset_type": "principle",
+                "title": "Workshop guidance",
+                "what_it_says": what_it_says,
+                "evidence": what_it_says,
+                "source_id": "source_1",
+            },
+            "evidence_trail": [],
+        }
+    ]
+
+
+def test_quality_review_flags_unsupported_specific_domain_component_list():
+    output = _workshop_output(
+        "Teach the essential SOP elements (Title, Scope, Steps, Troubleshooting)."
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Teach beginners to draft an SOP.",
+            "goal": "Participants leave with a draft SOP.",
+            "constraints": ["90 minutes total"],
+        },
+        _knowledge("Keep workshop teaching practical and concise."),
+    )
+
+    flags = [
+        issue for issue in report["issues"]
+        if issue["code"] == "unsupported_specific_list_needs_review"
+    ]
+    assert report["timing_checks"][0]["status"] == "passed"
+    assert report["validation_status"] == "needs_review"
+    assert len(flags) == 1
+    assert "Troubleshooting" in flags[0]["unsupported_items"]
+
+
+def test_supported_specific_domain_component_list_does_not_trigger_grounding_flag():
+    output = _workshop_output(
+        "Teach the essential SOP elements (Title, Scope, Steps, Troubleshooting)."
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Teach beginners to draft an SOP.",
+            "goal": "Participants leave with a draft SOP.",
+            "constraints": ["90 minutes total"],
+        },
+        _knowledge(
+            "A usable SOP in this source has four required components: Title, Scope, Steps, Troubleshooting."
+        ),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_specific_list_needs_review" not in codes
+    assert report["validation_status"] == "checks_passed"

@@ -42,9 +42,10 @@ Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FRE
 - No automatic paid upgrade or paid-model fallback.
 - Each extraction or generation request makes at most one provider attempt; the default local budget is 20 attempts per UTC day.
 - A quota error pauses further AI calls until you explicitly resume under **Data & usage**. Resuming cannot bypass the local daily cap.
-- Interpretation processes one chunk per browser action; the API supports batches of at most five.
+- Browser interpretation processes one chunk per action. The API can orchestrate up to ten chunks in one explicit run, but each chunk uses its own normal Gemini request and never shares source text with another chunk.
+- Gemini's asynchronous Batch API is not used because the current Gemini Developer API free tier does not include Batch processing.
 - A revision is either a manual edit with no provider call or one explicit AI request.
-- `GEMINI_MODEL` can override the configured model. Availability and free quota must be checked in your own project; no live-provider validation was performed for this implementation pass.
+- `GEMINI_MODEL` can override the configured model. Availability and free quota must be checked in your own project; no paid provider feature is required by the application.
 
 When you choose an AI action, the relevant source chunk or retrieved evidence and brief are sent to Google. Requests set `store=false` for interaction retrieval; this is not a guarantee about all provider logging or retention policies. Manual imports and the seeded demo do not send source content to an AI provider.
 
@@ -52,7 +53,7 @@ When you choose an AI action, the relevant source chunk or retrieved evidence an
 
 1. Create or select a library and add a supported file.
 2. Open its source page and choose **Extract & chunk**.
-3. Interpret small batches with Gemini, or download a structured prompt and import your result.
+3. Interpret chunks with Gemini using independent one-chunk requests, or download a structured prompt and import your result.
 4. Inspect the source audit, search consolidated knowledge, and select useful units.
 5. Enter a Workshop brief, preview the evidence and possible source tensions, then generate and save.
 6. Reopen saved work, make a new revision, compare versions, or export Markdown.

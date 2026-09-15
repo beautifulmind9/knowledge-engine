@@ -11,7 +11,6 @@ from pydantic import ValidationError
 from app.db.persistence import STORAGE_ROOT
 from app.routers.health import router as health_router
 from app.routers.knowledge import router as knowledge_router
-from app.routers.gemini_batches import router as gemini_batches_router
 from app.routers.libraries import router as libraries_router
 from app.routers.sources import router as sources_router
 from app.routers.workshop_output import router as workshop_output_router
@@ -58,7 +57,7 @@ async def runtime_error(request,error):
 async def invalid_ai_output(request,error):
     return JSONResponse({"detail":"Generated content failed schema validation. No output saved; retry explicitly."},status_code=422)
 
-for router in (health_router,libraries_router,sources_router,knowledge_router,gemini_batches_router,workshops_router,workshop_output_router,outputs_router,control_router):
+for router in (health_router,libraries_router,sources_router,knowledge_router,workshops_router,workshop_output_router,outputs_router,control_router):
     app.include_router(router)
 
 WEB_ROOT=Path(__file__).resolve().parents[2] / "web"

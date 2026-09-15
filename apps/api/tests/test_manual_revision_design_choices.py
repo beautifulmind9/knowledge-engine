@@ -57,6 +57,36 @@ def test_manual_revision_does_not_silently_inherit_parent_design_choices(client,
     assert "Manual revision: Replace the old timing. Source attribution requires review." in exported.text
 
 
+def test_browser_style_unchanged_prefilled_design_choices_are_not_inherited(client, knowledge):
+    first = client.post(
+        "/outputs",
+        json={
+            "brief": _brief(knowledge["source_id"]),
+            "output": _output(knowledge["id"]),
+        },
+    ).json()
+
+    second_response = client.post(
+        f"/outputs/{first['id']}/revise",
+        json={
+            "instruction": "Refresh revision metadata",
+            "content": "Use a shorter practice activity and keep the revised note grounded in the supplied knowledge.",
+            # The browser historically prefilled this textarea and submitted it
+            # unchanged even when the user only edited content.
+            "design_choices": first["design_choices"],
+        },
+    )
+    assert second_response.status_code == 200, second_response.text
+    second = second_response.json()
+
+    assert second["design_choices"] == [
+        "Manual revision: Refresh revision metadata. Source attribution requires review."
+    ]
+    exported = client.get(f"/outputs/{second['id']}/export")
+    assert exported.status_code == 200
+    assert "Old rationale: allocate a 25-minute practice block." not in exported.text
+
+
 def test_manual_revision_can_supply_revised_design_choices(client, knowledge):
     first = client.post(
         "/outputs",

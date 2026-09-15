@@ -54,17 +54,43 @@ Gemini's asynchronous Batch API is also not used because the current Gemini Deve
 
 Prove that generated artifacts are useful and grounded with the real provider, not only with mocked responses.
 
+## Live acceptance evidence so far
+
+A real-provider **Workshop plan** test was run twice against the same brief and the same eight retrieved Knowledge Units from *The Workshop Survival Guide*. Retrieval was stable across both runs.
+
+The task was to design a **90-minute beginner SOP-writing workshop** for junior operations staff, with hands-on practice, Q&A time, a participant-created draft SOP, and no long lecture blocks.
+
+### Run 1
+
+- Retrieval returned eight relevant Knowledge Units, including schedule design, short-lecture guidance, format switching, immediate practice, exercise design, and Q&A guidance.
+- The generated agenda totaled 90 minutes and was practically useful, but the local validator initially surfaced a false-positive unparsed Markdown table header.
+- A 25-minute drafting block also conflicted with the retrieved 20-minute format-switch guidance.
+- Gemini introduced an unsupported domain framework for SOP components rather than keeping missing domain content neutral.
+- The output was correctly retained as acceptance evidence rather than overwritten.
+
+### Run 2 after fixes
+
+- Retrieval returned the same eight Knowledge Units in the same order.
+- The generated agenda passed the local timing check at **Requested: 90 min / Calculated: 90 min**.
+- The prior 25-minute practice block was split into 15-minute independent practice plus 15-minute peer review, so the timed structure complied with the retrieved format-switch rule.
+- The model still introduced an unsupported SOP component list: `Title; Scope; Steps; Troubleshooting`.
+- A new deterministic grounding validator correctly changed the saved output from `checks passed` to **`needs review`** while leaving the timing check passed.
+- The generation prompt was tightened to prefer neutral placeholders when required domain knowledge is absent and to require traceable `applied_knowledge` IDs for material source guidance.
+- Regression coverage was added for the live agenda-header and unsupported-component-list failures.
+
+**A2 conclusion so far:** retrieval quality and workshop timing behavior are promising, and the quality layer now catches this class of unsupported multi-part domain claim. The Workshop mode is **not yet fully accepted** because the model generation itself still produced unsupported domain content in the latest live sample. No automatic repair call was used.
+
 ## Backlog
 
-| ID | Priority | Work item | Acceptance criteria |
-|---|---|---|---|
-| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. |
-| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. |
-| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. |
-| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. |
-| A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. |
-| A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. |
-| A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. |
+| ID | Priority | Work item | Acceptance criteria | Current status |
+|---|---|---|---|---|
+| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | In progress — Workshop plan tested; three additional modes remain. |
+| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — live Workshop test exposed unsupported domain content; validator now flags it. |
+| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | In progress — Workshop structure/timing is usable, but grounding still needs review. |
+| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. | Pending. |
+| A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. | Pending. |
+| A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. | Pending real two-source test. |
+| A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. | In progress. |
 
 ## Exit criteria
 
@@ -99,9 +125,9 @@ Another person can complete the intended workflow through the browser, critical 
 
 # Current verification baseline
 
-Latest local automated verification on 2026-09-15: **153 tests passed**, with two upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
+Latest local automated verification on 2026-09-15: **157 tests passed**, with two upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
 
-The real-provider extraction validation was performed separately under the project's explicit free-tier call budget. Those live probes are documented in `docs/sprint_status.md` and `docs/build_log.md`.
+The real-provider extraction and Workshop output validation were performed separately under the project's explicit free-tier call budget. Live evidence is documented in `docs/sprint_status.md` and `docs/build_log.md`.
 
 ---
 

@@ -1,9 +1,99 @@
 import json
 from types import SimpleNamespace
 
+from app.models.workshop import WorkshopPrepareRequest
 from app.models.workshop_generation import WorkshopGenerateRequest
 from app.services.output_modes import quality_report
+from app.services.workshop import _meaningful_terms, _workshop_relevance, build_workshop_query
 from app.services.workshop_generation import generate_workshop_output
+
+
+def test_study_guide_retrieval_filters_generic_and_structural_terms():
+    payload = WorkshopPrepareRequest(
+        situation=(
+            "I am preparing to facilitate workshops and want a study resource that helps me "
+            "remember the practical principles for keeping participants engaged, managing "
+            "session timing, designing useful practice, and handling questions."
+        ),
+        goal="Create a study guide I can use to learn and review the most useful facilitation principles from the source.",
+        audience="A beginner facilitator with little formal workshop-design experience.",
+        constraints=[
+            "Include practical application, not just definitions",
+            "Include review questions with answer or checking guidance",
+            "Keep claims grounded in the selected source",
+            "Do not invent facilitation frameworks that are not supported by the source",
+        ],
+        output_type="study_guide",
+        source_ids=["source_1"],
+    )
+
+    query_terms = set(build_workshop_query(payload).split())
+    assert "questions" in query_terms  # substantive in the situation
+    assert not {"review", "answer", "checking", "guidance"} & query_terms
+    assert not {"can", "do", "just", "little", "me", "not", "facilitation", "facilitator", "participants", "session"} & query_terms
+
+
+def test_study_guide_relevance_prefers_requested_topics_over_facilitation_boilerplate():
+    payload = WorkshopPrepareRequest(
+        situation=(
+            "Remember practical principles for keeping participants engaged, managing session timing, "
+            "designing useful practice, and handling questions."
+        ),
+        goal="Create a useful study resource.",
+        audience="A beginner facilitator.",
+        constraints=["Include review questions with answer or checking guidance"],
+        output_type="study_guide",
+        source_ids=["source_1"],
+    )
+
+    def asset(title, what_it_says, keywords):
+        return {
+            "title": title,
+            "what_it_says": what_it_says,
+            "why_it_matters": None,
+            "evidence": what_it_says,
+            "keywords": keywords,
+        }
+
+    generic_score, _ = _workshop_relevance(
+        asset(
+            "Facilitation for participants",
+            "A facilitator supports participants during a workshop session.",
+            ["facilitation", "participants", "session"],
+        ),
+        payload,
+    )
+    timing_score, timing_terms = _workshop_relevance(
+        asset(
+            "Schedule safety net",
+            "Protect time when the schedule is running late.",
+            ["schedule", "time"],
+        ),
+        payload,
+    )
+    practice_score, practice_terms = _workshop_relevance(
+        asset(
+            "Exercise design",
+            "Use an exercise so learners can apply the idea.",
+            ["exercise", "application"],
+        ),
+        payload,
+    )
+    engagement_score, engagement_terms = _workshop_relevance(
+        asset(
+            "Recover attention",
+            "Change the activity when attention drops.",
+            ["attention"],
+        ),
+        payload,
+    )
+
+    assert timing_score > generic_score
+    assert practice_score > generic_score
+    assert engagement_score > generic_score
+    assert "timing" in timing_terms
+    assert {"practice", "practical"} & set(practice_terms)
+    assert "engaged" in engagement_terms
 
 
 def test_elapsed_minute_range_table_header_is_not_an_unparsed_agenda_line():

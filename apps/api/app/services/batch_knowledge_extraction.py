@@ -33,14 +33,19 @@ def gemini_batch_schema_size() -> int:
 
 
 def _candidate_assets_for_group(group: dict):
-    """Decode provider candidates without weakening strict asset validation.
+    """Read provider candidates without weakening strict asset validation.
 
-    The live provider format uses ``assets_json`` to keep Gemini's response
-    grammar tiny. The legacy ``assets`` shape remains accepted internally so
-    existing deterministic tests and stored fixtures keep exercising the same
-    strict validation path; it is not part of the provider-facing schema.
+    The live provider format now exposes a flat ``assets`` array so Gemini's
+    structured-output grammar enforces the common fields every asset needs.
+    The temporary ``assets_json`` transport remains accepted only as a local
+    compatibility path for deterministic historical fixtures.
     """
     keys = set(group)
+    if keys == {"chunk_id", "assets"}:
+        assets = group.get("assets")
+        if not isinstance(assets, list):
+            raise ValueError("Batch assets must be an array.")
+        return assets
     if keys == {"chunk_id", "assets_json"}:
         raw = group.get("assets_json")
         if not isinstance(raw, str):
@@ -52,10 +57,7 @@ def _candidate_assets_for_group(group: dict):
         if not isinstance(assets, list):
             raise ValueError("Batch assets_json must decode to an array.")
         return assets
-    if keys == {"chunk_id", "assets"}:
-        # Compatibility path for deterministic local fixtures only.
-        return group.get("assets")
-    raise ValueError("Each batch result must contain only chunk_id and assets_json.")
+    raise ValueError("Each batch result must contain only chunk_id and assets.")
 
 
 def _normalize_evidence(value: str | None) -> str:
@@ -138,12 +140,12 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
         'Treat each chunks entry as a separate source boundary. Use only that entry’s chunk_text for its assets; '
         'never combine evidence across chunks. Evidence copied from or grounded in another supplied chunk will be rejected. '
         'Return exactly one results group for every supplied chunk_id, in input order. '
-        'Each results item must contain chunk_id and assets_json only. assets_json must itself be a valid JSON-encoded array '
-        'of candidate asset objects, or the exact string [] when the chunk has no reusable knowledge. '
+        'Each results item must contain chunk_id and assets only. assets must be an array of candidate asset objects, '
+        'or [] when the chunk has no reusable knowledge. '
         f'CRITICAL INNER-ASSET CONTRACT: every candidate object, regardless of asset_type, must include all six common required fields: {required_fields}. '
         'Do not omit what_it_says or evidence just because subtype-specific fields such as action, steps, components, consequence, or prevention are present. '
         'If a candidate cannot provide both a source-supported what_it_says and evidence, omit that candidate rather than returning an incomplete object. '
-        'Before returning, check every candidate object in every assets_json array and verify that all six required fields are present. '
+        'Before returning, check every candidate object in every assets array and verify that all six required fields are present. '
         'Include only the optional shared/subtype fields supported by the extraction instructions. decision_rule requires action; process '
         'requires steps; framework requires components. Do not emit asset-level id, created_at, source_id, or chunk_id; '
         'Knowledge Engine assigns provenance from the enclosing result group. Do not omit, duplicate, or invent chunk IDs. '
@@ -193,7 +195,7 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
                         f"{job['chunk_id']} matches supplied chunk {foreign_chunk_id} instead."
                     )
             # System-owned provenance is assigned before STRICT internal asset
-            # validation. The minimal Gemini schema is only a transport contract.
+            # validation. The flat Gemini schema is only a transport contract.
             hydrated = {
                 'chunk_id': job['chunk_id'],
                 'assets': [

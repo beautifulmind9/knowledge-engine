@@ -1,6 +1,8 @@
 # Knowledge Engine
 
-Knowledge Engine turns source material into reusable, traceable knowledge and applies it to real work: writing, decisions, study guides, product messaging, playbooks, and workshop plans.
+**Knowledge Engine transforms source material into structured, reusable knowledge assets that can be connected, retrieved, and assembled into useful outputs.**
+
+Short form: **Knowledge in. Useful outputs out.**
 
 The active application is a **local, single-owner FastAPI application with a browser interface**. Source text becomes chunks, validated Knowledge Assets, consolidated Knowledge Units, and saved outputs with revision history. The original Streamlit experiment is archived in `legacy/streamlit_prototype`; it is not the active app.
 
@@ -43,6 +45,7 @@ Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FRE
 - Each extraction or generation request makes at most one provider attempt; the default local budget is 20 attempts per UTC day.
 - A quota error pauses further AI calls until you explicitly resume under **Data & usage**. Resuming cannot bypass the local daily cap.
 - Browser interpretation processes one chunk per action. The API can orchestrate up to ten chunks in one explicit run, but each chunk uses its own normal Gemini request and never shares source text with another chunk.
+- Shared-context multi-chunk extraction is intentionally not used in production because live probes showed under-extraction and cross-chunk evidence leakage.
 - Gemini's asynchronous Batch API is not used because the current Gemini Developer API free tier does not include Batch processing.
 - A revision is either a manual edit with no provider call or one explicit AI request.
 - `GEMINI_MODEL` can override the configured model. Availability and free quota must be checked in your own project; no paid provider feature is required by the application.
@@ -70,7 +73,7 @@ Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CS
 | `apps/api/tests` | API, error-path, SDK contract, backup and restart regression tests |
 | `examples` | Original, synthetic, public-safe source material |
 | `scripts` | Setup, local launcher and no-API demo seed |
-| `docs` | Roadmap, item-level sprint status, storage decision and beta checklist |
+| `docs` | Architecture, product vision, sprint status, storage decisions and beta acceptance |
 
 Records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
 
@@ -78,14 +81,31 @@ Run exactly one server worker. A process lock prevents simultaneous servers usin
 
 Back up under Data & usage. The ZIP includes private source files and saved work; keep it private. Restore into a **new empty directory**, set `KNOWLEDGE_ENGINE_STORAGE` to the extracted storage folder, and start the server. Do not overwrite a live SQLite database. See [storage and privacy](docs/storage_and_privacy.md).
 
+## Current validation snapshot
+
+The real *Workshop Survival Guide* source is complete at **46/46 chunks**. The latest active set contains **121 Knowledge Assets**, with **0 missing evidence**, **0 missing keywords**, and **13 evidence-review items** retained as a manual review queue rather than known defects. The confidence distribution is 83 assets at 5 and 38 at 3.
+
+A live strict single-chunk control returned the expected five valid assets for chunk 007. A known compound crowd-recovery asset was repaired deterministically so `Talking in circles` and `Borrowing goodwill` are now separate atomic assets with correct chunk provenance.
+
 ## Readiness
 
-The implementation covers all eight remaining sprint areas. **The full v1 beta acceptance gates are not yet closed.** Live Gemini output review, the complete real-book run and quality audit, browser/mobile acceptance, and an external tester remain outstanding. Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
+The implementation covers all eight remaining sprint areas, and the real-source extraction/audit acceptance area is now closed. **The full v1 beta acceptance gates are still not closed.** Remaining material gates are:
+
+- real Gemini output review across at least four materially different output modes;
+- revision review on real generated outputs;
+- one meaningful real two-source comparison;
+- desktop/mobile/keyboard browser acceptance;
+- one external tester completing the core workflow.
+
+Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
 
 Workshop quality reports check top-level agenda timings and exclude nested notes and later sections. Component durations are reconciled, and differing practice/role-play timings across sections are flagged for review. Malformed timestamps require review; saved outputs can be rechecked without a Gemini call. See [timing validation](docs/workshop_timing_validation.md).
 
+- [Product vision](docs/product_vision.md)
+- [Architecture](docs/architecture.md)
 - [Item-level sprint status](docs/sprint_status.md)
-- [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)
+- [Release acceptance backlog](docs/release_acceptance_backlog.md)
 - [Release decision and test checklist](docs/beta_test_checklist.md)
+- [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)
 
 MIT License. Process only sources you have the right to use. Keep copyrighted uploads, extracted source text, private backups, and API keys out of commits.

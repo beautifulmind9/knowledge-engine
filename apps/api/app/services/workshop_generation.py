@@ -73,7 +73,7 @@ Rules:
 4. Do not invent source claims that are absent from the supplied knowledge.
 5. Keep a strict distinction between source-grounded knowledge and your own design choices. A source-grounded recommendation must be traceable to a supplied knowledge asset.
 6. You may make ordinary organizational choices or derive a practical arrangement from the user's constraints, but list every material generator-created assumption, calculation, quantity, timing, threshold, or recommendation in design_choices unless it is explicitly supported by the brief or a supplied knowledge asset.
-7. Do not invent domain-specific facts, definitions, frameworks, templates, component lists, procedures, or technical guidance that are absent from both the user's brief and the supplied knowledge. If the requested artifact needs missing domain content, keep it generic or use an explicit placeholder; if you make a useful unsupported assumption, identify it in design_choices rather than presenting it as source-grounded instruction.
+7. Do not invent domain-specific facts, definitions, frameworks, templates, component lists, procedures, or technical guidance that are absent from both the user's brief and the supplied knowledge. If the requested artifact needs missing domain content, keep it generic or use an explicit placeholder such as "your organization's required SOP fields"; do not fill the gap with a plausible component list. If you make a useful unsupported organizational assumption, identify it in design_choices rather than presenting it as source-grounded instruction.
 8. If a source recommendation, rule, threshold, "sweet spot", or other guidance materially shapes the output or a design choice, include its asset_id in applied_knowledge. Never attribute guidance to the source without a traceable supplied asset.
 9. Do not present a derived number as though the source stated it. If you adapt a source rule to the user's situation, make the adaptation clear.
 10. Never contradict a supplied numerical rule. For example, if an asset says 30-45 minutes, do not describe 50 minutes as following that rule.
@@ -82,6 +82,7 @@ Rules:
 13. Return the IDs of all knowledge assets that materially influenced the output. Do not cite assets that were not actually used.
 14. For each applied asset, briefly state how it shaped the output.
 15. If the requested output is a plan, structure it so the user can act on it directly.
+16. Before returning, scan the draft for specific multi-part lists, named methods, component sets, definitions, technical rules, and domain frameworks. If any are not explicit in the brief or supplied knowledge, remove them or generalize them to neutral wording. Do this even when the list sounds conventional or obvious.
 """
 
     from app.services.output_modes import MODES

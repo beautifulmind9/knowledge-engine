@@ -143,7 +143,7 @@ def validate_workshop(output, brief, knowledge_snapshot):
         if indent > agenda_indent:
             continue
         agenda_indent = min(agenda_indent, indent)
-        if re.match(r'^[\s|:\-]+$', line) or re.match(r'^\s*\|?\s*(?:time|duration)\s*\|', line, re.I):
+        if re.match(r'^[\s|:\-]+$', line) or re.match(r'^\s*\|?\s*(?:time|duration|elapsed\s+(?:minute\s+)?range)\s*\|', line, re.I):
             continue
         if re.match(r'^\s*[*| ]*total\b', line, re.I):
             durations = list(DURATION.finditer(line))

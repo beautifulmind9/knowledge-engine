@@ -169,7 +169,7 @@ def _gemini_response_schema(value):
 
 
 def status():
-    limit = max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "20")))
+    limit = max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "450")))
     calls = usage.get("calls", 0) if usage.get("day") == datetime.now(timezone.utc).date().isoformat() else 0
     capped = calls >= limit
     return {"configured": bool(os.getenv("GEMINI_API_KEY")),

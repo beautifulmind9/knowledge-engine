@@ -78,16 +78,24 @@ The task was to design a **90-minute beginner SOP-writing workshop** for junior 
 - The generation prompt was tightened to prefer neutral placeholders when required domain knowledge is absent and to require traceable `applied_knowledge` IDs for material source guidance.
 - Regression coverage was added for the live agenda-header and unsupported-component-list failures.
 
-**A2 conclusion so far:** retrieval quality and workshop timing behavior are promising, and the quality layer now catches this class of unsupported multi-part domain claim. The Workshop mode is **not yet fully accepted** because the model generation itself still produced unsupported domain content in the latest live sample. No automatic repair call was used.
+### Real revision acceptance
+
+Both real Workshop outputs were then corrected manually through the product's revision workflow with **zero additional Gemini calls**.
+
+- **Revision case 1:** the second live output's unsupported `Title; Scope; Steps; Troubleshooting` list was replaced with neutral wording referring to the SOP format or requirements participants are expected to use. Version 2 revalidated at **90/90 minutes** with `checks passed`; Version 1 remained unchanged; the comparison view showed the content and design-choice changes.
+- **Revision case 2:** the first live output's unsupported `Objective; Prerequisites; Steps; Troubleshooting` list was removed and its 25-minute drafting block was restructured into separately timed 15-minute drafting and 10-minute peer-review segments while preserving the 90-minute total. Version 2 revalidated at **90/90 minutes** with `checks passed`; Version 1 remained unchanged; the comparison view showed the agenda, activity, and design-choice changes.
+- Both revisions preserved the original knowledge snapshot/provenance while clearly marking the new versions as manually supplied or edited.
+
+**A2 conclusion so far:** retrieval quality and workshop timing behavior are promising, the quality layer catches the observed unsupported-list failure class, and the revision/history/compare workflow has now been validated twice with real outputs. The Workshop mode is **not yet fully accepted for first-pass generation** because the latest real Gemini sample still required a grounding correction before it was acceptable.
 
 ## Backlog
 
 | ID | Priority | Work item | Acceptance criteria | Current status |
 |---|---|---|---|---|
 | A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | In progress — Workshop plan tested; three additional modes remain. |
-| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — live Workshop test exposed unsupported domain content; validator now flags it. |
-| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | In progress — Workshop structure/timing is usable, but grounding still needs review. |
-| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. | Pending. |
+| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — live Workshop tests exposed unsupported domain content; validator flagged it and both saved outputs were corrected through manual revisions. |
+| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | In progress — revised Workshop outputs are structurally usable and pass 90/90 timing; three additional modes remain. |
+| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. | **Complete — two real Workshop outputs were manually revised; both preserved Version 1, revalidated Version 2, retained provenance, and exposed v2→v1 comparisons.** |
 | A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. | Pending. |
 | A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. | Pending real two-source test. |
 | A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. | In progress. |

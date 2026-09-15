@@ -1,20 +1,20 @@
 # Knowledge Engine — Release Acceptance Backlog
 
-## Why this backlog exists
+## Current release decision
 
-The original Remaining Sprint 1–8 backlog remains the authoritative feature scope. The implementation pass published in commit `b1ed3277b3c3abf22ccd0b65cfef9bed932818b8` now covers all eight sprint areas, so the execution plan should no longer treat R1–R8 as eight untouched development sprints.
+**Internal local candidate; not yet an externally validated v1 beta.**
 
-This backlog contains only the material acceptance work still required before Knowledge Engine can be called an externally validated v1 beta.
-
-Current release decision: **internal local candidate; not yet externally validated v1 beta**.
+The original Remaining Sprint 1–8 backlog remains the historical feature scope. Implementation now exists across those areas, and the real-book extraction/audit acceptance work has been completed. The focus is no longer on rebuilding the extraction architecture; it is on proving output usefulness, browser usability, and external-user readiness.
 
 ## Product rules
 
 - Development cost target: **$0**.
 - Paid API billing and automatic paid fallback: **off**.
 - Stop safely when free quota is exhausted.
-- Preserve source, chunk, Knowledge Asset, Knowledge Unit and output provenance.
-- Do not commit private/copyrighted source material, generated backups or API keys.
+- One extraction chunk per Gemini request; no shared source context across chunks.
+- No automatic repair call.
+- Preserve source, chunk, Knowledge Asset, Knowledge Unit, and output provenance.
+- Do not commit private/copyrighted source material, generated backups, or API keys.
 - Automated fixtures prove behavior, not real-model usefulness.
 - Lexical agreement/tension checks assist review; they do not prove semantic correctness.
 
@@ -22,25 +22,29 @@ Current release decision: **internal local candidate; not yet externally validat
 
 # Acceptance Sprint A1 — Real-Source Completion and Knowledge Quality
 
-## Goal
+**Status: Complete for the current v1 candidate.**
 
-Prove that the hardened interpretation pipeline can complete and audit the real book already used to validate Knowledge Engine.
+The real *Workshop Survival Guide* source is restored and fully interpreted at **46/46 chunks**. The latest active state contains **121 Knowledge Assets**, with **0 missing evidence**, **0 missing keywords**, and confidence distribution **83 at 5 / 38 at 3**. Thirteen evidence items remain in the manual review queue; inspection found them source-supported compressed or near-exact evidence rather than known defects.
 
-## Backlog
+Historical cross-chunk provenance defects were identified and reprocessed. The known chunk-025 compound crowd-recovery asset was also repaired deterministically: `Talking in circles to recover attention` now belongs to chunk 025, while `Borrowing goodwill to reclaim attention` remains a separate chunk-026 process.
 
-| ID | Priority | Work item | Acceptance criteria |
-|---|---|---|---|
-| A1-01 | Must | Safely restore the existing Workshop Survival Guide source and jobs | Existing source, chunk, job and asset history is available in the current candidate without losing provenance. |
-| A1-02 | Must | Confirm free-tier Gemini setup | `GEMINI_FREE_TIER_CONFIRMED=true` is used only after confirming the project has billing disabled; no paid fallback exists. |
-| A1-03 | Must | Complete remaining interpretation | Process remaining chunks gradually within the local/free-tier limits until the source reaches complete interpretation or documented provider quota pauses. |
-| A1-04 | Must | Run source audit | Record total chunks, completed/failed jobs, active assets, overlap groups, old/superseded assets and missing evidence/keywords. |
-| A1-05 | Must | Perform qualitative knowledge review | Inspect a representative spread across the book for evidence faithfulness, false positives, asset typing, confidence, duplicates and missed knowledge. Record concrete examples. |
-| A1-06 | Should | Review chapter/section hints | Confirm where heading metadata is useful and record the known PDF chapter-inference limitation. |
-| A1-07 | Must | Close R3-06 and R3-07 | Update `docs/sprint_status.md` with actual full-book results rather than fixture evidence. |
+A live strict single-chunk provider control on chunk 007 returned **5 valid assets**, matching its historical active count and validating the production extraction contract.
 
-## Exit criteria
+| ID | Status | Result |
+|---|---|---|
+| A1-01 | Complete | Real source, chunks, jobs, and asset history restored without losing provenance. |
+| A1-02 | Complete | Free-tier/billing-disabled operating rule confirmed by the owner; no paid fallback exists. |
+| A1-03 | Complete | Source reached 46/46 interpreted chunks. |
+| A1-04 | Complete | Full audit performed; current active counts documented. |
+| A1-05 | Complete | Evidence, confidence, duplicates/provenance, and known false-positive/atomicity issues reviewed and repaired where necessary. |
+| A1-06 | Complete with limitation | Section hints remain useful where available; PDF chapter inference is still limited. |
+| A1-07 | Complete | R3-06/R3-07 status updated with real-source evidence. |
 
-One real full book reaches an auditable completed state, and there is enough evidence to say the extracted knowledge is trustworthy enough for beta use.
+### Architecture conclusion from A1
+
+Shared-context multi-chunk extraction is not used in production. Live probes showed under-extraction and cross-chunk evidence leakage. Source-level orchestration may select multiple chunks, but each chunk is processed as its own strict Gemini request and consumes its own provider attempt.
+
+Gemini's asynchronous Batch API is also not used because the current Gemini Developer API free tier does not include Batch processing.
 
 ---
 
@@ -48,23 +52,23 @@ One real full book reaches an auditable completed state, and there is enough evi
 
 ## Goal
 
-Prove that the generated artifacts are useful and grounded with the real provider, not only with mocked responses.
+Prove that generated artifacts are useful and grounded with the real provider, not only with mocked responses.
 
 ## Backlog
 
 | ID | Priority | Work item | Acceptance criteria |
 |---|---|---|---|
-| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook or product messaging. |
-| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation and absence of unsupported factual claims. |
+| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. |
+| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. |
 | A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. |
-| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance and original-version preservation. |
+| A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. |
 | A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. |
 | A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. |
 | A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. |
 
 ## Exit criteria
 
-At least four real-model outputs and one real two-source task are judged useful, grounded and traceable, with known limitations documented.
+At least four real-model outputs and one real two-source task are judged useful, grounded, and traceable, with known limitations documented.
 
 ---
 
@@ -80,12 +84,12 @@ Prove that a non-technical person can use the product through the browser and ma
 |---|---|---|---|
 | A3-01 | Must | Fresh-machine/local setup acceptance | Follow `README.md` setup from a clean environment and run the test suite successfully. Record any platform-specific fixes. |
 | A3-02 | Must | Desktop browser happy path | Create/select library → add/process source → interpret → search/select knowledge → Workshop → save → revise → compare → export without terminal API calls. |
-| A3-03 | Must | Error-state browser checks | Missing key, quota pause, invalid/unsupported input and stale/failed job states produce understandable messages without losing completed work. |
-| A3-04 | Must | Mobile-width visual pass | Check narrow screen widths for clipping, unreadable text, horizontal overflow and unusable forms. |
+| A3-03 | Must | Error-state browser checks | Missing key, quota pause, invalid/unsupported input, and stale/failed job states produce understandable messages without losing completed work. |
+| A3-04 | Must | Mobile-width visual pass | Check narrow screen widths for clipping, unreadable text, horizontal overflow, and unusable forms. |
 | A3-05 | Should | Keyboard/accessibility pass | Complete the main flow with keyboard navigation; verify visible focus and meaningful labels. |
 | A3-06 | Must | External beta test | At least one person other than the builder completes the core workflow and provides structured feedback. |
-| A3-07 | Must | Resolve critical defects | Fix or explicitly defer any issue that prevents setup, core workflow completion, provenance understanding or safe quota handling. |
-| A3-08 | Must | Final release decision | Update `docs/beta_test_checklist.md`, `docs/sprint_status.md` and README readiness language to either `v1 beta` or `not ready`, with reasons. |
+| A3-07 | Must | Resolve critical defects | Fix or explicitly defer any issue that prevents setup, core workflow completion, provenance understanding, or safe quota handling. |
+| A3-08 | Must | Final release decision | Update `docs/beta_test_checklist.md`, `docs/sprint_status.md`, and README readiness language to either `v1 beta` or `not ready`, with reasons. |
 
 ## Exit criteria
 
@@ -93,43 +97,27 @@ Another person can complete the intended workflow through the browser, critical 
 
 ---
 
-# Pre-flight verification before A1
+# Current verification baseline
 
-Before doing more feature work, pull the published implementation and confirm the candidate baseline locally:
+Latest local automated verification on 2026-09-15: **153 tests passed**, with two upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
 
-```bash
-cd /workspaces/knowledge-engine
-git pull --ff-only
-bash scripts/setup.sh
-.venv/bin/python -m pytest apps/api/tests -q
-```
-
-Expected implementation-pass baseline: **44 passing tests**. If the local result differs, investigate before running paid-or-quota-sensitive acceptance steps.
-
-The synthetic demo can be exercised without an AI key:
-
-```bash
-bash scripts/run.sh
-# in another terminal
-.venv/bin/python scripts/seed_demo.py
-```
-
-Open `http://127.0.0.1:8000` and use the demo to smoke-test the browser workflow before restoring the real source.
+The real-provider extraction validation was performed separately under the project's explicit free-tier call budget. Those live probes are documented in `docs/sprint_status.md` and `docs/build_log.md`.
 
 ---
 
 # What is no longer a development backlog
 
-The following areas now have implementation and regression coverage and should not be rebuilt from scratch unless acceptance testing exposes a defect:
+The following areas have implementation and regression coverage and should not be rebuilt from scratch unless acceptance testing exposes a new defect:
 
-- Saved outputs and persistent provenance
-- Output revisions, history and comparisons
-- Reprocessing/versioning and source audit tooling
-- Six output-mode instruction sets
-- Multi-source retrieval and synthesis context
-- Browser UI for the core workflow
-- Local SQLite persistence, backup/export and deletion controls
-- Zero-cost quota guardrails
-- Synthetic demo, setup scripts and automated regression tests
+- saved outputs and persistent provenance;
+- output revisions, history, and comparisons;
+- reprocessing/versioning and source audit tooling;
+- strict single-chunk Gemini interpretation;
+- six output-mode instruction sets;
+- multi-source retrieval and synthesis context;
+- browser UI for the core workflow;
+- local SQLite persistence, backup/export, and deletion controls;
+- zero-cost quota guardrails;
+- synthetic demo, setup scripts, and automated regression tests.
 
-The focus from here is **acceptance, quality evidence and release readiness**, not adding more architecture.
+The focus from here is **A2 output quality and A3 release acceptance**, not more extraction batching experiments.

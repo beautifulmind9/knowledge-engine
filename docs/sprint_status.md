@@ -22,12 +22,12 @@ A mocked provider response proves software behavior, not real-world output usefu
 |---|---|---|
 | R2-01 | Verified | Root/parent IDs, versions, and timestamps are stored. |
 | R2-02 | Verified | Revision instructions/manual edits are bounded and validated. |
-| R2-03 | Verified | Revisions create new records; originals remain unchanged. |
-| R2-04 | Verified | Knowledge snapshots and applied IDs are validated. |
+| R2-03 | Verified with live evidence | Revisions create new records; two real Workshop revisions preserved their original Version 1 records unchanged. |
+| R2-04 | Verified with live evidence | Knowledge snapshots and applied IDs are preserved across the two real manual revisions. |
 | R2-05 | Verified | Grounding prompt and design-choice separation exist; semantic human review remains necessary. |
-| R2-06 | Verified | Chronological history is available. |
-| R2-07 | Verified | Changed fields/content diff are available within one history. |
-| R2-08 | Verified | One explicit provider request per AI revision; no automatic repair call. |
+| R2-06 | Verified with live evidence | Chronological history is available and displayed for both real revision cases. |
+| R2-07 | Verified with live evidence | Changed fields/content diff is available; both real cases exposed `content` and `design_choices` differences through v2→v1 comparison. |
+| R2-08 | Verified | One explicit provider request per AI revision; no automatic repair call. The two accepted real revisions were manual and consumed zero Gemini calls. |
 
 ## R3 — Interpretation and audit
 
@@ -78,9 +78,19 @@ A single-source SOP-writing task was run twice with the real Gemini provider aga
 - The second run still invented the unsupported component list `Title; Scope; Steps; Troubleshooting`.
 - The new grounding validator detected that exact unsupported list and changed the saved output's live quality status from `checks passed` to **`needs review`** while keeping `agenda total: passed`.
 - The generation prompt now explicitly requires neutral placeholders when domain knowledge is absent and traceable `applied_knowledge` IDs for material source guidance.
-- Both live outputs were preserved unchanged as acceptance evidence; no automatic repair call was used.
+- Both live outputs were preserved unchanged as first-pass acceptance evidence; no automatic repair call was used.
 
-**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure, including real revisions. The current Workshop test demonstrates useful retrieval/timing behavior and effective detection of one grounding failure class, but the latest generation sample itself is not fully accepted as grounded.
+### Live revision acceptance evidence
+
+The two real Workshop outputs were both revised manually through the browser with no provider call.
+
+- **Case 1:** the unsupported `Title; Scope; Steps; Troubleshooting` list was replaced with neutral wording about the SOP format or requirements participants are expected to use. Version 2 reported `checks passed` with **90/90 minutes**, Version 1 remained unchanged, and the v2→v1 comparison showed the content/design-choice difference.
+- **Case 2:** the unsupported `Objective; Prerequisites; Steps; Troubleshooting` list was removed and the 25-minute drafting block was restructured into 15-minute drafting plus 10-minute peer review while keeping the full agenda at **90/90 minutes**. Version 2 reported `checks passed`, Version 1 remained unchanged, and the comparison showed the agenda/activity/design-choice changes.
+- Both Version 2 records are explicitly labeled manually supplied or edited; the source Knowledge Asset provenance remains visible.
+
+This completes the real-revision acceptance requirement for **A2-04 (2 of 2)**. It also provides live evidence for R2 history and comparison behavior.
+
+**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure. The required two real revisions are now complete, but only the Workshop mode has received real-provider output review so far, and the latest first-pass Gemini Workshop sample itself still needed a grounding correction.
 
 ## R5 — Multi-source synthesis
 
@@ -106,10 +116,10 @@ A single-source SOP-writing task was run twice with the real Gemini provider aga
 | R6-05 | Implemented | Knowledge search, evidence, explicit selection, and library scope exist. |
 | R6-06 | Implemented | Workshop brief captures situation/goal/audience/constraints/mode/tone/scope. |
 | R6-07 | Implemented | Output, applied evidence, design choices, and live quality review are displayed separately. |
-| R6-08 | Implemented | Saved outputs, revisions, history, and comparison exist. |
+| R6-08 | Implemented with live evidence | Saved outputs, manual revisions, history, and comparison have now been exercised twice with real generated outputs. |
 | R6-09 | Implemented | Busy/live feedback, disabled submit actions, errors, and empty states exist. |
 
-Desktop browser inspection has now covered completed-source status, knowledge browsing/provenance, Workshop retrieval preview, generation, saved-output display, and dynamic quality re-evaluation. Full create/upload/revise/compare/export, mobile, and keyboard acceptance remain pending.
+Desktop browser inspection has now covered completed-source status, knowledge browsing/provenance, Workshop retrieval preview, generation, saved-output display, dynamic quality re-evaluation, manual revision, version preservation, and output comparison. Full create/upload/export acceptance plus mobile and keyboard acceptance remain pending.
 
 ## R7 — Storage and control
 
@@ -146,10 +156,10 @@ The automated suite uses fake/in-memory provider responses and consumes no Gemin
 
 ## Remaining release blockers
 
-1. Review real Gemini outputs across at least three additional materially different modes and revise at least two real outputs.
-2. Produce a fully grounded live Workshop sample or otherwise close/document the remaining generation-grounding limitation.
+1. Review real Gemini outputs across at least three additional materially different modes.
+2. Produce a fully grounded first-pass live Workshop sample or otherwise close/document the remaining generation-grounding limitation.
 3. Run one meaningful real two-source task and compare it with the corresponding single-source results.
 4. Complete the remaining desktop happy-path steps plus mobile/keyboard browser acceptance.
 5. Have at least one external tester complete the core workflow and record feedback.
 
-The real-book interpretation/audit is **no longer a release blocker**.
+The required **two real output revisions are complete** and are no longer a release blocker. The real-book interpretation/audit is also **no longer a release blocker**.

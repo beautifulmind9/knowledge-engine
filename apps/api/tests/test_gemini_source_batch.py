@@ -1,6 +1,9 @@
 import json
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
 from app.db import mock_data as db
 from app.services import ai_gateway
 from app.services import gemini_batch_gateway as batch_gateway
@@ -179,29 +182,26 @@ def test_pending_refresh_does_not_poll_or_save_automatically(source, monkeypatch
     assert all(j["status"] == "running" for j in jobs)
 
 
-def test_batch_gateway_counts_one_submission_and_disables_retries(client, monkeypatch):
+def test_batch_gateway_counts_one_submission_and_uses_one_transport_attempt(client, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "fixture-key")
     monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
     calls = []
+    client_kwargs = []
 
     class FakeBatches:
-        def __init__(self):
-            self.sdk_configuration = SimpleNamespace(
-                retry_config=SimpleNamespace(strategy="retry")
-            )
-
+        # Deliberately no sdk_configuration: google-genai 2.23's Batches
+        # resource is backed by the legacy API client.
         def create(self, **kwargs):
-            assert self.sdk_configuration.retry_config.strategy == "none"
             calls.append(("create", kwargs))
             return SimpleNamespace(name="batches/gateway", state=SimpleNamespace(name="JOB_STATE_PENDING"))
 
         def get(self, **kwargs):
-            assert self.sdk_configuration.retry_config.strategy == "none"
             calls.append(("get", kwargs))
             return SimpleNamespace(name="batches/gateway", state=SimpleNamespace(name="JOB_STATE_RUNNING"))
 
     class FakeClient:
         def __init__(self, **kwargs):
+            client_kwargs.append(kwargs)
             self.batches = FakeBatches()
 
         def __enter__(self):
@@ -225,3 +225,34 @@ def test_batch_gateway_counts_one_submission_and_disables_retries(client, monkey
     assert checked.name == "batches/gateway"
     assert client.get("/usage").json()["calls_today"] == before + 1
     assert [kind for kind, _ in calls] == ["create", "get"]
+    assert len(client_kwargs) == 2
+    for kwargs in client_kwargs:
+        assert kwargs["http_options"]["retry_options"]["attempts"] == 1
+
+
+def test_batch_gateway_setup_failure_before_create_does_not_consume_call(client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture-key")
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
+
+    class BrokenClient:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            raise RuntimeError("local SDK setup failed")
+
+        def __exit__(self, *args):
+            return None
+
+    monkeypatch.setattr(ai_gateway.genai, "Client", BrokenClient)
+    before = client.get("/usage").json()["calls_today"]
+
+    with pytest.raises(HTTPException) as captured:
+        batch_gateway.submit_generate_content_batch(
+            model="gemini-3.1-flash-lite",
+            inline_requests=[{"contents": [{"parts": [{"text": "test"}]}]}],
+            display_name="test-batch",
+        )
+
+    assert captured.value.status_code == 502
+    assert client.get("/usage").json()["calls_today"] == before

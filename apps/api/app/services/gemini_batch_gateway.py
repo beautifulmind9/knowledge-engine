@@ -23,13 +23,17 @@ def _persist_usage():
     persist_state()
 
 
-def _disable_retries(resource):
-    """Fail closed if the pinned SDK no longer exposes retry configuration."""
-    configuration = getattr(resource, "sdk_configuration", None)
-    retry_config = getattr(configuration, "retry_config", None)
-    if retry_config is None or not hasattr(retry_config, "strategy"):
-        raise RuntimeError("Gemini Batch SDK retry controls are unavailable.")
-    retry_config.strategy = "none"
+def _client_http_options():
+    """One transport attempt only for the legacy Batches resource.
+
+    google-genai 2.23 exposes ``client.batches`` through the legacy API client,
+    not the NextGen resource used by ``client.interactions``. For the legacy
+    client, ``HttpRetryOptions.attempts`` includes the initial request, so
+    attempts=1 means no automatic retry. The Batches object therefore does not
+    expose ``sdk_configuration.retry_config`` and must not be treated like the
+    Interactions resource.
+    """
+    return {"timeout": 60000, "retry_options": {"attempts": 1}}
 
 
 def _generation_preflight():
@@ -45,9 +49,8 @@ def _generation_preflight():
     return current
 
 
-def submit_generate_content_batch(model: str, inline_requests: list, display_name: str):
-    """Submit exactly one asynchronous Gemini Batch provider attempt."""
-    current = _generation_preflight()
+def _record_submission_attempt(current):
+    """Count only once the code is about to call the provider create method."""
     usage.update(
         day=datetime.now(timezone.utc).date().isoformat(),
         calls=current["calls_today"] + 1,
@@ -55,13 +58,21 @@ def submit_generate_content_batch(model: str, inline_requests: list, display_nam
     )
     _persist_usage()
 
+
+def submit_generate_content_batch(model: str, inline_requests: list, display_name: str):
+    """Submit exactly one asynchronous Gemini Batch provider attempt."""
+    current = _generation_preflight()
+
     try:
         with ai_gateway.genai.Client(
             api_key=os.environ["GEMINI_API_KEY"],
-            http_options={"timeout": 60000, "retry_options": {"attempts": 1}},
+            http_options=_client_http_options(),
         ) as client:
             batches = client.batches
-            _disable_retries(batches)
+            # Count immediately before the provider create operation. SDK
+            # setup/compatibility failures that occur before this point are not
+            # provider attempts and should not consume the local daily cap.
+            _record_submission_attempt(current)
             return batches.create(
                 model=model,
                 src=inline_requests,
@@ -97,11 +108,9 @@ def get_generate_content_batch(name: str):
     try:
         with ai_gateway.genai.Client(
             api_key=os.environ["GEMINI_API_KEY"],
-            http_options={"timeout": 60000, "retry_options": {"attempts": 1}},
+            http_options=_client_http_options(),
         ) as client:
-            batches = client.batches
-            _disable_retries(batches)
-            return batches.get(name=name)
+            return client.batches.get(name=name)
     except HTTPException:
         raise
     except Exception as error:

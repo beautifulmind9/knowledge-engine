@@ -3,12 +3,20 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from google import genai
 from app.db.mock_data import usage
 
 
 logger = logging.getLogger(__name__)
+PROVIDER_QUOTA_TIMEZONE = ZoneInfo("America/Los_Angeles")
+
+
+def _quota_day(now=None):
+    """Return the provider RPD day, which resets at midnight Pacific time."""
+    instant = now or datetime.now(timezone.utc)
+    return instant.astimezone(PROVIDER_QUOTA_TIMEZONE).date().isoformat()
 
 
 def _response_json_in_memory(error):
@@ -170,14 +178,14 @@ def _gemini_response_schema(value):
 
 def status():
     limit = max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "450")))
-    calls = usage.get("calls", 0) if usage.get("day") == datetime.now(timezone.utc).date().isoformat() else 0
+    calls = usage.get("calls", 0) if usage.get("day") == _quota_day() else 0
     capped = calls >= limit
     return {"configured": bool(os.getenv("GEMINI_API_KEY")),
             "free_tier_confirmed": os.getenv("GEMINI_FREE_TIER_CONFIRMED") == "true",
             "daily_call_limit": limit,
             "calls_today": calls, "daily_limit_reached": capped,
             "paused": usage.get("paused", False) or capped,
-            "reason": usage.get("reason") or ("Local daily call limit reached. Resume tomorrow; no paid fallback is used." if capped else None),
+            "reason": usage.get("reason") or ("Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used." if capped else None),
             "last_attempt_at": usage.get("last_attempt_at"),
             "note": "The application cannot verify Google's billing settings. Use a project with billing disabled."}
 
@@ -192,8 +200,8 @@ def generate(model, payload, schema):
     if current["paused"]:
         raise HTTPException(429, current["reason"] or "AI calls paused. Resume explicitly when quota is available.")
     if current["calls_today"] >= current["daily_call_limit"]:
-        raise HTTPException(429, "Local daily call limit reached. Resume tomorrow; no paid fallback is used.")
-    usage.update(day=datetime.now(timezone.utc).date().isoformat(), calls=current["calls_today"]+1,
+        raise HTTPException(429, "Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used.")
+    usage.update(day=_quota_day(), calls=current["calls_today"]+1,
                  last_attempt_at=datetime.now(timezone.utc).isoformat())
     persist_state()
     try:

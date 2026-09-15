@@ -9,13 +9,22 @@ MODES = {
 
 
 def quality_report(output, brief=None, knowledge_snapshot=None):
+    brief = brief or {}
+    knowledge_snapshot = knowledge_snapshot or []
     mode = MODES.get(output["output_type"], {"checks": []})
     structural = [{"criterion": word, "passed": word.lower() in output["content"].lower()} for word in mode["checks"]]
-    report = {"report_version": 4, "validation_status": "not_evaluated", "issues": [],
+    report = {"report_version": 5, "validation_status": "not_evaluated", "issues": [],
             "structure_checks": structural, "has_provenance": bool(output["applied_knowledge"]),
             "human_review_required": True, "human_review_criteria": ["Ready-to-use artifact", "Audience and channel fit", "Source faithfulness", "Design choices separated"],
-            "note": "Headings and citation IDs do not establish that a plan is valid. Even passed timing checks require human review of meaning and source faithfulness."}
+            "note": "Headings and citation IDs do not establish that a plan is valid. Even passed automated checks require human review of meaning and source faithfulness."}
     if output["output_type"] == "workshop_plan":
         from app.services.workshop_validation import validate_workshop
-        report.update(validate_workshop(output, brief or {}, knowledge_snapshot or []))
+        report.update(validate_workshop(output, brief, knowledge_snapshot))
+
+    from app.services.grounding_validation import grounding_review_issues
+    grounding_issues = grounding_review_issues(output, brief, knowledge_snapshot)
+    if grounding_issues:
+        report.setdefault("issues", []).extend(grounding_issues)
+        if report.get("validation_status") not in {"failed"}:
+            report["validation_status"] = "needs_review"
     return report

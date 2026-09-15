@@ -63,14 +63,81 @@ GEMINI_BATCH_ASSET_TYPES = [
 ]
 
 
-def gemini_batch_response_schema():
-    """Minimal provider contract; all asset structure is validated locally.
+GEMINI_BATCH_REQUIRED_ASSET_FIELDS = [
+    "asset_type",
+    "title",
+    "what_it_says",
+    "evidence",
+    "keywords",
+    "confidence_score",
+]
 
-    Gemini's structured-output compiler only has to route one string payload per
-    chunk. ``assets_json`` contains a JSON-encoded array of candidate asset
-    objects. Knowledge Engine parses that string and validates every candidate
-    against the unchanged strict discriminated ``KnowledgeAsset`` models before
-    anything is persisted.
+
+def _string_array_schema():
+    return {
+        "type": "array",
+        "items": {"type": "string"},
+    }
+
+
+def gemini_batch_asset_schema():
+    """Flat provider-facing superset asset schema.
+
+    Gemini must structurally provide the common fields that every usable asset
+    needs, while subtype-specific fields stay optional in this transport shape.
+    Knowledge Engine still performs the authoritative validation against the
+    unchanged discriminated ``KnowledgeAsset`` models before anything is saved.
+    """
+
+    return {
+        "type": "object",
+        "properties": {
+            "asset_type": {
+                "type": "string",
+                "enum": GEMINI_BATCH_ASSET_TYPES,
+            },
+            "title": {"type": "string"},
+            "what_it_says": {"type": "string"},
+            "evidence": {"type": "string"},
+            "keywords": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                "maxItems": 8,
+            },
+            "confidence_score": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+            },
+            "why_it_matters": {"type": "string"},
+            "chapter_or_section": {"type": "string"},
+            "how_to_apply": _string_array_schema(),
+            "when_to_use": _string_array_schema(),
+            "when_not_to_use": _string_array_schema(),
+            "tradeoffs": _string_array_schema(),
+            "condition": {"type": "string"},
+            "action": {"type": "string"},
+            "rationale": {"type": "string"},
+            "steps": _string_array_schema(),
+            "adaptation_notes": {"type": "string"},
+            "what_happened": {"type": "string"},
+            "transferable_lesson": {"type": "string"},
+            "concept_demonstrated": {"type": "string"},
+            "consequence": {"type": "string"},
+            "prevention": {"type": "string"},
+            "components": _string_array_schema(),
+        },
+        "required": GEMINI_BATCH_REQUIRED_ASSET_FIELDS,
+    }
+
+
+def gemini_batch_response_schema():
+    """Gemini-compatible batch transport with locally strict final validation.
+
+    This avoids the eleven-way discriminated union that Gemini previously
+    rejected, but unlike the temporary ``assets_json`` string transport it
+    keeps the six common asset fields visible to structured-output enforcement.
     """
 
     return {
@@ -84,15 +151,12 @@ def gemini_batch_response_schema():
                     "type": "object",
                     "properties": {
                         "chunk_id": {"type": "string"},
-                        "assets_json": {
-                            "type": "string",
-                            "description": (
-                                "JSON-encoded array of candidate knowledge asset objects "
-                                "for this chunk; use [] when none are supported."
-                            ),
+                        "assets": {
+                            "type": "array",
+                            "items": gemini_batch_asset_schema(),
                         },
                     },
-                    "required": ["chunk_id", "assets_json"],
+                    "required": ["chunk_id", "assets"],
                 },
             }
         },

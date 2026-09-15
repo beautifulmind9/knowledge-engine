@@ -61,14 +61,26 @@ The known chunk-025 compound crowd-recovery asset was repaired deterministically
 |---|---|---|
 | R4-01 | Verified | Explicit output mode is persisted with each record and revision. |
 | R4-02 | Verified | Six mode-specific prompt instruction sets exist. |
-| R4-03 | Implemented | Structural quality checks and workshop timing validation exist; they do not prove semantic correctness. |
+| R4-03 | Implemented with live evidence | Structural quality checks, workshop timing validation, and a deterministic grounding-review heuristic exist. A live 90-minute Workshop output passed timing while being correctly downgraded to `needs review` for an unsupported SOP component list. These checks still do not prove semantic correctness. |
 | R4-04 | Implemented | Writing workflow is implemented; real-provider usefulness review remains. |
 | R4-05 | Implemented | Decision-brief workflow is implemented; real-provider usefulness review remains. |
 | R4-06 | Implemented | Study/playbook workflows are implemented; real-provider usefulness review remains. |
 | R4-07 | Verified | Mode metadata contains structural guidance. |
 | R4-08 | Verified | All six modes exercise generate/save/revise in automated tests. |
 
-**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure, including real revisions.
+### Live Workshop-mode acceptance evidence
+
+A single-source SOP-writing task was run twice with the real Gemini provider against the same eight retrieved Knowledge Units from *The Workshop Survival Guide*.
+
+- Retrieval was stable across both runs.
+- First run: useful 90-minute plan, but a 25-minute practice block conflicted with the retrieved 20-minute format-switch rule; the old parser also produced a false-positive Markdown table-header warning; Gemini introduced unsupported SOP-domain content.
+- After prompt and validator fixes, the second run produced a clean 90-minute agenda with 15-minute independent practice plus 15-minute peer review and passed the timing check.
+- The second run still invented the unsupported component list `Title; Scope; Steps; Troubleshooting`.
+- The new grounding validator detected that exact unsupported list and changed the saved output's live quality status from `checks passed` to **`needs review`** while keeping `agenda total: passed`.
+- The generation prompt now explicitly requires neutral placeholders when domain knowledge is absent and traceable `applied_knowledge` IDs for material source guidance.
+- Both live outputs were preserved unchanged as acceptance evidence; no automatic repair call was used.
+
+**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure, including real revisions. The current Workshop test demonstrates useful retrieval/timing behavior and effective detection of one grounding failure class, but the latest generation sample itself is not fully accepted as grounded.
 
 ## R5 — Multi-source synthesis
 
@@ -90,14 +102,14 @@ The known chunk-025 compound crowd-recovery asset was repaired deterministically
 | R6-01 | Implemented | Active HTML/CSS/JS browser app is served by FastAPI. |
 | R6-02 | Implemented | Shared request helper handles JSON/uploads/errors. |
 | R6-03 | Implemented | Library/source creation, upload, processing, and source view exist. |
-| R6-04 | Implemented | Interpretation progress, audit, recovery, and quota messages exist. |
+| R6-04 | Implemented | Interpretation progress, audit, recovery, and quota messages exist. Completed sources no longer show an unnecessary Gemini interpretation action, and historical failed jobs are filtered out of the recovery UI when a newer resolved job exists. |
 | R6-05 | Implemented | Knowledge search, evidence, explicit selection, and library scope exist. |
 | R6-06 | Implemented | Workshop brief captures situation/goal/audience/constraints/mode/tone/scope. |
-| R6-07 | Implemented | Output, applied evidence, and design choices are displayed separately. |
+| R6-07 | Implemented | Output, applied evidence, design choices, and live quality review are displayed separately. |
 | R6-08 | Implemented | Saved outputs, revisions, history, and comparison exist. |
 | R6-09 | Implemented | Busy/live feedback, disabled submit actions, errors, and empty states exist. |
 
-Full desktop/mobile/keyboard acceptance is still pending.
+Desktop browser inspection has now covered completed-source status, knowledge browsing/provenance, Workshop retrieval preview, generation, saved-output display, and dynamic quality re-evaluation. Full create/upload/revise/compare/export, mobile, and keyboard acceptance remain pending.
 
 ## R7 — Storage and control
 
@@ -118,7 +130,7 @@ Full desktop/mobile/keyboard acceptance is still pending.
 |---|---|---|
 | R8-01 | Verified | Automated workflow/persistence/revision/backup tests exist. |
 | R8-02 | Verified | Original synthetic snippets and mode/two-source fixtures exist. |
-| R8-03 | Verified | Quota, missing configuration/files, invalid AI output, recovery, and corruption paths are covered. |
+| R8-03 | Verified | Quota, missing configuration/files, invalid AI output, recovery, corruption, timing, and supported grounding-review paths are covered. |
 | R8-04 | Verified | Synthetic public-safe demo is idempotent. |
 | R8-05 | Verified | README, product vision, architecture, sprint status, and release documents describe the active product. |
 | R8-06 | Verified | Setup/launcher and dependency lock are exercised; platform-specific acceptance may still reveal issues. |
@@ -128,15 +140,16 @@ Full desktop/mobile/keyboard acceptance is still pending.
 
 ## Current automated verification
 
-Latest local suite on 2026-09-15: **153 passed, 2 upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
+Latest local suite on 2026-09-15: **157 passed, 2 upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
 
-The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction validation was run separately within the explicit free-tier budget.
+The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction and Workshop-output acceptance were run separately within the explicit free-tier budget.
 
 ## Remaining release blockers
 
-1. Review real Gemini outputs across at least four materially different modes and revise at least two of them.
-2. Run one meaningful real two-source task and compare it with the corresponding single-source results.
-3. Complete desktop/mobile/keyboard browser acceptance.
-4. Have at least one external tester complete the core workflow and record feedback.
+1. Review real Gemini outputs across at least three additional materially different modes and revise at least two real outputs.
+2. Produce a fully grounded live Workshop sample or otherwise close/document the remaining generation-grounding limitation.
+3. Run one meaningful real two-source task and compare it with the corresponding single-source results.
+4. Complete the remaining desktop happy-path steps plus mobile/keyboard browser acceptance.
+5. Have at least one external tester complete the core workflow and record feedback.
 
 The real-book interpretation/audit is **no longer a release blocker**.

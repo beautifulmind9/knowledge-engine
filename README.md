@@ -42,7 +42,7 @@ The demo is explicitly synthetic and manually authored. It does not pretend to b
 Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FREE_TIER_CONFIRMED=true` only after checking that the key belongs to a project with billing disabled. The application cannot inspect your billing configuration.
 
 - No automatic paid upgrade or paid-model fallback.
-- Each extraction or generation request makes at most one provider attempt; the default local budget is 20 attempts per UTC day.
+- Each extraction or generation request makes at most one provider attempt. For the verified local free-tier project using Gemini 3.1 Flash Lite, AI Studio showed a 500 requests/day provider limit; Knowledge Engine keeps a conservative default local guardrail of **450 attempts per UTC day**. Override `GEMINI_DAILY_CALL_LIMIT` only after checking the limits on your own project.
 - A quota error pauses further AI calls until you explicitly resume under **Data & usage**. Resuming cannot bypass the local daily cap.
 - Browser interpretation processes one chunk per action. The API can orchestrate up to ten chunks in one explicit run, but each chunk uses its own normal Gemini request and never shares source text with another chunk.
 - Shared-context multi-chunk extraction is intentionally not used in production because live probes showed under-extraction and cross-chunk evidence leakage.

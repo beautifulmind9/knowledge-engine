@@ -4,7 +4,7 @@
 
 ### Milestone
 
-Real-source extraction architecture and audit stabilized, followed by first real-model output acceptance work.
+Real-source extraction architecture and audit stabilized, followed by first real-model output acceptance work and completion of the required real revision acceptance cases.
 
 ### Completed
 
@@ -28,7 +28,11 @@ Real-source extraction architecture and audit stabilized, followed by first real
 - The second output still invented an unsupported SOP component list: `Title; Scope; Steps; Troubleshooting`.
 - Added a deterministic grounding-review heuristic so the saved output is now correctly reported as **needs review** while its agenda timing remains **passed**.
 - Tightened generation guidance again to use neutral placeholders when required domain knowledge is not supplied and require traceable applied Knowledge Asset IDs for material source guidance.
-- Preserved both live outputs unchanged as acceptance evidence; no automatic repair call was used.
+- Preserved both first-pass live outputs unchanged as acceptance evidence; no automatic repair call was used.
+- Completed **two real manual revision acceptance cases** with zero additional Gemini calls:
+  - Revision 1 removed the unsupported `Title; Scope; Steps; Troubleshooting` list from the second live output, revalidated Version 2 at 90/90 minutes with checks passed, preserved Version 1, and verified the v2→v1 comparison.
+  - Revision 2 removed the unsupported `Objective; Prerequisites; Steps; Troubleshooting` list from the first live output and restructured its 25-minute drafting block into 15-minute drafting plus 10-minute peer review, revalidated Version 2 at 90/90 minutes with checks passed, preserved Version 1, and verified the v2→v1 comparison.
+- Confirmed that both manual Version 2 records are labeled as manually supplied or edited while retaining the original Knowledge Asset provenance and visible source evidence.
 - Brought the full local suite to **157 passing tests** with two unrelated upstream deprecation warnings.
 
 ### Key learning
@@ -38,6 +42,8 @@ Provider-call efficiency is not the same thing as extraction quality. Putting se
 The safer extraction architecture is to treat the chunk as the unit of AI interpretation and the source-level run as orchestration only.
 
 The first output-quality acceptance run produced a second lesson: **passing structural/timing checks is not the same thing as being grounded**. A useful-looking plan can still smuggle in plausible domain knowledge that was never supplied. Quality review therefore needs separate checks for timing/structure and grounding, with human review still required.
+
+The revision acceptance work added a third lesson: preserving the flawed first-pass output is valuable. The product can turn a detected grounding/timing problem into a traceable corrected Version 2 without erasing what the model originally produced, and the comparison view makes the intervention auditable.
 
 ### Product decision
 
@@ -49,11 +55,12 @@ Short form: **Knowledge in. Useful outputs out.**
 
 The current quality posture is intentionally conservative: when an output is structurally valid but introduces unsupported domain detail, the system should surface **needs review** rather than treating the artifact as approved.
 
+The required A2 revision acceptance criterion is now complete: **2 of 2 real outputs revised with lineage, provenance, original-version preservation, revalidation, and comparison verified.**
+
 ### Next acceptance work
 
 - Test at least three additional materially different real-provider output modes.
-- Produce or revise toward a fully grounded Workshop sample while preserving the existing acceptance artifacts.
-- Revise at least two real outputs and verify lineage/grounding.
+- Produce or otherwise document the remaining limitation around a fully grounded first-pass Workshop generation.
 - Run one meaningful real two-source comparison.
 - Complete the remaining desktop happy path plus mobile/keyboard browser acceptance.
 - Run one external beta test.

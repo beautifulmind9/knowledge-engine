@@ -48,30 +48,42 @@ def provider(monkeypatch, response=None, error=None):
     return calls
 
 
-def test_ten_chunks_one_gateway_call_and_usage_increment(client, batch, monkeypatch):
+def test_ten_chunks_use_ten_independent_gateway_calls_and_usage_increment(client, batch, monkeypatch):
     s, jobs, groups = batch
-    calls = provider(monkeypatch, {'results': list(reversed(groups))})
-    gateway_calls = []
-    original = ai_gateway.generate
-    def counted(*args):
-        gateway_calls.append(args)
-        return original(*args)
-    monkeypatch.setattr(ai_gateway, 'generate', counted)
+    monkeypatch.setenv('GEMINI_API_KEY', 'fixture-key')
+    monkeypatch.setenv('GEMINI_FREE_TIER_CONFIRMED', 'true')
+    group_by_chunk = {group['chunk_id']: group for group in groups}
+    calls = []
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.interactions = self
+            self.sdk_configuration = SimpleNamespace(retry_config=SimpleNamespace(strategy='retry'))
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def create(self, **kwargs):
+            assert self.sdk_configuration.retry_config.strategy == 'none'
+            payload = json.loads(kwargs['input'])
+            chunk_id = payload['chunk_id']
+            calls.append((kwargs, payload))
+            return SimpleNamespace(
+                output_text=json.dumps({'assets': group_by_chunk[chunk_id]['assets']}),
+                id=f'response-{chunk_id}',
+            )
+
+    monkeypatch.setattr(ai_gateway.genai, 'Client', FakeClient)
     before = client.get('/usage').json()['calls_today']
+
     response = client.post(f"/sources/{s['id']}/interpret?max_chunks=10")
+
     assert response.status_code == 200, response.text
     assert response.json()['processed_this_run'] == 10
-    assert len(calls) == len(gateway_calls) == 1
-    assert client.get('/usage').json()['calls_today'] == before + 1
-    payload = json.loads(calls[0]['input'])
-    assert [c['chunk_id'] for c in payload['chunks']] == [j['chunk_id'] for j in jobs]
-    assert all(c['source_id'] == s['id'] and c['chunk_text'] for c in payload['chunks'])
-    instructions = payload['instructions']
-    for field in BATCH_REQUIRED_ASSET_FIELDS:
-        assert field in instructions
-    assert 'omit that candidate rather than returning an incomplete object' in instructions
-    assert 'verify that all six required fields are present' in instructions
-    assert 'Evidence copied from or grounded in another supplied chunk will be rejected' in instructions
+    assert len(calls) == 10
+    assert client.get('/usage').json()['calls_today'] == before + 10
+    assert [payload['chunk_id'] for _, payload in calls] == [job['chunk_id'] for job in jobs]
+    assert all(payload['source_id'] == s['id'] and payload['chunk_text'] for _, payload in calls)
+    assert all('chunks' not in payload for _, payload in calls)
+
     for i, job in enumerate(jobs):
         saved = next(a for a in db.knowledge_assets if a['extraction_job_id'] == job['id'])
         assert (saved['source_id'], saved['chunk_id'], saved['title']) == (s['id'], job['chunk_id'], f'Chunk {i}')

@@ -155,3 +155,8 @@ The following areas have implementation and regression coverage and should not b
 - synthetic demo, setup scripts, and automated regression tests.
 
 The focus from here is **A2 output quality and A3 release acceptance**, not more extraction batching experiments.
+
+
+## Knowledge-page cleanup evidence — 2026-09-16
+
+Implemented scope-aware question wording, separate Search/Ask results, lazy Browse with 10-unit pages and type/chapter filters, and stale-response safeguards. Evidence/provenance and Workshop selection remain available. Full local suite: 180 Python tests, including 7 executable JavaScript state/view regressions. Zero Gemini calls. Desktop/mobile visual acceptance remains pending because the cloud preview could not reach localhost. A2 real-output/two-source acceptance and external beta acceptance remain open; this change does not close them.

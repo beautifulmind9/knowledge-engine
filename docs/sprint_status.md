@@ -163,3 +163,14 @@ The automated suite uses fake/in-memory provider responses and consumes no Gemin
 5. Have at least one external tester complete the core workflow and record feedback.
 
 The required **two real output revisions are complete** and are no longer a release blocker. The real-book interpretation/audit is also **no longer a release blocker**.
+
+
+## 2026-09-16 — Knowledge page structure and state cleanup
+
+Search and Ask now precede a secondary, collapsed Browse knowledge section. Browse loads on demand, shows 10 units initially, supports Show more and type/chapter filters, and retains evidence/provenance and Workshop selection. The shared source selector scopes both Search and Ask; question labels adapt for multiple sources. Chapter questions require one source and chapter context. Search input edits and source changes clear stale results, and late search/answer responses cannot overwrite a newer scope. Answer-to-Workshop handoff retains the answered question and source scope.
+
+Audit finding: the previous page left browse-all cards visible while a query was typed and did not refresh on source changes. Search also scored common query words. Deterministic search now excludes stopwords and generic “one”/“approach” terms; a specific “One-on-one facilitation approach” fixture excludes unrelated economic prioritization. This is lexical retrieval, not proof of semantic relevance on the private inventory.
+
+Verification: **180 Python tests passed**, including a runner for **7 executable JavaScript state/view regressions**; JavaScript syntax and patch checks passed. Zero Gemini calls. Visual desktop/mobile checks remain pending: this environment's cloud browser cannot open localhost (`ERR_BLOCKED_BY_CLIENT`). Existing `test_source.txt` was not touched. Older unfinished schema work was preserved separately and was not applied to the current one-chunk extraction architecture.
+
+A2 remains open: next preview a materially different real output (Decision brief or refreshed Study guide) before generating, and complete a meaningful two-real-source task. The private acceptance source inventory is in the user's local environment; these synthetic checks do not replace that evidence. Release status remains internal local candidate.

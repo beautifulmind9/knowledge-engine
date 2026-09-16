@@ -1,3 +1,5 @@
+import { scopeQuestion } from './knowledge-browser.js';
+
 const QUICK_KNOWLEDGE_QUESTIONS = [
   "What does this source teach?",
   "What concepts appear in this source?",
@@ -12,6 +14,11 @@ const IDEA_EXAMPLES_QUESTION = "What examples support this idea?";
 
 let pendingKnowledgeQuestion = null;
 let decorating = false;
+let answerRevision = 0;
+document.addEventListener("ke-scope-change", () => {
+  answerRevision++;
+  document.querySelector("#ke-knowledge-answer")?.remove();
+});
 
 // app.js currently builds the Workshop payload without the dynamically added
 // output_format field. Keep the enhancement layer responsible for forwarding
@@ -108,8 +115,8 @@ function scopedKnowledgeQuestion(question) {
   return scopeLines.length ? `${question}\n${scopeLines.join("\n")}` : question;
 }
 
-function openKnowledgeQuestionInWorkshop(question) {
-  pendingKnowledgeQuestion = {
+function openKnowledgeQuestionInWorkshop(question, context = null) {
+  pendingKnowledgeQuestion = context || {
     question: scopedKnowledgeQuestion(question),
     sourceIds: selectedKnowledgeSourceIds(),
   };
@@ -150,6 +157,10 @@ function showKnowledgeScopePrompt(title, message, inputSelector) {
 }
 
 function validateKnowledgeQuestionScope(question) {
+  if (question === CHAPTER_QUESTION && !document.querySelector('#ke-source-scope')?.value) {
+    showKnowledgeScopePrompt("Choose one source first", "Choose a source before asking about its chapter. No Gemini request was used.", "#ke-source-scope");
+    return false;
+  }
   if (question === CHAPTER_QUESTION && !knowledgeScopeValue("#ke-chapter-scope")) {
     showKnowledgeScopePrompt(
       "Choose a chapter or section first",
@@ -171,7 +182,7 @@ function validateKnowledgeQuestionScope(question) {
   return true;
 }
 
-function renderKnowledgeAnswer(data, originalQuestion) {
+function renderKnowledgeAnswer(data, originalQuestion, context) {
   const card = knowledgeAnswerCard();
   card.replaceChildren();
 
@@ -209,7 +220,7 @@ function renderKnowledgeAnswer(data, originalQuestion) {
 
   card.append(
     actions(
-      button("Open in Workshop", () => openKnowledgeQuestionInWorkshop(originalQuestion))
+      button("Open in Workshop", () => openKnowledgeQuestionInWorkshop(originalQuestion, context))
     )
   );
 
@@ -219,7 +230,13 @@ function renderKnowledgeAnswer(data, originalQuestion) {
 async function generateKnowledgeAnswer(question, trigger) {
   if (!validateKnowledgeQuestionScope(question)) return;
 
-  const scopedQuestion = scopedKnowledgeQuestion(question);
+  const sourceIds = selectedKnowledgeSourceIds();
+  if (!sourceIds.length) {
+    showKnowledgeScopePrompt("No sources in scope", "Add a source with interpreted knowledge before asking. No Gemini request was used.", "#ke-source-scope");
+    return;
+  }
+  const scopedQuestion = scopedKnowledgeQuestion(scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
+  const ticket = ++answerRevision;
   const card = knowledgeAnswerCard();
 
   card.replaceChildren(
@@ -244,7 +261,7 @@ async function generateKnowledgeAnswer(question, trigger) {
         tone_or_style: "Clear, concise, practical",
         output_type: "knowledge_answer",
         output_format: null,
-        source_ids: selectedKnowledgeSourceIds(),
+        source_ids: sourceIds,
         library_id: null,
         asset_ids: [],
         limit: 8,
@@ -264,8 +281,11 @@ async function generateKnowledgeAnswer(question, trigger) {
       );
     }
 
-    renderKnowledgeAnswer(await response.json(), question);
+    const data = await response.json();
+    if (ticket !== answerRevision || !card.isConnected) return;
+    renderKnowledgeAnswer(data, question, {question: scopedQuestion, sourceIds});
   } catch (error) {
+    if (ticket !== answerRevision || !card.isConnected) return;
     card.replaceChildren(
       makeElement("h3", "Knowledge answer could not be generated"),
       makeElement("p", error.message || String(error), "error")
@@ -314,7 +334,8 @@ function decorateKnowledgeView() {
 
   const quickActions = makeElement("div", undefined, "actions");
   for (const question of QUICK_KNOWLEDGE_QUESTIONS) {
-    const quickButton = makeElement("button", question);
+    const quickButton = makeElement("button", scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
+    quickButton.dataset.question = question;
     quickButton.type = "button";
     quickButton.addEventListener("click", () =>
       generateKnowledgeAnswer(question, quickButton)
@@ -340,7 +361,19 @@ function decorateKnowledgeView() {
   });
   card.append(askForm);
 
+  const refreshScope = () => {
+    if (!card.isConnected) return;
+    const single = !!document.querySelector('#ke-source-scope')?.value;
+    for (const node of quickActions.children) node.textContent = scopeQuestion(node.dataset.question, single);
+    card.querySelector('h3').textContent = single ? 'Ask this source' : 'Ask these sources';
+  };
+  searchForm.addEventListener('change', refreshScope);
+  for (const input of [chapterInput, ideaInput]) input.addEventListener('input', () => {
+    answerRevision++;
+    document.querySelector('#ke-knowledge-answer')?.remove();
+  });
   searchForm.after(card);
+  refreshScope();
 }
 
 function applyPendingKnowledgeQuestion() {

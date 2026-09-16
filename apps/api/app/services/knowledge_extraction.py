@@ -438,7 +438,7 @@ def search_knowledge_assets(
     limit: int = 20,
     library_id: str | None = None,
 ):
-    tokens = query_tokens(query)
+    tokens = sorted(set(query_tokens(query)) - STOPWORDS - {"one", "approach"})
     if not tokens:
         return []
 

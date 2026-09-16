@@ -7,6 +7,7 @@ class WorkshopPrepareRequest(BaseModel):
     audience: str | None = None
     constraints: list[str] = Field(default_factory=list)
     output_type: str = Field(default="general")
+    output_format: str | None = None
     source_ids: list[str] = Field(default_factory=list)
     library_id: str | None = None
     asset_ids: list[str] = Field(default_factory=list)
@@ -19,4 +20,5 @@ class WorkshopBrief(BaseModel):
     audience: str | None = None
     constraints: list[str] = Field(default_factory=list)
     output_type: str
+    output_format: str | None = None
     retrieval_query: str

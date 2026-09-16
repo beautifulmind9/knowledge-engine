@@ -353,6 +353,7 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
             "audience": payload.audience,
             "constraints": payload.constraints,
             "output_type": payload.output_type,
+            "output_format": payload.output_format,
             "retrieval_query": query,
             "source_ids": payload.source_ids,
             "library_id": payload.library_id,

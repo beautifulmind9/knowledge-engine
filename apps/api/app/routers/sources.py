@@ -20,6 +20,7 @@ from app.services.text_extraction import (
     save_extracted_text
 )
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
+from app.services.source_structure import annotate_pdf_chunks_with_outline
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -61,6 +62,58 @@ def find_source(source_id: str):
 
 def get_file_extension(filename: str):
     return Path(filename).suffix.lower()
+
+
+def _recover_pdf_structure(source: dict):
+    if source.get("file_type") != ".pdf":
+        raise HTTPException(400, "Chapter recovery currently uses embedded PDF outlines and is available only for PDF sources.")
+
+    file_path = source.get("file_path")
+    chunks_path = source.get("chunks_path")
+    if not file_path or not Path(file_path).exists():
+        raise HTTPException(404, "Uploaded PDF file not found on disk.")
+    if not chunks_path or not Path(chunks_path).exists():
+        raise HTTPException(400, "Chunk this source before recovering chapter structure.")
+
+    chunks = load_chunks(chunks_path)
+    try:
+        chunks, summary = annotate_pdf_chunks_with_outline(file_path, chunks)
+    except Exception as error:
+        raise HTTPException(400, f"PDF chapter structure could not be read: {error}") from error
+
+    save_chunks(source["id"], chunks)
+    chapter_by_chunk = {
+        chunk["id"]: chunk.get("chapter_or_section")
+        for chunk in chunks
+        if chunk.get("chapter_or_section")
+    }
+    updated_assets = 0
+    for asset in knowledge_assets:
+        if asset.get("source_id") != source["id"]:
+            continue
+        chapter = chapter_by_chunk.get(asset.get("chunk_id"))
+        if chapter and not asset.get("chapter_or_section"):
+            asset["chapter_or_section"] = chapter
+            updated_assets += 1
+
+    source["structure_status"] = (
+        "pdf_outline_recovered" if summary["outline_entry_count"] else "no_pdf_outline"
+    )
+    source["structure_section_count"] = summary["section_count"]
+    source["structure_outline_entry_count"] = summary["outline_entry_count"]
+    persist_state()
+
+    return {
+        "source_id": source["id"],
+        **summary,
+        "updated_asset_count": updated_assets,
+        "structure_status": source["structure_status"],
+        "message": (
+            "PDF outline structure recovered without changing chunk text or making an AI call."
+            if summary["outline_entry_count"]
+            else "This PDF has no usable embedded outline. No chapter labels were added."
+        ),
+    }
 
 
 @router.get("")
@@ -137,7 +190,9 @@ def get_source_status(source_id: str):
         "file_name": source.get("file_name"),
         "file_type": source.get("file_type"),
         "extracted_text_path": source.get("extracted_text_path"),
-        "chunks_path": source.get("chunks_path")
+        "chunks_path": source.get("chunks_path"),
+        "structure_status": source.get("structure_status"),
+        "structure_section_count": source.get("structure_section_count", 0),
     }
 
 
@@ -161,6 +216,13 @@ def request_source_processing(source_id: str):
         extract_source_text(source_id)
     return chunk_source_text(source_id)
 
+
+@router.post("/{source_id}/recover-structure")
+def recover_source_structure(source_id: str):
+    source = find_source(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return _recover_pdf_structure(source)
 
 
 @router.post("/{source_id}/upload")
@@ -217,6 +279,9 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source["processing_status"] = "uploaded"
     source["extracted_text_path"] = None
     source["chunks_path"] = None
+    source["structure_status"] = None
+    source["structure_section_count"] = 0
+    source["structure_outline_entry_count"] = 0
     persist_state()
 
     return {
@@ -383,6 +448,15 @@ def chunk_source_text(source_id: str):
         text=extracted_text
     )
 
+    structure_summary = None
+    if source.get("file_type") == ".pdf" and source.get("file_path"):
+        try:
+            chunks, structure_summary = annotate_pdf_chunks_with_outline(source["file_path"], chunks)
+        except Exception:
+            # Text extraction/chunking should still succeed when a PDF has no
+            # usable outline or its bookmark metadata is malformed.
+            structure_summary = None
+
     chunks_path = save_chunks(
         source_id=source_id,
         chunks=chunks
@@ -390,6 +464,12 @@ def chunk_source_text(source_id: str):
 
     source["chunks_path"] = chunks_path
     source["processing_status"] = "chunked"
+    if structure_summary is not None:
+        source["structure_status"] = (
+            "pdf_outline_recovered" if structure_summary["outline_entry_count"] else "no_pdf_outline"
+        )
+        source["structure_section_count"] = structure_summary["section_count"]
+        source["structure_outline_entry_count"] = structure_summary["outline_entry_count"]
     persist_state()
 
     return {
@@ -398,6 +478,7 @@ def chunk_source_text(source_id: str):
         "processing_status": source["processing_status"],
         "chunks_path": source["chunks_path"],
         "chunk_count": len(chunks),
+        "structure": structure_summary,
         "message": "Text chunked successfully."
     }
 

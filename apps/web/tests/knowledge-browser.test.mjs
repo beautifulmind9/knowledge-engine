@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {PAGE_SIZE, filterUnits, scopeQuestion, createSearchController} from '../knowledge-browser.js';
+import {PAGE_SIZE, filterUnits, filterSearchResults, scopeQuestion, createSearchController} from '../knowledge-browser.js';
 
 test('scope wording follows single or multiple sources',()=>{
  assert.equal(scopeQuestion('What does this source teach?',false),'What do these sources teach?');
@@ -10,18 +10,40 @@ test('scope wording follows single or multiple sources',()=>{
  assert.equal(scopeQuestion('What problems does this source help solve?',false),'What problems do these sources help solve?');
  assert.equal(scopeQuestion('What does this source teach?',true),'What does this source teach?');
 });
+
+test('precise multi-term search excludes cards that match only one generic term',()=>{
+ const items=[
+  {canonical_asset:{id:'exact',title:'One-on-one facilitation approach',what_it_says:'Address individuals rather than the crowd.',keywords:['facilitation']}},
+  {canonical_asset:{id:'checklist',title:'Exercise Facilitation Checklist',what_it_says:'Facilitation details for exercises.',keywords:['facilitation']}},
+  {canonical_asset:{id:'economic',title:'One economic prioritization approach',what_it_says:'Compare economic delay.',keywords:['economic']}},
+ ];
+ const results=filterSearchResults(items,'One-on-one facilitation approach');
+ assert.deepEqual(results.map(group=>group.canonical_asset.id),['exact']);
+});
+
+test('single-term search still supports exploration',()=>{
+ const items=[
+  {canonical_asset:{id:'a',title:'Workshop facilitation',what_it_says:'Facilitate groups.'}},
+  {canonical_asset:{id:'b',title:'Facilitation checklist',what_it_says:'Check facilitation details.'}},
+ ];
+ assert.deepEqual(filterSearchResults(items,'facilitation').map(group=>group.canonical_asset.id),['a','b']);
+});
+
 test('new search clears old results and late responses cannot restore them',async()=>{
  const pending=[],shown=[];
  const controller=createSearchController((query,scope)=>new Promise(resolve=>pending.push({query,scope,resolve})),(...args)=>shown.push(args));
  const old=controller.search('old','source-a');
  const current=controller.search('facilitation','source-b');
  assert.deepEqual(shown.at(-1),[[],'loading','facilitation']);
- pending[1].resolve(['relevant']);await current;
- pending[0].resolve(['irrelevant']);await old;
- assert.deepEqual(shown.at(-1),[['relevant'],'results','facilitation']);
- const stale=controller.search('stale','source-a');controller.invalidate();pending[2].resolve(['stale']);await stale;
+ pending[1].resolve([{canonical_asset:{title:'Facilitation',what_it_says:'Relevant facilitation'}}]);await current;
+ pending[0].resolve([{canonical_asset:{title:'Old',what_it_says:'Old'}}]);await old;
+ assert.equal(shown.at(-1)[1],'results');
+ assert.equal(shown.at(-1)[2],'facilitation');
+ assert.equal(shown.at(-1)[0].length,1);
+ const stale=controller.search('stale','source-a');controller.invalidate();pending[2].resolve([{canonical_asset:{title:'Stale',what_it_says:'Stale'}}]);await stale;
  assert.deepEqual(shown.at(-1),[[],'idle']);
 });
+
 test('search failure clears results and does not restore browse items',async()=>{
  const shown=[];const controller=createSearchController(async()=>{throw Error('offline');},(...args)=>shown.push(args));
  await assert.rejects(controller.search('facilitation',''),/offline/);
@@ -46,7 +68,7 @@ async function viewFixture(){
  heading(){},sourceItems:async()=>[{id:'s1',title:'First source'}],message(){},navigate(){},
  document:{dispatchEvent(){}},
  run:async fn=>fn(),
- api:async path=>{requests.push(path);return {items:path.startsWith('/knowledge-assets/search')?groups.slice(0,1):groups};},
+ api:async path=>{requests.push(path);return {items:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
  field:(label,name)=>{const l=el('label',label),input=el('input');input.name=name;l.append(input);return [l,input];},
  select:(label,options,current='')=>{const l=el('label',label),s=el('select');s.value=current;s.children=options.map(([value,text])=>Object.assign(el('option',text),{value}));l.append(s);return [l,s];},
  form:fn=>Object.assign(el('form'),{submit:fn}),submit:text=>el('button',text),

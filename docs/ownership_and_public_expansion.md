@@ -6,19 +6,33 @@ Knowledge Engine was created by **Taneen Lewis**.
 
 Copyright © 2026 Taneen Lewis. All rights reserved except where a specific component is expressly licensed otherwise.
 
-Knowledge Engine is currently a proprietary product. The repository is not an invitation to copy, commercialize, rebrand, host, distribute, or create derivative products from the proprietary core.
+Knowledge Engine is currently a proprietary product. Repository or documentation visibility is not an invitation to copy, commercialize, rebrand, host, distribute, or create derivative products from the proprietary core.
 
-## Current beta position
+## Open collaboration around a proprietary core
 
-The beta remains creator-controlled while the product, architecture, economics, and future community model are validated.
+Knowledge Engine is intended to grow through an open-collaboration community without making the entire core product public.
 
-During this phase:
+Anyone may participate through the contribution paths that Knowledge Engine opens, including product ideas, research, testing, UX and design proposals, documentation, evaluations, schemas, prompts, public tooling, integrations, and extensions.
 
-- the core product remains proprietary;
-- unsolicited code and documentation contributions are not accepted;
-- feedback, testing, feature ideas, and use cases may be collected;
-- no contributor code is merged without explicit contributor terms;
-- no component should be treated as open source unless its own file or directory expressly says so.
+The private core remains creator-controlled. Contributors do not need full core-source access to participate. Public APIs, schemas, SDKs, examples, test harnesses, and other deliberate extension surfaces can provide room for experimentation while protecting the product's competitive and security-sensitive internals.
+
+Official contribution and governance rules are documented in:
+
+- [Contributing to Knowledge Engine](../../CONTRIBUTING.md)
+- [Contribution Governance](contribution_governance.md)
+- [RFC Process](rfc_process.md)
+- [Extension Policy](extension_policy.md)
+- [Contributor Rights and Commercialization](contributor_rights_and_commercialization.md)
+
+## Stewardship
+
+Knowledge Engine remains founder-stewarded.
+
+**Founder and Product Steward: Taneen Lewis**
+
+Community discussion and voting may inform major decisions through formal proposals and RFCs. Final product authority remains with the Product Steward or with a future stewardship team operating under written rules established by Knowledge Engine.
+
+Over time, reviewers, Core Maintainers, Domain Maintainers, and a broader stewardship team may receive delegated authority for routine decisions. Delegation does not automatically transfer ownership, licensing authority, brand control, or commercialization authority.
 
 ## Public product does not require public source code
 
@@ -50,14 +64,39 @@ A public version may support one or more of these models:
 - bring-your-own-provider credentials;
 - limited free usage with stricter quotas;
 - paid plans with larger allowances;
-- manual or non-AI workflows where useful;
+- manual or non-AI workflows where useful; and
 - a provider abstraction so Knowledge Engine is not permanently tied to one AI vendor.
 
 The product's defensible core is the knowledge architecture, provenance, structured extraction, retrieval, synthesis, application workflows, and user experience — not a single model provider.
 
+## Extension model
+
+Community members may build against public extension surfaces without seeing the full proprietary core.
+
+A submitted extension may be:
+
+- declined;
+- partially accepted;
+- accepted as a Community or Experimental extension;
+- designated KE Approved;
+- adopted as an Official extension; or
+- integrated in whole or part into the proprietary product.
+
+Knowledge Engine decides what becomes official and may later modify, deprecate, remove, or revoke official status from accepted work.
+
+Public extension tooling may be forked under the license that accompanies that tooling. The private core may not be forked merely because extension interfaces exist.
+
+## Commercialization
+
+Commercialization of the official Knowledge Engine product and official extension ecosystem is controlled by Knowledge Engine.
+
+Acceptance of a contribution does not automatically create a right to payment, royalties, revenue share, employment, partnership, or independent commercial exploitation. Any such arrangement must be separately agreed in writing.
+
+The intended contributor-rights model preserves visible contributor credit while giving Knowledge Engine sufficient rights to maintain, adapt, distribute, relicense, and commercialize accepted work. The final legal form of those rights must be established in the operative contributor agreement before external copyrightable work is accepted into the proprietary core or official extension ecosystem.
+
 ## Possible future openness
 
-Opening parts of Knowledge Engine later should be a deliberate creator decision, component by component.
+Opening parts of Knowledge Engine later should remain a deliberate creator or stewardship decision, component by component.
 
 Potentially open or extensible areas may include:
 
@@ -66,7 +105,8 @@ Potentially open or extensible areas may include:
 - plugin and integration interfaces;
 - example integrations;
 - public-safe utilities;
-- developer documentation.
+- developer documentation; and
+- test harnesses or compatibility fixtures.
 
 Potentially proprietary areas may include:
 
@@ -75,33 +115,39 @@ Potentially proprietary areas may include:
 - extraction and consolidation refinements;
 - production orchestration;
 - premium output systems;
-- usage controls;
-- other parts identified as the competitive core.
+- usage controls; and
+- other parts identified as the competitive or security-sensitive core.
 
-No future openness is implied by the visibility of the current repository.
+No future openness is implied by visibility of the repository or by publication of extension tooling.
 
-## Attribution
+## Attribution and transparency
 
 Product-facing materials should identify the origin of the project consistently, using wording such as:
 
 **Knowledge Engine — created by Taneen Lewis**
 
-Attribution should remain visible even if the product later supports employees, contractors, community contributors, plugins, or third-party integrations.
+That creator attribution should coexist with transparent recognition of meaningful community contributions through Git history, release notes, RFC records, extension listings, contributor records, or feature acknowledgements.
+
+Contributors may accurately describe public contributions while respecting boundaries around private source code, confidential architecture, unreleased features, security-sensitive information, and private user data.
 
 ## Contributor governance
 
-Before accepting external copyrightable contributions, Knowledge Engine should adopt formal contributor terms that make ownership and licensing rights unambiguous.
+Anyone may submit proposals through the open contribution paths.
 
-Until then, outside participation should remain limited to feedback, testing, issue reports, and product discussion unless a contribution is explicitly invited and covered by written terms.
+Material changes should use formal proposals or RFCs, public discussion where appropriate, an advisory community vote, and a final steward decision. Knowledge Engine may accept all, part, or none of a proposal.
+
+Before any external copyrightable contribution is integrated into the proprietary core or adopted as an Official extension, the applicable contributor agreement must be in place.
 
 ## Future legal and brand work
 
-Before a broad public or commercial launch, obtain qualified legal review of:
+Before the first external copyrightable contribution is formally accepted, and again before a broad public or commercial launch, obtain qualified legal review of:
 
 - the proprietary license and terms of service;
-- contributor terms;
+- the contributor agreement and intended commercial-rights model;
+- extension and developer terms;
 - privacy and data-processing obligations;
 - trademark strategy for the Knowledge Engine name and identity;
-- commercial provider terms and user-facing AI disclosures.
+- commercial provider terms; and
+- user-facing AI disclosures.
 
 This document records the intended product and governance direction; it is not a substitute for jurisdiction-specific legal advice.

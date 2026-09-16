@@ -97,6 +97,20 @@ def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handof
     assert 'makeElement("button", "Ask knowledge", "primary")' in javascript
 
 
+def test_knowledge_answer_enhancement_has_its_own_rendering_helpers():
+    repo_root = Path(__file__).resolve().parents[3]
+    javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
+        encoding="utf-8"
+    )
+
+    # enhancements.js is a separate ES module and cannot rely on module-scoped
+    # helper functions from app.js.
+    assert "function detail(title, ...nodes)" in javascript
+    assert "function list(items)" in javascript
+    assert "function actions(...nodes)" in javascript
+    assert "function button(text, action, className" in javascript
+
+
 def test_context_dependent_knowledge_shortcuts_require_scope_before_gemini():
     repo_root = Path(__file__).resolve().parents[3]
     javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(

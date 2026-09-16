@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.models.workshop import WorkshopPrepareRequest
 from app.services import workshop
 from app.services.output_modes import MODES
@@ -43,6 +45,30 @@ def test_output_format_is_part_of_workshop_request():
         output_format="LinkedIn post",
     )
     assert payload.output_format == "LinkedIn post"
+
+
+def test_prepare_preserves_output_format(monkeypatch):
+    monkeypatch.setattr(workshop, "_retrieve_raw_assets", lambda payload: [_asset()])
+    payload = WorkshopPrepareRequest(
+        situation="Turn this idea into a useful post.",
+        goal="Create grounded content.",
+        output_type="social_content",
+        output_format="LinkedIn post",
+    )
+
+    prepared = workshop.prepare_workshop(payload)
+
+    assert prepared["brief"]["output_format"] == "LinkedIn post"
+
+
+def test_browser_forwards_format_as_field_not_retrieval_constraint():
+    repo_root = Path(__file__).resolve().parents[3]
+    javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "payload.output_format = selectedFormat" in javascript
+    assert "lines.push(`${prefix}${value}`)" not in javascript
 
 
 def test_knowledge_question_can_target_asset_type():

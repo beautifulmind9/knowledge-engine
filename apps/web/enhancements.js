@@ -10,6 +10,35 @@ const QUICK_KNOWLEDGE_QUESTIONS = [
 let pendingKnowledgeQuestion = null;
 let decorating = false;
 
+// app.js currently builds the Workshop payload without the dynamically added
+// output_format field. Keep the enhancement layer responsible for forwarding
+// the selected format until the base Workshop form is consolidated.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+  const path = typeof input === "string" ? input : input?.url || "";
+  const isWorkshopRequest =
+    path === "/workshops/prepare" || path === "/workshops/generate";
+
+  if (isWorkshopRequest && typeof init.body === "string") {
+    try {
+      const payload = JSON.parse(init.body);
+      const selectedFormat = document
+        .querySelector('#ke-output-format-host select[name="output_format"]')
+        ?.value?.trim();
+
+      if (selectedFormat && !payload.output_format) {
+        payload.output_format = selectedFormat;
+        init = { ...init, body: JSON.stringify(payload) };
+      }
+    } catch {
+      // Leave non-JSON or malformed requests untouched; the normal request
+      // path will surface the underlying validation error.
+    }
+  }
+
+  return nativeFetch(input, init);
+};
+
 function makeElement(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -122,12 +151,11 @@ function applyPendingKnowledgeQuestion() {
   pendingKnowledgeQuestion = null;
 }
 
-function syncFormatConstraint(constraints, value) {
+function clearLegacyFormatConstraint(constraints) {
   const prefix = "Output format: ";
   const lines = constraints.value
     .split("\n")
     .filter(line => line.trim() && !line.startsWith(prefix));
-  if (value) lines.push(`${prefix}${value}`);
   constraints.value = lines.join("\n");
 }
 
@@ -155,21 +183,17 @@ async function decorateWorkshopView() {
 
   const renderFormat = () => {
     host.replaceChildren();
+    clearLegacyFormatConstraint(constraints);
+
     const mode = modes.get(outputType.value);
     const formats = mode?.formats || [];
-    if (!formats.length) {
-      syncFormatConstraint(constraints, "");
-      return;
-    }
+    if (!formats.length) return;
 
     const label = makeElement("label", "Format");
     const select = document.createElement("select");
     select.name = "output_format";
     select.append(new Option("Choose a format", ""));
     for (const format of formats) select.append(new Option(format, format));
-    select.addEventListener("change", () =>
-      syncFormatConstraint(constraints, select.value)
-    );
     label.append(select);
     host.append(label);
   };

@@ -1,8 +1,12 @@
 # Knowledge Engine
 
+**Created by Taneen Lewis · © 2026 Taneen Lewis. All rights reserved.**
+
 **Knowledge Engine transforms source material into structured, reusable knowledge assets that can be connected, retrieved, and assembled into useful outputs.**
 
 Short form: **Knowledge in. Useful outputs out.**
+
+Knowledge Engine is proprietary software. Access to this repository does not grant permission to copy, modify, distribute, host, commercialize, or create derivative works from the proprietary code or materials. See [LICENSE](LICENSE).
 
 The active application is a **local, single-owner FastAPI application with a browser interface**. Source text becomes chunks, validated Knowledge Assets, consolidated Knowledge Units, and saved outputs with revision history. The original Streamlit experiment is archived in `legacy/streamlit_prototype`; it is not the active app.
 
@@ -108,4 +112,10 @@ Workshop quality reports check top-level agenda timings and exclude nested notes
 - [Release decision and test checklist](docs/beta_test_checklist.md)
 - [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)
 
-MIT License. Process only sources you have the right to use. Keep copyrighted uploads, extracted source text, private backups, and API keys out of commits.
+## Ownership and licensing
+
+Knowledge Engine was created by **Taneen Lewis**. © 2026 Taneen Lewis. All rights reserved.
+
+The proprietary project is not offered under an open-source license. No permission to use, copy, modify, distribute, host, sublicense, sell, commercially exploit, or create derivative works from the proprietary code or materials is granted except by prior written permission. Third-party dependencies remain subject to their own licenses and terms. See [LICENSE](LICENSE).
+
+Process only sources you have the right to use. Keep copyrighted uploads, extracted source text, private backups, and API keys out of commits.

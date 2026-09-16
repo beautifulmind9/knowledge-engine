@@ -68,7 +68,7 @@ Turn the user's Workshop brief into the requested useful output using the retrie
 
 Rules:
 1. Produce the requested output, not a summary of the knowledge units.
-2. Respect the user's situation, goal, audience, constraints, and output type.
+2. Respect the user's situation, goal, audience, constraints, output type, and requested output format when one is provided.
 3. Apply the retrieved knowledge where it is relevant; do not force every unit into the output.
 4. Do not invent source claims that are absent from the supplied knowledge.
 5. Keep a strict distinction between source-grounded knowledge and your own design choices. A source-grounded recommendation must be traceable to a supplied knowledge asset.
@@ -99,6 +99,7 @@ Rules:
         "knowledge_units": knowledge_units,
         "output_preferences": {
             "tone_or_style": payload.tone_or_style,
+            "output_format": payload.output_format,
         },
     }
 

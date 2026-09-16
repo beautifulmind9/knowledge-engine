@@ -97,6 +97,17 @@ TERM_EXPANSIONS = {
     "timing": {"time", "schedule", "scheduling"},
     "practice": {"exercise", "exercises", "activity", "activities", "application"},
     "practical": {"practice", "exercise", "exercises", "application"},
+    "concepts": {"concept"},
+    "concept": {"concepts"},
+    "problems": {"problem"},
+    "problem": {"problems"},
+    "examples": {"example"},
+    "example": {"examples"},
+    "rules": {"rule", "decision"},
+    "warnings": {"warning"},
+    "patterns": {"pattern"},
+    "frameworks": {"framework"},
+    "chapters": {"chapter", "section"},
 }
 
 
@@ -179,6 +190,8 @@ def _asset_fields(asset: dict) -> dict[str, set[str]]:
         special_values.extend(str(value) for value in asset.get(field, []) if value)
 
     return {
+        "asset_type": set(normalize_text(str(asset.get("asset_type", "")).replace("_", " ")).split()),
+        "chapter_or_section": set(normalize_text(asset.get("chapter_or_section")).split()),
         "title": set(normalize_text(asset.get("title")).split()),
         "keywords": set(
             normalize_text(" ".join(asset.get("keywords", []))).split()
@@ -195,6 +208,8 @@ def _term_match_strength(term: str, fields: dict[str, set[str]]) -> int:
 
     # Stronger fields are more intentional labels for the knowledge asset.
     weights = {
+        "asset_type": 6,
+        "chapter_or_section": 6,
         "title": 5,
         "keywords": 5,
         "special": 4,
@@ -290,7 +305,12 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
     for item in candidates:
         score, matched_terms = _workshop_relevance(item, payload)
         if score <= 0 and not payload.asset_ids:
-            continue
+            if payload.output_type == "knowledge_answer":
+                # Broad source questions such as "What does this source teach?"
+                # should still return a representative evidence-grounded set.
+                score = 1
+            else:
+                continue
         ranked.append(
             {
                 **item,

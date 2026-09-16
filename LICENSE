@@ -1,21 +1,23 @@
-MIT License
+Knowledge Engine — Copyright and Proprietary Notice
 
-Copyright (c) 2026 Taneen Lewis
+Copyright © 2026 Taneen Lewis
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Knowledge Engine, including its source code, documentation, product architecture,
+interface materials, and associated original materials in this repository, is
+proprietary unless a specific file or component expressly states otherwise.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+No permission is granted to use, copy, modify, merge, publish, distribute,
+sublicense, sell, host, commercially exploit, create derivative works from, or
+otherwise exploit the proprietary portions of Knowledge Engine without prior
+written permission from Taneen Lewis.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Access to or visibility of this repository does not grant a license to the
+proprietary materials. No rights to the Knowledge Engine name, branding, logos,
+or other identifying marks are granted by this notice.
+
+Third-party libraries, dependencies, services, trademarks, and other third-party
+materials remain subject to their own applicable licenses and terms.
+
+For licensing, partnership, or authorized contribution inquiries, permission
+must be obtained from the copyright holder.

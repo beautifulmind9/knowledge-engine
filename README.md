@@ -1,6 +1,10 @@
 # Knowledge Engine
 
+**Created by Taneen Lewis · © 2026 Taneen Lewis. All rights reserved.**
+
 Knowledge Engine turns source material into reusable knowledge that can be searched, explored, and applied to real problems.
+
+Knowledge Engine is proprietary software. Access to this repository does not grant permission to copy, modify, distribute, host, commercialize, or create derivative works from the proprietary code or materials. See [LICENSE](LICENSE).
 
 This project started as a way to extract useful ideas from books and PDFs. It is evolving into a knowledge application engine: a system that does not only summarize sources, but breaks them into concepts, problems, insights, examples, decision rules, patterns, warnings, and application methods.
 
@@ -235,6 +239,8 @@ Users should process sources they have the right to use. Future versions should 
 
 ---
 
-## License
+## Ownership and Licensing
 
-MIT License.
+Knowledge Engine was created by **Taneen Lewis**. © 2026 Taneen Lewis. All rights reserved.
+
+The project is proprietary and is not offered under an open-source license. No permission to use, copy, modify, distribute, host, sublicense, sell, commercially exploit, or create derivative works from the proprietary code or materials is granted except by prior written permission. Third-party dependencies remain subject to their own licenses and terms. See [LICENSE](LICENSE).

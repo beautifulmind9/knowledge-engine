@@ -49,6 +49,33 @@ function makeElement(tag, text, className) {
   return node;
 }
 
+// enhancements.js is loaded as its own ES module. Helpers declared inside
+// app.js are therefore not visible here, so keep this module self-contained.
+function detail(title, ...nodes) {
+  const node = document.createElement("details");
+  node.append(makeElement("summary", title), ...nodes);
+  return node;
+}
+
+function list(items) {
+  const node = document.createElement("ul");
+  for (const item of items) node.append(makeElement("li", item));
+  return node;
+}
+
+function actions(...nodes) {
+  const wrapper = makeElement("div", undefined, "actions");
+  wrapper.append(...nodes);
+  return wrapper;
+}
+
+function button(text, action, className = "") {
+  const node = makeElement("button", text, className);
+  node.type = "button";
+  node.addEventListener("click", action);
+  return node;
+}
+
 function currentViewTitle() {
   return document.querySelector("#main h1")?.textContent?.trim() || "";
 }

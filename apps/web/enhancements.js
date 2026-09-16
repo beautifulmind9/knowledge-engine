@@ -7,6 +7,9 @@ const QUICK_KNOWLEDGE_QUESTIONS = [
   "What decision rules can I apply?",
 ];
 
+const CHAPTER_QUESTION = "What did this chapter teach?";
+const IDEA_EXAMPLES_QUESTION = "What examples support this idea?";
+
 let pendingKnowledgeQuestion = null;
 let decorating = false;
 
@@ -65,11 +68,17 @@ function selectedKnowledgeSourceIds() {
     .filter(Boolean);
 }
 
+function knowledgeScopeValue(id) {
+  return document.querySelector(id)?.value?.trim() || "";
+}
+
 function scopedKnowledgeQuestion(question) {
-  const chapter = document.querySelector("#ke-chapter-scope")?.value?.trim() || "";
-  return chapter
-    ? `${question}\nChapter or section: ${chapter}`
-    : question;
+  const chapter = knowledgeScopeValue("#ke-chapter-scope");
+  const idea = knowledgeScopeValue("#ke-idea-scope");
+  const scopeLines = [];
+  if (chapter) scopeLines.push(`Chapter or section: ${chapter}`);
+  if (idea) scopeLines.push(`Idea or concept: ${idea}`);
+  return scopeLines.length ? `${question}\n${scopeLines.join("\n")}` : question;
 }
 
 function openKnowledgeQuestionInWorkshop(question) {
@@ -93,10 +102,50 @@ function findKnowledgeUnitTitle(snapshot, assetId) {
   return assetId;
 }
 
+function knowledgeAnswerCard() {
+  let card = document.querySelector("#ke-knowledge-answer");
+  if (!card) {
+    card = makeElement("section", undefined, "card");
+    card.id = "ke-knowledge-answer";
+    document.querySelector("#ke-ask-card")?.after(card);
+  }
+  return card;
+}
+
+function showKnowledgeScopePrompt(title, message, inputSelector) {
+  const card = knowledgeAnswerCard();
+  card.replaceChildren(
+    makeElement("h3", title),
+    makeElement("p", message, "muted")
+  );
+  document.querySelector(inputSelector)?.focus();
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function validateKnowledgeQuestionScope(question) {
+  if (question === CHAPTER_QUESTION && !knowledgeScopeValue("#ke-chapter-scope")) {
+    showKnowledgeScopePrompt(
+      "Choose a chapter or section first",
+      "Enter the chapter or section above, then ask the chapter question again. No Gemini request was used.",
+      "#ke-chapter-scope"
+    );
+    return false;
+  }
+
+  if (question === IDEA_EXAMPLES_QUESTION && !knowledgeScopeValue("#ke-idea-scope")) {
+    showKnowledgeScopePrompt(
+      "Name the idea first",
+      "Enter the idea or concept you want examples for, then ask the examples question again. No Gemini request was used.",
+      "#ke-idea-scope"
+    );
+    return false;
+  }
+
+  return true;
+}
+
 function renderKnowledgeAnswer(data, originalQuestion) {
-  const existing = document.querySelector("#ke-knowledge-answer");
-  const card = existing || makeElement("section", undefined, "card");
-  card.id = "ke-knowledge-answer";
+  const card = knowledgeAnswerCard();
   card.replaceChildren();
 
   const output = data.output || {};
@@ -137,21 +186,14 @@ function renderKnowledgeAnswer(data, originalQuestion) {
     )
   );
 
-  if (!existing) {
-    document.querySelector("#ke-ask-card")?.after(card);
-  }
-
   card.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function generateKnowledgeAnswer(question, trigger) {
+  if (!validateKnowledgeQuestionScope(question)) return;
+
   const scopedQuestion = scopedKnowledgeQuestion(question);
-  let card = document.querySelector("#ke-knowledge-answer");
-  if (!card) {
-    card = makeElement("section", undefined, "card");
-    card.id = "ke-knowledge-answer";
-    document.querySelector("#ke-ask-card")?.after(card);
-  }
+  const card = knowledgeAnswerCard();
 
   card.replaceChildren(
     makeElement("h3", "Generating grounded answer…"),
@@ -223,12 +265,25 @@ function decorateKnowledgeView() {
     )
   );
 
-  const chapterLabel = makeElement("label", "Chapter / section — optional");
+  const chapterLabel = makeElement(
+    "label",
+    "Chapter / section — required for the chapter question"
+  );
   const chapterInput = document.createElement("input");
   chapterInput.id = "ke-chapter-scope";
   chapterInput.placeholder = "e.g. Chapter 3, Simple";
   chapterLabel.append(chapterInput);
   card.append(chapterLabel);
+
+  const ideaLabel = makeElement(
+    "label",
+    "Idea / concept — required for the examples question"
+  );
+  const ideaInput = document.createElement("input");
+  ideaInput.id = "ke-idea-scope";
+  ideaInput.placeholder = "e.g. keeping workshops interactive";
+  ideaLabel.append(ideaInput);
+  card.append(ideaLabel);
 
   const quickActions = makeElement("div", undefined, "actions");
   for (const question of QUICK_KNOWLEDGE_QUESTIONS) {

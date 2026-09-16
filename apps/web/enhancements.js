@@ -50,23 +50,160 @@ function currentViewTitle() {
   return document.querySelector("#main h1")?.textContent?.trim() || "";
 }
 
-function selectedKnowledgeSourceId() {
+function selectedKnowledgeSourceIds() {
   const searchForm = document.querySelector("#main > form");
-  return searchForm?.querySelector("select")?.value || "";
+  const sourceSelect = searchForm?.querySelector("select");
+  if (!sourceSelect) return [];
+
+  if (sourceSelect.value) return [sourceSelect.value];
+
+  // When the user is viewing all sources in the current library, the source
+  // selector contains exactly that visible scope. Passing those IDs keeps a
+  // direct Knowledge answer inside the same scope without needing app.js state.
+  return [...sourceSelect.options]
+    .map(option => option.value)
+    .filter(Boolean);
 }
 
-function openKnowledgeQuestion(question) {
+function scopedKnowledgeQuestion(question) {
   const chapter = document.querySelector("#ke-chapter-scope")?.value?.trim() || "";
-  const scopedQuestion = chapter
+  return chapter
     ? `${question}\nChapter or section: ${chapter}`
     : question;
+}
 
+function openKnowledgeQuestionInWorkshop(question) {
   pendingKnowledgeQuestion = {
-    question: scopedQuestion,
-    sourceId: selectedKnowledgeSourceId(),
+    question: scopedKnowledgeQuestion(question),
+    sourceIds: selectedKnowledgeSourceIds(),
   };
 
   document.querySelector('nav button[data-view="workshop"]')?.click();
+}
+
+function findKnowledgeUnitTitle(snapshot, assetId) {
+  for (const group of snapshot || []) {
+    if (
+      group?.canonical_asset?.id === assetId ||
+      (group?.asset_ids || []).includes(assetId)
+    ) {
+      return group.canonical_asset?.title || assetId;
+    }
+  }
+  return assetId;
+}
+
+function renderKnowledgeAnswer(data, originalQuestion) {
+  const existing = document.querySelector("#ke-knowledge-answer");
+  const card = existing || makeElement("section", undefined, "card");
+  card.id = "ke-knowledge-answer";
+  card.replaceChildren();
+
+  const output = data.output || {};
+  card.append(
+    makeElement("h3", output.title || "Knowledge answer"),
+    makeElement(
+      "p",
+      `Grounded answer · ${data.knowledge_unit_count || 0} retrieved knowledge units · not saved automatically`,
+      "muted"
+    )
+  );
+
+  const content = makeElement("div", output.content || "No answer returned.");
+  content.style.whiteSpace = "pre-wrap";
+  card.append(content);
+
+  const applied = output.applied_knowledge || [];
+  if (applied.length) {
+    const appliedList = document.createElement("ul");
+    for (const reference of applied) {
+      appliedList.append(
+        makeElement(
+          "li",
+          `${findKnowledgeUnitTitle(data.knowledge_snapshot, reference.asset_id)} — ${reference.usage_note}`
+        )
+      );
+    }
+    card.append(detail(`Applied knowledge (${applied.length})`, appliedList));
+  }
+
+  if ((output.design_choices || []).length) {
+    card.append(detail("Design choices / synthesis", list(output.design_choices)));
+  }
+
+  card.append(
+    actions(
+      button("Open in Workshop", () => openKnowledgeQuestionInWorkshop(originalQuestion))
+    )
+  );
+
+  if (!existing) {
+    document.querySelector("#ke-ask-card")?.after(card);
+  }
+
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function generateKnowledgeAnswer(question, trigger) {
+  const scopedQuestion = scopedKnowledgeQuestion(question);
+  let card = document.querySelector("#ke-knowledge-answer");
+  if (!card) {
+    card = makeElement("section", undefined, "card");
+    card.id = "ke-knowledge-answer";
+    document.querySelector("#ke-ask-card")?.after(card);
+  }
+
+  card.replaceChildren(
+    makeElement("h3", "Generating grounded answer…"),
+    makeElement("p", "Using the selected Knowledge scope. This is one explicit Gemini request.", "muted")
+  );
+
+  if (trigger) trigger.disabled = true;
+
+  try {
+    const response = await fetch("/workshops/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        situation: scopedQuestion,
+        goal: scopedQuestion,
+        audience: null,
+        constraints: [
+          "Use only the selected knowledge scope as the evidence base",
+          "Distinguish source-grounded teaching from generator synthesis",
+        ],
+        tone_or_style: "Clear, concise, practical",
+        output_type: "knowledge_answer",
+        output_format: null,
+        source_ids: selectedKnowledgeSourceIds(),
+        library_id: null,
+        asset_ids: [],
+        limit: 8,
+        save: false,
+      }),
+    });
+
+    if (!response.ok) {
+      let error;
+      try {
+        error = await response.json();
+      } catch {
+        error = { detail: `Request failed (${response.status})` };
+      }
+      throw new Error(
+        typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
+      );
+    }
+
+    renderKnowledgeAnswer(await response.json(), question);
+  } catch (error) {
+    card.replaceChildren(
+      makeElement("h3", "Knowledge answer could not be generated"),
+      makeElement("p", error.message || String(error), "error")
+    );
+  } finally {
+    if (trigger) trigger.disabled = false;
+  }
 }
 
 function decorateKnowledgeView() {
@@ -82,7 +219,7 @@ function decorateKnowledgeView() {
     makeElement("h3", "Ask this knowledge"),
     makeElement(
       "p",
-      "Use the selected source or current library as evidence. These questions open a grounded Knowledge answer / synthesis in Workshop."
+      "Ask a grounded question about the selected source or current library. Answers appear here using one explicit Gemini request and are not saved automatically."
     )
   );
 
@@ -95,10 +232,12 @@ function decorateKnowledgeView() {
 
   const quickActions = makeElement("div", undefined, "actions");
   for (const question of QUICK_KNOWLEDGE_QUESTIONS) {
-    const button = makeElement("button", question);
-    button.type = "button";
-    button.addEventListener("click", () => openKnowledgeQuestion(question));
-    quickActions.append(button);
+    const quickButton = makeElement("button", question);
+    quickButton.type = "button";
+    quickButton.addEventListener("click", () =>
+      generateKnowledgeAnswer(question, quickButton)
+    );
+    quickActions.append(quickButton);
   }
   card.append(quickActions);
 
@@ -110,12 +249,12 @@ function decorateKnowledgeView() {
   askInput.minLength = 2;
   askInput.placeholder = "Ask a question across the selected source or library";
   askLabel.append(askInput);
-  const askButton = makeElement("button", "Use in Workshop", "primary");
+  const askButton = makeElement("button", "Ask knowledge", "primary");
   askButton.type = "submit";
   askForm.append(askLabel, askButton);
   askForm.addEventListener("submit", event => {
     event.preventDefault();
-    openKnowledgeQuestion(askInput.value.trim());
+    generateKnowledgeAnswer(askInput.value.trim(), askButton);
   });
   card.append(askForm);
 
@@ -142,9 +281,10 @@ function applyPendingKnowledgeQuestion() {
   outputType.value = "knowledge_answer";
   outputType.dispatchEvent(new Event("change", { bubbles: true }));
 
-  if (pendingKnowledgeQuestion.sourceId) {
+  const selected = new Set(pendingKnowledgeQuestion.sourceIds || []);
+  if (selected.size) {
     for (const option of sources.options) {
-      option.selected = option.value === pendingKnowledgeQuestion.sourceId;
+      option.selected = selected.has(option.value);
     }
   }
 

@@ -71,11 +71,22 @@ def test_browser_forwards_format_as_field_not_retrieval_constraint():
     assert "lines.push(`${prefix}${value}`)" not in javascript
 
 
-def test_knowledge_questions_answer_in_knowledge_view_before_workshop_handoff():
+def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handoff():
     repo_root = Path(__file__).resolve().parents[3]
     javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
         encoding="utf-8"
     )
+
+    questions = [
+        "What does this source teach?",
+        "What concepts appear in this source?",
+        "What problems does this source help solve?",
+        "What did this chapter teach?",
+        "What examples support this idea?",
+        "What decision rules can I apply?",
+    ]
+    for question in questions:
+        assert f'"{question}"' in javascript
 
     assert "generateKnowledgeAnswer(question, quickButton)" in javascript
     assert 'fetch("/workshops/generate"' in javascript
@@ -83,6 +94,23 @@ def test_knowledge_questions_answer_in_knowledge_view_before_workshop_handoff():
     assert "save: false" in javascript
     assert 'button("Open in Workshop"' in javascript
     assert "Answers appear here using one explicit Gemini request" in javascript
+    assert 'makeElement("button", "Ask knowledge", "primary")' in javascript
+
+
+def test_context_dependent_knowledge_shortcuts_require_scope_before_gemini():
+    repo_root = Path(__file__).resolve().parents[3]
+    javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'const CHAPTER_QUESTION = "What did this chapter teach?"' in javascript
+    assert 'const IDEA_EXAMPLES_QUESTION = "What examples support this idea?"' in javascript
+    assert '#ke-chapter-scope' in javascript
+    assert '#ke-idea-scope' in javascript
+    assert "if (!validateKnowledgeQuestionScope(question)) return;" in javascript
+    assert "Choose a chapter or section first" in javascript
+    assert "Name the idea first" in javascript
+    assert "No Gemini request was used." in javascript
 
 
 def test_knowledge_question_can_target_asset_type():

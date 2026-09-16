@@ -10,7 +10,7 @@ Short form: **Knowledge in. Useful outputs out.**
 
 People often read books, reports, articles, notes, and research but struggle to retrieve the right idea later and apply it to a real task. Knowledge Engine is designed to reduce that gap between consuming information and using it.
 
-The product is not primarily a summarizer or a chat-with-PDF tool. It creates a reusable knowledge layer that can support writing, decisions, study, planning, messaging, playbooks, workshops, and other practical outputs.
+The product is not primarily a summarizer or a chat-with-PDF tool. It creates a reusable knowledge layer that can support writing, decisions, study, planning, messaging, playbooks, workshops, content creation, research synthesis, presentations, and other practical outputs.
 
 ## Core product model
 
@@ -27,12 +27,48 @@ Consolidated Knowledge Units
 ↓
 Retrieval / Selection
 ↓
-Knowledge Workshop
+Knowledge Exploration + Knowledge Workshop
 ↓
 Saved Outputs + Revisions
 ```
 
 Knowledge Assets retain source and chunk provenance, evidence, retrieval keywords, confidence, and type-specific structure. Current asset types include concepts, problems, principles, insights, decision rules, patterns, examples, warnings, frameworks, mental models, and processes.
+
+## Knowledge exploration
+
+Knowledge Engine must support grounded questions about one source, a chapter or section, selected Knowledge Units, or a broader library. These are first-class product behaviors, not incidental prompt examples.
+
+Core questions include:
+
+- What does this source teach?
+- What concepts appear in this source?
+- What problems does this source help solve?
+- What did this chapter teach?
+- What examples support this idea?
+- What decision rules can I apply?
+- Ask my knowledge — a free-form grounded question across the selected scope.
+
+Knowledge-answer retrieval should use asset type and chapter/section provenance when available. Broad source questions must still return a representative grounded set rather than failing only because the question has few lexical matches.
+
+## Workshop output families
+
+Workshop turns retrieved knowledge into ready-to-use artifacts. Current output families are:
+
+- Writing / editing
+- Knowledge answer / synthesis
+- Research / synthesis brief
+- Decision brief
+- Study guide
+- Content / social media
+- Product messaging
+- Playbook / process
+- Action plan
+- Presentation / talking points
+- Workshop / facilitation plan
+
+Output families may expose a more specific format where useful. Content / social media currently supports LinkedIn posts, Instagram captions, carousels, short-form video scripts, threads, long-form articles, and content ideas. Presentation output supports slide outlines, speaker talking points, or both.
+
+The format is a shape/channel preference. It should not alter which knowledge is considered relevant to the user's actual subject or problem.
 
 ## Main workflow
 
@@ -40,9 +76,9 @@ Knowledge Assets retain source and chunk provenance, evidence, retrieval keyword
 2. Extract and chunk the source while preserving useful section hints where possible.
 3. Interpret each chunk into structured Knowledge Assets.
 4. Validate the result locally before storing or superseding existing assets.
-5. Search or retrieve relevant knowledge across one source or a library.
+5. Search, browse, or ask grounded questions across one source or a library.
 6. Consolidate overlapping raw assets into Knowledge Units while preserving evidence trails.
-7. Use selected knowledge in the Workshop to create a useful output.
+7. Use selected or automatically retrieved knowledge in the Workshop to create a useful output.
 8. Save, revise, compare, and export outputs with provenance.
 
 ## AI role
@@ -51,7 +87,7 @@ AI is used as an interpretation and generation layer, not as the system of recor
 
 For source interpretation, each chunk is sent to Gemini independently. Chunks do not share model context. The returned structure is validated against strict internal Pydantic models before it can become active knowledge.
 
-For Workshop generation, the model receives the task brief plus retrieved knowledge and must distinguish source-grounded claims from design choices. Saved records retain the applied Knowledge Asset references.
+For Knowledge answers and Workshop generation, the model receives the task brief plus retrieved knowledge and must distinguish source-grounded claims from design choices. Saved records retain the applied Knowledge Asset references.
 
 ## Reliability rules
 
@@ -72,7 +108,7 @@ Shared-context multi-chunk extraction was tested and produced under-extraction a
 
 The active product is a local single-owner FastAPI application with a browser interface in `apps/web`. The earlier Streamlit implementation is archived under `legacy/streamlit_prototype` and is no longer the active application.
 
-The browser currently supports library/source management, uploads, extraction/chunking, Gemini interpretation, knowledge browsing and search, Workshop generation, saved outputs, revisions, comparison, export, quota controls, audit views, and data backup.
+The browser currently supports library/source management, uploads, extraction/chunking, Gemini interpretation, knowledge browsing and search, grounded Knowledge question shortcuts, Workshop generation, output-family and format selection, saved outputs, revisions, comparison, export, quota controls, audit views, and data backup.
 
 ## Current validation state
 

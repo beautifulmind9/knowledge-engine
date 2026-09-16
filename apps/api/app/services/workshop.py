@@ -61,8 +61,9 @@ WORKSHOP_GENERIC_TERMS = {
 
 
 # Output-format wording can otherwise dominate retrieval even though it is not
-# source subject matter. Keep these terms available in the user's actual
-# situation/goal; suppress them only when they occur as structural constraints.
+# source subject matter. Keep these terms available in the user's situation,
+# where they may be substantive, but suppress them in goals and structural
+# constraints for the corresponding output mode.
 MODE_CONSTRAINT_GENERIC_TERMS = {
     "study_guide": {
         "answer",
@@ -123,17 +124,25 @@ def _meaningful_terms(value: str | None, extra_generic_terms=None) -> list[str]:
 def build_workshop_query(payload: WorkshopPrepareRequest) -> str:
     terms = []
     seen = set()
+    mode_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
 
-    for part in (payload.situation, payload.goal, payload.audience or ""):
-        for term in _meaningful_terms(part):
+    # Situation wording is the strongest signal for what the user is actually
+    # working on, so retain potentially substantive terms there. Goal wording
+    # often repeats output-format language (for example, "review" in a Study
+    # Guide goal), so apply the mode-specific structural filter to the goal.
+    for part, extra_generic in (
+        (payload.situation, set()),
+        (payload.goal, mode_generic),
+        (payload.audience or "", set()),
+    ):
+        for term in _meaningful_terms(part, extra_generic):
             if term in seen:
                 continue
             seen.add(term)
             terms.append(term)
 
-    constraint_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
     for constraint in payload.constraints:
-        for term in _meaningful_terms(constraint, constraint_generic):
+        for term in _meaningful_terms(constraint, mode_generic):
             if term in seen:
                 continue
             seen.add(term)
@@ -205,17 +214,17 @@ def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest) -> tuple[i
     fields = _asset_fields(asset)
     score = 0
     matched_terms = set()
+    mode_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
 
-    # Situation and goal describe the problem. Constraints remain strong, but
-    # output-format terms are filtered per mode so they do not masquerade as
-    # source topics (for example, "review questions" in a Study Guide brief).
+    # Situation wording stays unfiltered by output mode because it describes the
+    # subject matter. Goals and constraints can contain format instructions, so
+    # mode-specific structural terms are removed from those scoring sections.
     sections = [
-        (payload.goal, 6, set()),
+        (payload.goal, 6, mode_generic),
         (payload.audience or "", 5, set()),
         (payload.situation, 4, set()),
     ]
-    constraint_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
-    sections.extend((constraint, 10, constraint_generic) for constraint in payload.constraints)
+    sections.extend((constraint, 10, mode_generic) for constraint in payload.constraints)
 
     for text, section_weight, extra_generic in sections:
         section_matched = False

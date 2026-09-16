@@ -71,6 +71,20 @@ def test_browser_forwards_format_as_field_not_retrieval_constraint():
     assert "lines.push(`${prefix}${value}`)" not in javascript
 
 
+def test_knowledge_questions_answer_in_knowledge_view_before_workshop_handoff():
+    repo_root = Path(__file__).resolve().parents[3]
+    javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "generateKnowledgeAnswer(question, quickButton)" in javascript
+    assert 'fetch("/workshops/generate"' in javascript
+    assert 'output_type: "knowledge_answer"' in javascript
+    assert "save: false" in javascript
+    assert 'button("Open in Workshop"' in javascript
+    assert "Answers appear here using one explicit Gemini request" in javascript
+
+
 def test_knowledge_question_can_target_asset_type():
     payload = WorkshopPrepareRequest(
         situation="What concepts appear in this source?",

@@ -33,6 +33,13 @@ def test_recover_structure_backfills_existing_chunks_and_assets(client, source, 
     stored = next(item for item in db.sources if item["id"] == source_record["id"])
     stored["file_type"] = ".pdf"
 
+    # The normal Markdown fixture already carries the '# Focus' heading into both
+    # the chunk and the extracted asset. This test is specifically for the legacy
+    # PDF case we are repairing, where existing chunks/assets have no structure
+    # metadata yet, so clear the fixture metadata before running recovery.
+    stored_asset = next(item for item in db.knowledge_assets if item["id"] == knowledge["id"])
+    stored_asset["chapter_or_section"] = None
+
     def fake_outline_recovery(file_path, chunks):
         assert Path(file_path).exists()
         chunks[0]["chapter_or_section"] = "Recovered chapter"
@@ -56,6 +63,32 @@ def test_recover_structure_backfills_existing_chunks_and_assets(client, source, 
     assert refreshed_chunk["chapter_or_section"] == "Recovered chapter"
     refreshed_asset = next(item for item in db.knowledge_assets if item["id"] == knowledge["id"])
     assert refreshed_asset["chapter_or_section"] == "Recovered chapter"
+
+
+def test_recover_structure_preserves_existing_asset_section(client, source, knowledge, monkeypatch):
+    source_record, _ = source
+    stored = next(item for item in db.sources if item["id"] == source_record["id"])
+    stored["file_type"] = ".pdf"
+
+    stored_asset = next(item for item in db.knowledge_assets if item["id"] == knowledge["id"])
+    stored_asset["chapter_or_section"] = "Existing section"
+
+    def fake_outline_recovery(file_path, chunks):
+        chunks[0]["chapter_or_section"] = "Recovered chapter"
+        return chunks, {
+            "outline_entry_count": 1,
+            "annotated_chunk_count": 1,
+            "unannotated_chunk_count": 0,
+            "section_count": 1,
+            "sections": ["Recovered chapter"],
+        }
+
+    monkeypatch.setattr(sources_router, "annotate_pdf_chunks_with_outline", fake_outline_recovery)
+    response = client.post(f"/sources/{source_record['id']}/recover-structure")
+    assert response.status_code == 200, response.text
+    assert response.json()["updated_asset_count"] == 0
+    refreshed_asset = next(item for item in db.knowledge_assets if item["id"] == knowledge["id"])
+    assert refreshed_asset["chapter_or_section"] == "Existing section"
 
 
 def test_recover_structure_rejects_non_pdf_source(client, source):

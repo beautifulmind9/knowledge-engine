@@ -2,7 +2,7 @@
 
 ## Execution status
 
-Implementation and verification were reviewed on 2026-09-13. See [item-level sprint status](sprint_status.md) for completed work, evidence, and remaining real-source/browser/external-test gates. The original acceptance criteria below remain authoritative.
+Implementation and verification were reviewed through **2026-09-20**. See [item-level sprint status](sprint_status.md), [release acceptance backlog](release_acceptance_backlog.md), and [beta test checklist](beta_test_checklist.md) for the current evidence. The original acceptance criteria below remain authoritative; this file now also records which historical Remaining Sprints are complete versus which still have release-acceptance work.
 
 ## Purpose
 
@@ -21,6 +21,21 @@ Source
 ```
 
 The remaining work is no longer about proving whether the core idea works. The goal is to turn the validated backend vertical slice into a usable, persistent, testable v1 beta.
+
+### Current execution status — 2026-09-20
+
+| Remaining Sprint | Current status | Evidence / remaining work |
+|---|---|---|
+| R1 — Save outputs | **Complete** | Saved outputs persist with provenance and survive restart. |
+| R2 — Revisions | **Complete** | Real manual revisions preserve Version 1, lineage, provenance, history, comparison, and consume zero AI calls when edited manually. |
+| R3 — Interpretation hardening | **Complete for v1 candidate** | *The Workshop Survival Guide* is complete at 46/46 chunks and audited; production extraction is one chunk per Gemini request. |
+| R4 — Output modes | **Complete for A2** | Four materially different real-provider modes were accepted after human grounding review: Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis. Shared grounding review is at version 8. |
+| R5 — Multi-source synthesis | **Complete for A2** | Same-task single-source and two-source synthesis was completed with *The Workshop Survival Guide* and a partial current-pipeline interpretation of *Made to Stick*. Human review corrected overclaimed agreement and unsupported cross-source additions. |
+| R6 — Web app MVP | **Implemented; final acceptance still open** | Core browser flow, saved outputs, revisions, provenance, export, mobile-width, and keyboard checks have been exercised. Fresh clean-state/full desktop happy-path acceptance and a few remaining error states are still A3 work. |
+| R7 — Durable storage/privacy/control | **Complete for v1 candidate** | Local SQLite persistence, deletion, export, backup/restore, integrity checks, and zero-cost quota controls are implemented and tested. |
+| R8 — Beta hardening/release candidate | **In progress** | Automated baseline is 205 passed with 2 unchanged upstream warnings. Remaining A3 work: fresh setup, remaining desktop/error-state checks, external tester, critical-defect resolution/deferral, and final v1 beta decision. |
+
+**Current execution point:** A1 and A2 acceptance are complete. The project is now in **A3 / Remaining Sprint 8 release acceptance**, not feature expansion.
 
 Because the repository does not currently preserve a reliable historical sprint number, the sequence below uses **Remaining Sprint 1–8** rather than guessing prior sprint numbers.
 
@@ -317,3 +332,15 @@ R8  Beta hardening + release candidate
 ```
 
 The order is intentional: persistence and revision come before more generation features; interpretation quality is hardened before multi-source synthesis; and the frontend is built after the backend workflows it must expose are stable enough to avoid repeatedly redesigning the interface.
+
+### Current position in that sequence
+
+R1–R5 and R7 are complete for the current v1 candidate. R6 is implemented and has substantial internal browser evidence, while its remaining acceptance checks are being closed under A3. The active release work is therefore **R8 / A3**, specifically:
+
+1. fresh-machine/local setup acceptance;
+2. remaining full desktop happy-path and error-state checks;
+3. external beta tester completion;
+4. resolution or explicit deferral of critical defects;
+5. final evidence-based v1 beta release decision.
+
+No additional Gemini output-mode testing is required to close A2.

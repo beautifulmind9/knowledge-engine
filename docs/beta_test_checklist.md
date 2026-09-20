@@ -1,6 +1,6 @@
 # v1 beta release decision and acceptance checklist
 
-Date: 2026-09-15. Decision: **internal local candidate; not yet an externally validated v1 beta**.
+Date: 2026-09-20. Decision: **internal local candidate; A2 complete, not yet an externally validated v1 beta**.
 
 In scope: source upload/processing, validated knowledge extraction and reprocessing, deterministic retrieval, six output modes, saved output revisions, multi-source context, browser screens, quota controls, private local storage, deletion and export. Deferred: public hosting/authentication, team access, embeddings, paid integrations, OCR, native mobile, and semantic contradiction guarantees.
 
@@ -30,14 +30,24 @@ Production extraction is **one chunk per Gemini request**. Source-level orchestr
 
 Gemini's asynchronous Batch API is also not used because the current Gemini Developer API free tier does not include Batch processing. The application remains within the zero-cost rule: no paid fallback, no automatic repair call, and no hidden application-level retry loop.
 
-## Remaining real-model output acceptance
+## Real-model output acceptance — completed
 
-- [ ] Generate and review at least four materially different output modes with the real provider. Check structure, practical usefulness, source claims, applied asset IDs, and design-choice separation.
-- [ ] Revise at least two real generated outputs and verify lineage, provenance, and preservation of the original version.
-- [ ] Run one meaningful real two-source task and compare it against each single-source result. Record what improves, what remains distinct, and what remains in tension.
-- [ ] Record any missed semantic conflicts or false lexical agreement/tension flags instead of treating current lexical checks as proof.
+- [x] Generate and review at least four materially different output modes with the real provider. Accepted modes: Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis. Human review covered structure, usefulness, source claims, applied asset IDs, and design-choice separation.
+- [x] Revise at least two real generated outputs and verify lineage, provenance, and preservation of the original version. This criterion was exceeded: multiple accepted A2 artifacts were manually revised with zero additional Gemini calls while preserving original versions.
+- [x] Run one meaningful real two-source task and compare it against each single-source result. The same workshop attention/retention synthesis was run against *The Workshop Survival Guide* only, *Made to Stick* only, and both sources together.
+- [x] Record any missed semantic conflicts or false lexical agreement/tension flags instead of treating current lexical checks as proof. The combined preview reported 0 candidate agreements / 0 possible tensions, while human review found complementary scopes; the first combined output also overclaimed direct agreement and was corrected.
 
 ## Browser and external tester acceptance
+
+### Internal browser evidence completed so far
+
+- [x] Narrow mobile-width pass: Workshop, Saved outputs, and Knowledge views were checked at 393×852 without blocking overflow; stacked layouts remained usable. Navigation remains horizontally scrollable and discoverability polish is deferred.
+- [x] Core keyboard flow: source/search/Ask/Browse/filter/selection/Workshop handoff was exercised in Safari. Plain Tab behavior depends on Safari settings; Option+Tab/browser keyboard settings may be required for buttons.
+- [x] Missing-key states: Knowledge generation and Data & usage show clear unavailable/key-required messaging without a provider call.
+- [x] Storage lock prevents a duplicate server from using the same storage.
+- [x] Markdown export, manual revision, version preservation, comparison, and provenance display were exercised with real outputs.
+- [ ] Quota-pause simulation and remaining stale/failed-job browser checks still need explicit A3 acceptance.
+- [ ] Fresh setup/full desktop happy path from a clean state still needs explicit A3 acceptance.
 
 Tester: ______  Date: ______  OS/browser: ______  Result: ______
 
@@ -55,4 +65,4 @@ The automated suite exercises a live localhost server, demo seeding and server r
 
 Feedback: task attempted, expected result, actual result, screenshot if useful, severity, and suggested change. Do not attach private source books or API keys to public issues.
 
-Release gate: close the remaining real-output, browser, and external-tester checks, resolve critical defects, and explicitly change the release decision. The completed real-book extraction/audit work is no longer a release blocker.
+Release gate: **A2 real-output acceptance is complete.** Close the remaining A3 setup/browser/error-state and external-tester checks, resolve or explicitly defer critical defects, and then record the final v1 beta decision. The completed real-book extraction/audit work is also no longer a release blocker.

@@ -150,6 +150,14 @@ At least four real-model outputs and one real two-source task are judged useful,
 
 Prove that a non-technical person can use the product through the browser and make the final v1 beta decision.
 
+## Evidence completed so far
+
+- **A3-04 mobile-width pass:** Workshop, Saved outputs, and Knowledge were exercised at 393×852 without blocking horizontal page overflow; layouts stacked correctly. The navigation remains horizontally scrollable and discoverability polish is deferred.
+- **A3-05 core keyboard pass:** the main source/search/Ask/Browse/filter/selection/Workshop handoff flow was exercised in Safari. Safari may require Option+Tab or the browser keyboard-navigation setting for buttons.
+- Several error states were exercised with zero provider calls: missing-key Knowledge generation, missing-key Data & usage messaging, blank chapter/idea validation, and duplicate-storage server locking.
+- Markdown export, manual revision, version preservation, comparison, applied evidence, and provenance display were exercised repeatedly during A2.
+- Still open: fresh setup, the remaining complete desktop happy path, quota-pause and any still-unverified stale/failed-job states, external tester acceptance, critical-defect resolution/deferral, and the final release decision.
+
 ## Backlog
 
 | ID | Priority | Work item | Acceptance criteria |

@@ -413,3 +413,58 @@ def test_quality_review_allows_explicitly_generated_short_label_taxonomy():
 
     codes = {issue["code"] for issue in report["issues"]}
     assert "unsupported_taxonomy_needs_review" not in codes
+
+
+def test_quality_review_flags_authoritative_number_even_if_later_note_calls_it_adaptation():
+    output = _decision_output(
+        "## Recommendation\nInclude at least 15 minutes of Q&A.\n"
+        "## Uncertainties\nAdaptation Note: 15 minutes is only a suggested spring and may vary.",
+        ["Defined 15 minutes as a recommended duration for the schedule spring."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a 90-minute workshop.",
+            "goal": "Balance teaching and discussion.",
+            "constraints": [],
+        },
+        _knowledge("Use Q&A as a flexible schedule spring that can expand or contract."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_derived_number_needs_review" in codes
+    assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_flags_renamed_rule_and_generated_design_labels():
+    output = _decision_output(
+        "## Decision\nUse the 20-Minute Variation Rule as the guardrail.\n"
+        "## Options\nChoose The Interleaved Design or The Buffer-Responsive Design.\n"
+        "## Next steps\nApply the Iterative Pass method.",
+        [
+            "Categorized the strategy into 'Interleaved' vs 'Buffer-Responsive' designs.",
+        ],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a 90-minute workshop.",
+            "goal": "Balance teaching and discussion.",
+            "constraints": [],
+        },
+        _knowledge(
+            "The Teaching Format should switch at least every 20 minutes. "
+            "Work across the whole workshop in a series of passes."
+        ),
+    )
+
+    named = [
+        issue["name"]
+        for issue in report["issues"]
+        if issue["code"] == "unsupported_named_framework_needs_review"
+    ]
+    assert any("20-Minute Variation Rule" in name for name in named)
+    assert any("Interleaved Design" in name for name in named)
+    assert any("Buffer-Responsive Design" in name for name in named)
+    assert any("Iterative Pass method" in name for name in named)
+    assert report["validation_status"] == "needs_review"

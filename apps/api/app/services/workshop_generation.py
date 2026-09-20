@@ -78,17 +78,19 @@ Rules:
 3. Apply the retrieved knowledge where it is relevant; do not force every unit into the output.
 4. Do not invent source claims that are absent from the supplied knowledge.
 5. Keep a strict distinction between source-grounded knowledge and your own design choices. A source-grounded recommendation must be traceable to a supplied knowledge asset.
-6. You may make ordinary organizational choices or derive a practical arrangement from the user's constraints, but list every material generator-created assumption, calculation, quantity, timing, threshold, or recommendation in design_choices unless it is explicitly supported by the brief or a supplied knowledge asset.
-7. Do not invent domain-specific facts, definitions, frameworks, templates, component lists, procedures, or technical guidance that are absent from both the user's brief and the supplied knowledge. If the requested artifact needs missing domain content, keep it generic or use an explicit placeholder such as "your organization's required SOP fields"; do not fill the gap with a plausible component list. If you make a useful unsupported organizational assumption, identify it in design_choices rather than presenting it as source-grounded instruction.
-8. If a source recommendation, rule, threshold, "sweet spot", or other guidance materially shapes the output or a design choice, include its asset_id in applied_knowledge. Never attribute guidance to the source without a traceable supplied asset.
-9. Do not present a derived number as though the source stated it. If you adapt a source rule to the user's situation, make the adaptation clear.
-10. Never contradict a supplied numerical rule. For example, if an asset says 30-45 minutes, do not describe 50 minutes as following that rule.
-11. Keep the output practical and ready to use.
-12. Do not copy long evidence passages. Transform the knowledge into the requested output.
-13. Return the IDs of all knowledge assets that materially influenced the output. Do not cite assets that were not actually used.
-14. For each applied asset, briefly state how it shaped the output.
-15. If the requested output is a plan, structure it so the user can act on it directly.
-16. Before returning, scan the draft for specific multi-part lists, named methods, component sets, definitions, technical rules, and domain frameworks. If any are not explicit in the brief or supplied knowledge, remove them or generalize them to neutral wording. Do this even when the list sounds conventional or obvious.
+6. You may make ordinary organizational choices or derive a practical arrangement from the user's constraints, but list every material generator-created assumption, calculation, quantity, timing, threshold, label, or recommendation in design_choices unless it is explicitly supported by the brief or a supplied knowledge asset.
+7. Generator-created adaptations must also be visibly framed inside the artifact as adaptations, examples, options, or assumptions. Do not write an unsupported quantity, timing, threshold, sequence, or recommendation with the same authority as a source-backed rule. For example, prefer "One possible allocation is 15 minutes" over "Dedicate 15 minutes" when 15 minutes is your own design choice.
+8. Do not invent domain-specific facts, definitions, frameworks, templates, component lists, procedures, technical guidance, taxonomies, or abbreviated label systems that are absent from both the user's brief and the supplied knowledge. If the requested artifact needs missing domain content, keep it generic or use an explicit placeholder such as "your organization's required SOP fields"; do not fill the gap with a plausible component list or taxonomy.
+9. Do not coin a source-sounding name for a derived method, framework, model, or approach. If a temporary label genuinely improves usability, explicitly say in the artifact that it is a label created for this draft and list it in design_choices.
+10. If a source recommendation, rule, threshold, "sweet spot", or other guidance materially shapes the output or a design choice, include its asset_id in applied_knowledge. Never attribute guidance to the source without a traceable supplied asset.
+11. Do not present a derived number as though the source stated it. If you adapt a source rule to the user's situation, make the adaptation explicit in the artifact and record it in design_choices.
+12. Never contradict a supplied numerical rule. For example, if an asset says 30-45 minutes, do not describe 50 minutes as following that rule.
+13. Keep the output practical and ready to use.
+14. Do not copy long evidence passages. Transform the knowledge into the requested output.
+15. Return the IDs of all knowledge assets that materially influenced the output. Do not cite assets that were not actually used.
+16. For each applied asset, briefly state how it shaped the output.
+17. If the requested output is a plan, structure it so the user can act on it directly.
+18. Before returning, audit every specific multi-part list, number, threshold, timing, named method, taxonomy, component set, definition, technical rule, and domain framework. If it is not explicit in the brief or supplied knowledge, either remove/generalize it or clearly mark it as a generator-created adaptation and track it in design_choices. Source-sounding names and invented taxonomies should normally be removed rather than merely disclosed.
 """
 
     from app.services.output_modes import MODES

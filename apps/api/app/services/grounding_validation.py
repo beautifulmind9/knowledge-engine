@@ -113,6 +113,7 @@ def _unit(value: str) -> str:
         "seconds": "second",
         "days": "day",
         "weeks": "week",
+        "passes": "pass",
         "percent": "%",
     }
     return aliases.get(normalized, normalized.rstrip("s"))

@@ -1,4 +1,4 @@
-# Remaining sprint status — 2026-09-15
+# Remaining sprint status — 2026-09-20
 
 This document records the current state of the active `feature/knowledge-assets` implementation. **Verified** means implemented and exercised by automated checks and/or the stated real-source acceptance work. **Implemented** means code exists but a material acceptance check remains. **Pending** means the original acceptance criterion is not yet satisfied.
 
@@ -61,10 +61,10 @@ The known chunk-025 compound crowd-recovery asset was repaired deterministically
 |---|---|---|
 | R4-01 | Verified | Explicit output mode is persisted with each record and revision. |
 | R4-02 | Verified | Six mode-specific prompt instruction sets exist. |
-| R4-03 | Implemented with live evidence | Structural quality checks, workshop timing validation, and a deterministic grounding-review heuristic exist. A live 90-minute Workshop output passed timing while being correctly downgraded to `needs review` for an unsupported SOP component list. These checks still do not prove semantic correctness. |
+| R4-03 | Verified with live evidence | Structural quality checks, workshop timing validation, and shared grounding review version 8 were exercised against real-provider failures including unsupported lists, quantities, renamed frameworks, slash taxonomies, and false attribution. Human semantic review remains required. |
 | R4-04 | Implemented | Writing workflow is implemented; real-provider usefulness review remains. |
-| R4-05 | Implemented | Decision-brief workflow is implemented; real-provider usefulness review remains. |
-| R4-06 | Implemented | Study/playbook workflows are implemented; real-provider usefulness review remains. |
+| R4-05 | **Verified with live evidence** | Decision Brief was exercised repeatedly with the real provider. The accepted manual Version 2 removed unsupported K/S/W and generator-created framework names while preserving exact source terminology and provenance. |
+| R4-06 | **Verified in Study Guide mode with live evidence** | A real Study Guide was generated, reviewed, and manually revised to remove an unsupported `Iterative Design` label and tighten practice/checking guidance to the retained evidence. Playbook remains covered by automated/demo behavior rather than separate live acceptance. |
 | R4-07 | Verified | Mode metadata contains structural guidance. |
 | R4-08 | Verified | All six modes exercise generate/save/revise in automated tests. |
 
@@ -90,7 +90,14 @@ The two real Workshop outputs were both revised manually through the browser wit
 
 This completes the real-revision acceptance requirement for **A2-04 (2 of 2)**. It also provides live evidence for R2 history and comparison behavior.
 
-**R4 exit gate remains open** until at least four materially different real-provider outputs are reviewed for usefulness, grounding, and structure. The required two real revisions are now complete, but only the Workshop mode has received real-provider output review so far, and the latest first-pass Gemini Workshop sample itself still needed a grounding correction.
+### Additional live A2 mode evidence — 2026-09-20
+
+- **Decision Brief:** repeated real runs exposed unsupported derived timing, renamed source concepts, invented labels/taxonomies, and false source attribution. Shared grounding review was hardened to version 8. The accepted Version 2 removed unsupported K/S/W and coined framework names, retained the exact 20-Minute Rule for Teaching Formats, and removed unsupported Q&A timing/placement.
+- **Study Guide:** the real output was useful and traceable but coined `Iterative Design`. The accepted Version 2 removed the unsupported name and tightened practice and checking guidance to the retrieved evidence.
+- **Research / Synthesis:** single-source baselines were produced for *The Workshop Survival Guide* and *Made to Stick*, then the same task was run across both. The accepted combined Version 2 removed unsupported K/S/W and 20-minute guidance from the selected evidence, corrected a false agreement claim, preserved source-specific terminology, and explicitly labeled the combined application as synthesis.
+- The two-source lexical preview reported **0 candidate agreements / 0 possible tensions** while human review found a meaningful complementary relationship and scope difference. This is retained as evidence that lexical signals are advisory rather than semantic proof.
+
+**R4 exit gate is complete for A2.** Four materially different real-provider modes—Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis—were reviewed for usefulness, grounding, structure, applied-knowledge provenance, and design-choice separation. Some first-pass outputs required targeted manual grounding cleanup; originals remain preserved for audit.
 
 ## R5 — Multi-source synthesis
 
@@ -103,7 +110,7 @@ This completes the real-revision acceptance requirement for **A2-04 (2 of 2)**. 
 | R5-05 | Verified | Agreement, distinct-contribution, and tension context is supplied to generation/revisions. |
 | R5-06 | Verified | Two-source fixtures validate materially applied IDs and provenance. |
 | R5-07 | Verified | Library scope is enforced in Workshop and knowledge search. |
-| R5-08 | Pending | A meaningful **real** two-source comparison and quality judgment is still required. |
+| R5-08 | **Verified with live evidence** | The same research/synthesis task was run against *The Workshop Survival Guide* only, *Made to Stick* only, and both sources. The accepted combined revision preserved source-specific attribution and described the sources as complementary rather than inventing consensus. |
 
 ## R6 — Web interface
 
@@ -119,7 +126,7 @@ This completes the real-revision acceptance requirement for **A2-04 (2 of 2)**. 
 | R6-08 | Implemented with live evidence | Saved outputs, manual revisions, history, and comparison have now been exercised twice with real generated outputs. |
 | R6-09 | Implemented | Busy/live feedback, disabled submit actions, errors, and empty states exist. |
 
-Desktop browser inspection has now covered completed-source status, knowledge browsing/provenance, Workshop retrieval preview, generation, saved-output display, dynamic quality re-evaluation, manual revision, version preservation, and output comparison. Full create/upload/export acceptance plus mobile and keyboard acceptance remain pending.
+Desktop browser inspection has covered completed-source status, knowledge browsing/provenance, Workshop retrieval preview, generation, saved-output display, dynamic quality re-evaluation, manual revision, version preservation, output comparison, and Markdown export. A narrow mobile-width pass and core keyboard flow were also exercised successfully. Fresh setup, full end-to-end desktop acceptance, quota-pause/stale-job checks, and external tester acceptance remain open.
 
 ## R7 — Storage and control
 
@@ -150,19 +157,19 @@ Desktop browser inspection has now covered completed-source status, knowledge br
 
 ## Current automated verification
 
-Latest local suite on 2026-09-15: **157 passed, 2 upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
+Latest local suite on 2026-09-20: **205 passed, 2 unchanged upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
 
-The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction and Workshop-output acceptance were run separately within the explicit free-tier budget.
+The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction and A2 output acceptance were run separately within the explicit free-tier budget.
 
 ## Remaining release blockers
 
-1. Review real Gemini outputs across at least three additional materially different modes.
-2. Produce a fully grounded first-pass live Workshop sample or otherwise close/document the remaining generation-grounding limitation.
-3. Run one meaningful real two-source task and compare it with the corresponding single-source results.
-4. Complete the remaining desktop happy-path steps plus mobile/keyboard browser acceptance.
-5. Have at least one external tester complete the core workflow and record feedback.
+1. Complete fresh-machine/local setup acceptance.
+2. Complete the remaining desktop happy-path steps, including any still-unchecked create/upload/process flow from a clean state.
+3. Complete remaining error-state checks, including quota pause and stale/failed-job handling where not already exercised.
+4. Have at least one external tester complete the core workflow and record feedback.
+5. Resolve or explicitly defer any critical acceptance defects, then record the final v1 beta decision.
 
-The required **two real output revisions are complete** and are no longer a release blocker. The real-book interpretation/audit is also **no longer a release blocker**.
+**A2 real-model output acceptance is complete** and is no longer a release blocker. The real-book interpretation/audit, two real output revisions, mobile-width pass, and core keyboard pass are also no longer blockers.
 
 
 ## 2026-09-16 — Knowledge page structure and state cleanup
@@ -173,4 +180,4 @@ Audit finding: the previous page left browse-all cards visible while a query was
 
 Verification: **180 Python tests passed**, including a runner for **7 executable JavaScript state/view regressions**; JavaScript syntax and patch checks passed. Zero Gemini calls. Visual desktop/mobile checks remain pending: this environment's cloud browser cannot open localhost (`ERR_BLOCKED_BY_CLIENT`). Existing `test_source.txt` was not touched. Older unfinished schema work was preserved separately and was not applied to the current one-chunk extraction architecture.
 
-A2 remains open: next preview a materially different real output (Decision brief or refreshed Study guide) before generating, and complete a meaningful two-real-source task. The private acceptance source inventory is in the user's local environment; these synthetic checks do not replace that evidence. Release status remains internal local candidate.
+A2 is now complete. Real-provider acceptance covered Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis, plus a same-task two-source comparison using *The Workshop Survival Guide* and a partial current-pipeline interpretation of *Made to Stick*. The latter was intentionally limited to 10/91 chunks for acceptance scope and produced 38 active assets / 35 consolidated Knowledge Units; it is not a full-book interpretation claim. Release status remains **internal local candidate** until A3 is complete.

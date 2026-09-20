@@ -50,6 +50,8 @@ Gemini's asynchronous Batch API is also not used because the current Gemini Deve
 
 # Acceptance Sprint A2 — Real-Model Output and Multi-Source Quality
 
+**Status: Complete for the current v1 candidate (2026-09-20).**
+
 ## Goal
 
 Prove that generated artifacts are useful and grounded with the real provider, not only with mocked responses.
@@ -99,17 +101,42 @@ Three controlled real-provider Decision Brief runs used the same *Workshop Survi
 
 No further Decision Brief provider rerun is required for A2. The repeated real outputs are retained as acceptance evidence; the remaining Gemini calls should increase mode coverage and complete the meaningful two-source task.
 
+### A2 completion evidence — 2026-09-20
+
+A2 was completed with four materially different real-provider modes ending in grounded, useful, traceable accepted artifacts after human review and, where necessary, manual revision with zero additional provider calls:
+
+- **Workshop Plan:** two real Gemini runs plus two manual revision cases. Timing, provenance, version preservation, and comparison were exercised.
+- **Decision Brief:** repeated real runs exposed renamed concepts, unsupported quantities, invented taxonomies, and false source attribution. Grounding review was hardened through report version 8; the accepted Version 2 removed unsupported K/S/W and generator-created framework names, preserved exact source terminology, and retained traceable applied knowledge.
+- **Study Guide:** the real output was structurally useful and traceable but coined the unsupported label `Iterative Design`. The accepted manual Version 2 removed the label and tightened several practice/checking statements to the retrieved evidence.
+- **Research / Synthesis Brief:** single-source baselines were created for *The Workshop Survival Guide* and *Made to Stick*. Both were reviewed and manually tightened where necessary before the combined task.
+
+The meaningful two-source task used the same workshop-attention/retention question for both single-source baselines and the combined result. *Made to Stick* contributed message-design concepts such as the Curse of Knowledge, Unexpectedness/knowledge gaps, and the Inverted Pyramid. *The Workshop Survival Guide* contributed teaching formats, multiple-pass workshop design, lecture construction, and attention-recovery techniques.
+
+The first combined output incorrectly claimed direct agreement between the sources and introduced unsupported K/S/W and a 20-minute rule that were not in the explicitly selected evidence. The accepted Version 2 removed those claims, preserved source-specific attribution, described the sources as **complementary with different scopes**, and labeled the combined six-step workflow as a cross-source synthesis rather than a source-provided framework.
+
+The lexical preview reported **0 candidate agreements / 0 possible tensions** for the combined task. Human review still found a useful complementary relationship and scope difference. This confirms that lexical agreement/tension flags remain advisory and must not be treated as semantic proof.
+
+For the second real source, *Made to Stick* was processed through the current production pipeline for **10 of 91 chunks**, producing **38 active assets / 35 consolidated Knowledge Units**. That partial interpretation is sufficient for this A2 comparison but is not a claim that the full book has been interpreted or audited. Twenty-nine evidence items in the partial source remained in the human-review queue.
+
+### Known A2 limitations
+
+- Deterministic grounding checks are conservative review signals, not semantic certification.
+- Gemini can still rename source concepts, introduce plausible specificity, or overstate cross-source relationships; human review remains required.
+- Manual revision is an accepted safety path and preserves the original model output for audit.
+- Lexical agreement/tension detection can miss meaningful complementary relationships and scope differences.
+- The *Made to Stick* production interpretation used for A2 is intentionally partial (10/91 chunks).
+
 ## Backlog
 
 | ID | Priority | Work item | Acceptance criteria | Current status |
 |---|---|---|---|---|
-| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | In progress — Workshop plan, Decision Brief, and a real social/LinkedIn output have acceptance evidence; two additional modes are still planned before closing the gate. |
-| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — Workshop and Decision Brief live tests exposed several grounding failure classes; shared grounding review is now at version 8 and the known cases have deterministic regression coverage. |
-| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | In progress — revised Workshop outputs are structurally usable and pass 90/90 timing; three additional modes remain. |
+| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | **Complete — Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis were exercised with the real provider and ended in accepted grounded artifacts after review/revision.** |
+| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | **Complete — all accepted A2 artifacts were human-reviewed against retained evidence; known grounding failure classes are documented and shared deterministic review is at version 8.** |
+| A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | **Complete — accepted artifacts are structurally usable for their intended mode; some required targeted manual grounding cleanup rather than regeneration.** |
 | A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. | **Complete — two real Workshop outputs were manually revised; both preserved Version 1, revalidated Version 2, retained provenance, and exposed v2→v1 comparisons.** |
-| A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. | Pending. |
-| A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. | Pending real two-source test. |
-| A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. | In progress. |
+| A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. | **Complete — same research/synthesis task run against Workshop Survival Guide only, Made to Stick only, and both sources together.** |
+| A2-06 | Must | Record agreements/tensions honestly | Confirm whether candidate agreement/tension flags are useful; record missed semantic conflicts or false positives instead of treating lexical checks as proof. | **Complete — lexical preview showed 0/0 while human review found complementary scopes; the combined first pass also overclaimed agreement and was manually corrected.** |
+| A2-07 | Must | Close R4 and R5 quality gates | Update sprint status with actual real-model results and the two-source comparison. | **Complete — release docs updated with real-model and two-source acceptance evidence.** |
 
 ## Exit criteria
 
@@ -165,7 +192,7 @@ The following areas have implementation and regression coverage and should not b
 - zero-cost quota guardrails;
 - synthetic demo, setup scripts, and automated regression tests.
 
-The focus from here is **A2 output quality and A3 release acceptance**, not more extraction batching experiments.
+The focus from here is **A3 release acceptance**, not more extraction batching experiments or additional A2 provider calls.
 
 
 ## Knowledge-page cleanup evidence — 2026-09-16

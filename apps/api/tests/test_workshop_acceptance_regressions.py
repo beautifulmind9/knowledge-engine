@@ -468,3 +468,51 @@ def test_quality_review_flags_renamed_rule_and_generated_design_labels():
     assert any("Buffer-Responsive Design" in name for name in named)
     assert any("Iterative Pass method" in name for name in named)
     assert report["validation_status"] == "needs_review"
+
+
+def test_supported_named_method_after_heading_and_sentence_verb_is_not_flagged():
+    output = _decision_output(
+        "## Recommendation\nUse The Iterative Pass Method to refine the whole workshop."
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge(
+            "The Iterative Pass Method refines the whole workshop in multiple passes."
+        ),
+    )
+
+    named = [
+        issue for issue in report["issues"]
+        if issue["code"] == "unsupported_named_framework_needs_review"
+    ]
+    assert named == []
+
+
+def test_brief_supplied_name_is_preserved_while_renamed_label_is_flagged():
+    output = _decision_output(
+        "## Decision\nUse the Decision Ladder Framework for the decision.\n"
+        "## Option\nApply the Decision Ladder Variation Rule to sequence the choice."
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Use the Decision Ladder Framework for this decision.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Keep the decision process explicit and traceable."),
+    )
+
+    named = [
+        issue["name"]
+        for issue in report["issues"]
+        if issue["code"] == "unsupported_named_framework_needs_review"
+    ]
+    assert all("Decision Ladder Framework" != name for name in named)
+    assert any("Decision Ladder Variation Rule" in name for name in named)
+    assert report["validation_status"] == "needs_review"

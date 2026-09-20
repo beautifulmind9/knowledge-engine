@@ -142,12 +142,34 @@ def _choice_text(output: dict) -> str:
     return "\n".join(str(value) for value in output.get("design_choices", []) if value)
 
 
+def _number_review_content(output: dict) -> str:
+    content = output.get("content", "") or ""
+    if output.get("output_type") != "workshop_plan":
+        return content
+
+    # Workshop agenda rows necessarily contain many derived minute boundaries.
+    # Those are validated by the dedicated workshop timing validator, so the
+    # shared grounding review should not double-flag every elapsed-time row as
+    # unsupported source guidance. Numeric claims elsewhere in the prose remain
+    # eligible for grounding review.
+    kept = []
+    for line in content.splitlines():
+        if "|" in line and re.search(
+            r"\b\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*(?:-\s*)?(?:minutes?|mins?)\b",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def _unsupported_number_issues(output: dict, brief: dict, knowledge_snapshot: list[dict]):
     support_signatures = _number_signatures("\n".join(_support_strings(brief, knowledge_snapshot)))
     choice_signatures = _number_signatures(_choice_text(output))
     issues = []
     seen = set()
-    content = output.get("content", "") or ""
+    content = _number_review_content(output)
 
     for match in NUMBER_WITH_UNIT.finditer(content):
         signature = _number_signature(match)

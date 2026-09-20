@@ -91,15 +91,21 @@ The real *Workshop Survival Guide* source is complete at **46/46 chunks**. The l
 
 A live strict single-chunk control returned the expected five valid assets for chunk 007. A known compound crowd-recovery asset was repaired deterministically so `Talking in circles` and `Borrowing goodwill` are now separate atomic assets with correct chunk provenance.
 
+Shared grounding review is currently at **report version 8**. The latest local backend suite is **205 passed** with two unchanged upstream deprecation warnings. Real-provider A2 acceptance covered Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis, including a same-task two-source comparison.
+
+For that two-source acceptance exercise, *Made to Stick* was intentionally interpreted only far enough to provide a legitimate second current-pipeline source: **10 of 91 chunks**, yielding **38 active assets / 35 consolidated Knowledge Units**. This is acceptance-scope evidence, not a claim that the full source has been interpreted or audited.
+
 ## Readiness
 
-The implementation covers all eight remaining sprint areas, and the real-source extraction/audit acceptance area is now closed. **The full v1 beta acceptance gates are still not closed.** Remaining material gates are:
+The implementation covers all eight remaining sprint areas. Real-source extraction/audit acceptance and **Acceptance Sprint A2 (real-model output and multi-source quality) are complete**. **The full v1 beta acceptance gates are still not closed.** Remaining material gates are A3 release-readiness work:
 
-- real Gemini output review across at least four materially different output modes;
-- revision review on real generated outputs;
-- one meaningful real two-source comparison;
-- desktop/mobile/keyboard browser acceptance;
-- one external tester completing the core workflow.
+- fresh-machine/local setup acceptance;
+- completion of the remaining desktop happy-path checks from a clean state;
+- remaining error-state checks, including quota pause and any still-unverified stale/failed-job behavior;
+- one external tester completing the core workflow;
+- resolution or explicit deferral of critical defects followed by the final v1 beta decision.
+
+A narrow mobile-width pass and the core keyboard workflow have already been exercised internally; they are not substitutes for the external-user acceptance gate.
 
 Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
 

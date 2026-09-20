@@ -516,3 +516,121 @@ def test_brief_supplied_name_is_preserved_while_renamed_label_is_flagged():
     assert all("Decision Ladder Framework" != name for name in named)
     assert any("Decision Ladder Variation Rule" in name for name in named)
     assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_flags_slash_taxonomy_with_matching_expansion():
+    output = _decision_output(
+        "## Design choice\nUse K/S/W (Knowledge/Skill/Wisdom) to classify the outline."
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Refine the workshop in multiple passes."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" in codes
+    assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_flags_slash_taxonomy_with_taxonomy_language():
+    output = _decision_output(
+        "## Design choice\nUse A/B/C as the classification framework for the outline."
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Keep classifications grounded in source terminology."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" in codes
+
+
+def test_quality_review_ignores_ordinary_slash_notation():
+    output = _decision_output(
+        "## Notes\nUse input/output examples, read/write permissions, yes/no checks, and/or alternatives."
+    )
+    report = quality_report(
+        output,
+        {"situation": "Write concise notes.", "goal": "Use ordinary notation.", "constraints": []},
+        _knowledge("Use concise examples."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" not in codes
+
+
+def test_quality_review_allows_supported_slash_taxonomy_from_knowledge():
+    output = _decision_output(
+        "## Design choice\nUse K/S/W (Knowledge/Skill/Wisdom) to classify the outline."
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Use K/S/W (Knowledge/Skill/Wisdom) as the classification system."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" not in codes
+
+
+def test_quality_review_allows_supported_slash_taxonomy_from_brief():
+    output = _decision_output(
+        "## Design choice\nUse K/S/W (Knowledge/Skill/Wisdom) to classify the outline."
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Use K/S/W (Knowledge/Skill/Wisdom) for this workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Refine the workshop in multiple passes."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" not in codes
+
+
+def test_quality_review_allows_locally_disclosed_tracked_generated_taxonomy():
+    output = _decision_output(
+        "## Design choice\nFor this draft, use K/S/W (Knowledge/Skill/Wisdom) only as temporary labels.",
+        ["For this draft, assumed K/S/W (Knowledge/Skill/Wisdom) as temporary labels."],
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Refine the workshop in multiple passes."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" not in codes
+
+
+def test_quality_review_flags_unsupported_taxonomy_source_attribution():
+    output = _decision_output(
+        "## Design choice\nUse K/S/W (Knowledge/Skill/Wisdom), as referenced in the supplied knowledge assets."
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Refine the workshop in multiple passes."),
+    )
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" in codes
+    assert "unsupported_source_attribution_needs_review" in codes
+
+
+def test_quality_review_flags_quoted_lowercase_formalized_method_but_allows_disclosed_label():
+    output = _decision_output(
+        "## Recommendation\nUse an ‘iterative pass’ method to refine the whole workshop.\n"
+        "## Option\nFor this draft, call the second option Format Interleaving as a temporary label.",
+        ["For this draft, labeled the second option Format Interleaving as a temporary label."],
+    )
+    report = quality_report(
+        output,
+        {"situation": "Design a workshop.", "goal": "Create a practical approach.", "constraints": []},
+        _knowledge("Work across the whole workshop in a series of passes."),
+    )
+    named = [
+        issue["name"]
+        for issue in report["issues"]
+        if issue["code"] == "unsupported_named_framework_needs_review"
+    ]
+    assert any("iterative pass method" in name.lower() for name in named)
+    assert all("format interleaving" not in name.lower() for name in named)

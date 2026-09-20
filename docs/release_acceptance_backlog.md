@@ -88,12 +88,23 @@ Both real Workshop outputs were then corrected manually through the product's re
 
 **A2 conclusion so far:** retrieval quality and workshop timing behavior are promising, the quality layer catches the observed unsupported-list failure class, and the revision/history/compare workflow has now been validated twice with real outputs. The Workshop mode is **not yet fully accepted for first-pass generation** because the latest real Gemini sample still required a grounding correction before it was acceptable.
 
+### Decision Brief grounding acceptance evidence — 2026-09-20
+
+Three controlled real-provider Decision Brief runs used the same *Workshop Survival Guide* brief and the same stable eight-unit retrieval set. The runs exposed a recurring cross-mode grounding pattern: Gemini can preserve a source-backed idea while adding unsupported quantities, renamed concepts, source-sounding method names, or invented taxonomies.
+
+- The first run introduced a derived 15-minute Q&A allocation, an unsupported K/S/W taxonomy, and a coined “Iterative Pass Approach.” The saved output was later reclassified to **needs review** after the shared grounding layer was expanded.
+- The second run removed K/S/W but still coined labels including “20-Minute Variation Rule,” “Interleaved Design,” “Buffer-Responsive Design,” and “Iterative Pass method,” and presented the 15-minute Q&A allocation too prescriptively. Shared prompt and validator rules were tightened rather than patching Decision Brief specifically.
+- The controlled post-fix run saved as **needs review** during generation, proving the shared validator now catches real-provider grounding defects before acceptance. It exposed additional forms: K/S/W (Knowledge/Skill/Wisdom), a false claim that the taxonomy was referenced in supplied knowledge, and a quoted lowercase ‘iterative pass’ method formalization.
+- Grounding report version **8** now reviews three-or-more slash taxonomies when paired with matching expansions or explicit taxonomy language, conservative unsupported source-attribution phrases, and quoted lowercase formalized method names. Ordinary slash notation, exact names present in the brief/retrieved knowledge, and locally disclosed/tracked generator-created labels remain allowed.
+
+No further Decision Brief provider rerun is required for A2. The repeated real outputs are retained as acceptance evidence; the remaining Gemini calls should increase mode coverage and complete the meaningful two-source task.
+
 ## Backlog
 
 | ID | Priority | Work item | Acceptance criteria | Current status |
 |---|---|---|---|---|
-| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | In progress — Workshop plan tested; three additional modes remain. |
-| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — live Workshop tests exposed unsupported domain content; validator flagged it and both saved outputs were corrected through manual revisions. |
+| A2-01 | Must | Test four materially different output modes | Generate real-provider outputs for at least four modes such as workshop plan, writing, decision brief, study guide/playbook, or product messaging. | In progress — Workshop plan, Decision Brief, and a real social/LinkedIn output have acceptance evidence; two additional modes are still planned before closing the gate. |
+| A2-02 | Must | Review grounding | For every tested output, verify source claims, applied Knowledge Asset IDs, design-choice separation, and absence of unsupported factual claims. | In progress — Workshop and Decision Brief live tests exposed several grounding failure classes; shared grounding review is now at version 8 and the known cases have deterministic regression coverage. |
 | A2-03 | Must | Review usefulness and structure | Each tested mode meets its intended structure and is practically usable without major rewriting. | In progress — revised Workshop outputs are structurally usable and pass 90/90 timing; three additional modes remain. |
 | A2-04 | Must | Revise real outputs | Revise at least two generated outputs and verify lineage, provenance, and original-version preservation. | **Complete — two real Workshop outputs were manually revised; both preserved Version 1, revalidated Version 2, retained provenance, and exposed v2→v1 comparisons.** |
 | A2-05 | Must | Run one meaningful two-source task | Compare a multi-source result against each single-source result using the same task. | Pending. |
@@ -133,7 +144,7 @@ Another person can complete the intended workflow through the browser, critical 
 
 # Current verification baseline
 
-Latest local automated verification on 2026-09-15: **157 tests passed**, with two upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
+Latest local automated verification on 2026-09-20: **205 tests passed**, with two unchanged upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
 
 The real-provider extraction and Workshop output validation were performed separately under the project's explicit free-tier call budget. Live evidence is documented in `docs/sprint_status.md` and `docs/build_log.md`.
 

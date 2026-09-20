@@ -195,7 +195,9 @@ def test_generation_prompt_blocks_unsupported_domain_frameworks_and_uncited_sour
     assert "Do not invent domain-specific facts, definitions, frameworks, templates" in instructions
     assert "include its asset_id in applied_knowledge" in instructions
     assert "your organization's required SOP fields" in instructions
-    assert "scan the draft for specific multi-part lists" in instructions
+    assert "audit every specific multi-part list, number, threshold, timing" in instructions
+    assert "Generator-created adaptations must also be visibly framed" in instructions
+    assert "Do not coin a source-sounding name" in instructions
 
 
 def _workshop_output(domain_line):
@@ -282,3 +284,132 @@ def test_supported_specific_domain_component_list_does_not_trigger_grounding_fla
     codes = {issue["code"] for issue in report["issues"]}
     assert "unsupported_specific_list_needs_review" not in codes
     assert report["validation_status"] == "checks_passed"
+
+
+def _decision_output(content, design_choices=None):
+    return {
+        "title": "Decision brief",
+        "output_type": "decision_brief",
+        "content": content,
+        "applied_knowledge": [
+            {"asset_id": "asset_1", "usage_note": "Used the supplied guidance."}
+        ],
+        "design_choices": design_choices or [],
+    }
+
+
+def test_quality_review_flags_unframed_unsupported_derived_timing():
+    output = _decision_output(
+        "## Recommendation\nDedicate 15 minutes to Q&A as the schedule buffer.",
+        ["Defined 15 minutes as a suggested buffer for this 90-minute workshop."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a 90-minute workshop.",
+            "goal": "Balance teaching and discussion.",
+            "constraints": [],
+        },
+        _knowledge("Use Q&A as a flexible schedule spring that can expand or contract."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_derived_number_needs_review" in codes
+    assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_allows_tracked_and_visibly_framed_derived_timing():
+    output = _decision_output(
+        "## Recommendation\nOne possible allocation is 15 minutes for Q&A; adjust it to the session.",
+        ["Suggested 15 minutes as one possible Q&A allocation for this 90-minute workshop."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a 90-minute workshop.",
+            "goal": "Balance teaching and discussion.",
+            "constraints": [],
+        },
+        _knowledge("Use Q&A as a flexible schedule spring that can expand or contract."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_derived_number_needs_review" not in codes
+
+
+def test_quality_review_flags_source_sounding_generated_method_name():
+    output = _decision_output(
+        "## Options\nUse The Iterative Pass Approach to build the workshop in several passes.",
+        ["Named the multi-pass adaptation 'The Iterative Pass Approach' for this draft."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Work across the whole workshop in a series of passes, going deeper on each pass."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_named_framework_needs_review" in codes
+    assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_allows_explicitly_generator_created_method_label():
+    output = _decision_output(
+        "## Options\nFor this draft, call this The Iterative Pass Approach: build the workshop in several passes.",
+        ["For this draft, labeled the source-backed multi-pass idea 'The Iterative Pass Approach'."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Work across the whole workshop in a series of passes, going deeper on each pass."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_named_framework_needs_review" not in codes
+
+
+def test_quality_review_flags_unsupported_short_label_taxonomy():
+    output = _decision_output(
+        "## Next steps\nAssign 'K', 'S', or 'W' to every outline item before timing the workshop.",
+        ["Assumed 'K', 'S', and 'W' labels as organizing tags."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Start from learning outcomes and refine the workshop in multiple passes."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" in codes
+    assert report["validation_status"] == "needs_review"
+
+
+def test_quality_review_allows_explicitly_generated_short_label_taxonomy():
+    output = _decision_output(
+        "## Next steps\nFor this draft, use 'K', 'S', and 'W' only as temporary organizing labels.",
+        ["For this draft, assumed 'K', 'S', and 'W' as temporary organizing labels."],
+    )
+    report = quality_report(
+        output,
+        {
+            "situation": "Design a workshop.",
+            "goal": "Create a practical approach.",
+            "constraints": [],
+        },
+        _knowledge("Start from learning outcomes and refine the workshop in multiple passes."),
+    )
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "unsupported_taxonomy_needs_review" not in codes

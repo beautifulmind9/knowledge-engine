@@ -147,19 +147,33 @@ def _number_review_content(output: dict) -> str:
     if output.get("output_type") != "workshop_plan":
         return content
 
-    # Workshop agenda rows necessarily contain many derived minute boundaries.
-    # Those are validated by the dedicated workshop timing validator, so the
-    # shared grounding review should not double-flag every elapsed-time row as
-    # unsupported source guidance. Numeric claims elsewhere in the prose remain
-    # eligible for grounding review.
+    # Workshop agenda and activity durations are already handled by the
+    # dedicated timing validator, including nested notes and explicit activity
+    # lengths. The shared grounding review must not reinterpret those schedule
+    # mechanics as unsupported source claims. Keep only prose outside those
+    # timing sections eligible for the cross-mode numeric grounding check.
     kept = []
+    in_timing_section = False
     for line in content.splitlines():
-        if "|" in line and re.search(
-            r"\b\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*(?:-\s*)?(?:minutes?|mins?)\b",
-            line,
-            re.IGNORECASE,
-        ):
+        stripped = line.strip()
+        heading_text = re.sub(r"^#{1,6}\s*", "", stripped).lower()
+
+        if heading_text == "agenda" or heading_text.startswith("agenda "):
+            in_timing_section = True
             continue
+        if heading_text.startswith("activities"):
+            in_timing_section = True
+            continue
+
+        # A later Markdown heading that is neither Agenda nor Activities ends
+        # the timing section, allowing narrative recommendations after the plan
+        # to receive normal numeric grounding review.
+        if in_timing_section and re.match(r"^#{1,6}\s+", stripped):
+            in_timing_section = False
+
+        if in_timing_section:
+            continue
+
         kept.append(line)
     return "\n".join(kept)
 

@@ -24,6 +24,25 @@ NAMED_METHOD = re.compile(
     r"(?i:Approach|Framework|Model|Method|System|Taxonomy|Matrix|Formula|Rule|Design|Strategy|Process))\b"
 )
 QUOTED_SHORT_LABEL = re.compile(r"['\"](?P<label>[A-Za-z][A-Za-z0-9/-]{0,5})['\"]")
+SLASH_TAXONOMY = re.compile(
+    r"\b(?P<labels>[A-Za-z][A-Za-z0-9]{0,5}(?:/[A-Za-z][A-Za-z0-9]{0,5}){2,})\b"
+    r"(?:\s*\((?P<expansion>[^()\n]{3,160})\))?"
+)
+QUOTED_FORMALIZED_METHOD = re.compile(
+    r"[‘'\"](?P<name>[A-Za-z][A-Za-z0-9'’ -]{2,80})[’'\"]\s+"
+    r"(?P<kind>method|framework|approach|model|system|taxonomy|rule|design|strategy|process)\b",
+    re.IGNORECASE,
+)
+TAXONOMY_WORDS = re.compile(
+    r"\b(classification|taxonomy|categories|category|labels|label|framework|system|model)\b",
+    re.IGNORECASE,
+)
+SOURCE_ATTRIBUTION = re.compile(
+    r"\b(as referenced in (?:the )?supplied knowledge(?: assets)?|"
+    r"according to (?:the )?source|the source (?:defines|specifies|states)|"
+    r"the assets? (?:define|defines|specify|specifies|state|states))\b",
+    re.IGNORECASE,
+)
 ADAPTATION_MARKERS = (
     "one possible",
     "one option",
@@ -315,6 +334,128 @@ def _unsupported_taxonomy_issues(output: dict, brief: dict, knowledge_snapshot: 
     return issues
 
 
+def _slash_taxonomy_matches(text: str):
+    for match in SLASH_TAXONOMY.finditer(text or ""):
+        labels = match.group("labels").split("/")
+        if len(labels) < 3:
+            continue
+        expansion = match.group("expansion")
+        context = _claim_context(text or "", match.start(), match.end())
+        expanded_terms = []
+        if expansion:
+            expanded_terms = [
+                term.strip(" \t'\".*`)[]")
+                for term in re.split(r"s*/s*", expansion)
+                if term.strip()
+            ]
+        explicit_taxonomy_language = bool(TAXONOMY_WORDS.search(context))
+        if expansion and len(expanded_terms) == len(labels):
+            yield match, labels, expanded_terms, context
+        elif explicit_taxonomy_language:
+            yield match, labels, expanded_terms, context
+
+
+def _taxonomy_supported(labels: list[str], expansion: list[str], support_text: str) -> bool:
+    normalized_support = _normalize(support_text)
+    slash = "/".join(labels)
+    if _normalize(slash) in normalized_support:
+        return True
+    if expansion:
+        combined = " ".join(expansion)
+        if _normalize(combined) in normalized_support:
+            return True
+    return all(_normalize(label) in normalized_support.split() for label in labels)
+
+
+def _unsupported_slash_taxonomy_issues(output: dict, brief: dict, knowledge_snapshot: list[dict]):
+    support_text = "
+".join(_support_strings(brief, knowledge_snapshot))
+    choices = _choice_text(output)
+    issues = []
+    attribution_issues = []
+    seen = set()
+
+    surfaces = [
+        ("content", output.get("content", "") or ""),
+        ("design_choices", choices),
+    ]
+    for surface_name, text in surfaces:
+        for match, labels, expansion, context in _slash_taxonomy_matches(text):
+            signature = tuple(label.lower() for label in labels)
+            if signature in seen:
+                continue
+            if _taxonomy_supported(labels, expansion, support_text):
+                continue
+
+            locally_disclosed = _is_visibly_adapted(context)
+            tracked = _normalize(match.group("labels")) in _normalize(choices)
+            if surface_name == "content" and locally_disclosed and tracked:
+                seen.add(signature)
+                continue
+
+            seen.add(signature)
+            issues.append(
+                {
+                    "code": "unsupported_taxonomy_needs_review",
+                    "severity": "review",
+                    "message": (
+                        "The output introduces a slash-separated taxonomy that is not "
+                        "supported by the brief or retrieved knowledge: "
+                        + match.group(0)
+                        + ". Remove it, or clearly present it as a generator-created "
+                        "labeling choice and track that choice."
+                    ),
+                    "labels": labels,
+                    "expansion": expansion,
+                }
+            )
+
+            if SOURCE_ATTRIBUTION.search(context):
+                attribution_issues.append(
+                    {
+                        "code": "unsupported_source_attribution_needs_review",
+                        "severity": "review",
+                        "message": (
+                            "The output attributes an unsupported taxonomy to the supplied "
+                            "knowledge: " + match.group(0) + "."
+                        ),
+                        "labels": labels,
+                    }
+                )
+
+    return issues + attribution_issues
+
+
+def _unsupported_quoted_method_issues(output: dict, brief: dict, knowledge_snapshot: list[dict]):
+    corpus = _support_corpus(brief, knowledge_snapshot)
+    choices = _normalize(_choice_text(output))
+    content = output.get("content", "") or ""
+    issues = []
+    seen = set()
+
+    for match in QUOTED_FORMALIZED_METHOD.finditer(content):
+        phrase = (match.group("name") + " " + match.group("kind")).strip()
+        normalized = _normalize(phrase)
+        if not normalized or normalized in corpus or normalized in seen:
+            continue
+        context = _claim_context(content, match.start(), match.end())
+        if _is_visibly_adapted(context) and normalized in choices:
+            continue
+        seen.add(normalized)
+        issues.append(
+            {
+                "code": "unsupported_named_framework_needs_review",
+                "severity": "review",
+                "message": (
+                    f"The output formalizes {phrase!r} as a named method or framework, "
+                    "but that name is not supported by the brief or retrieved knowledge."
+                ),
+                "name": phrase,
+            }
+        )
+    return issues
+
+
 def grounding_review_issues(output: dict, brief: dict, knowledge_snapshot: list[dict]):
     """Return conservative review issues for unsupported specific-looking claims."""
     corpus = _support_corpus(brief or {}, knowledge_snapshot or [])
@@ -354,5 +495,7 @@ def grounding_review_issues(output: dict, brief: dict, knowledge_snapshot: list[
 
     issues.extend(_unsupported_number_issues(output, brief or {}, knowledge_snapshot or []))
     issues.extend(_unsupported_named_method_issues(output, brief or {}, knowledge_snapshot or []))
+    issues.extend(_unsupported_quoted_method_issues(output, brief or {}, knowledge_snapshot or []))
     issues.extend(_unsupported_taxonomy_issues(output, brief or {}, knowledge_snapshot or []))
+    issues.extend(_unsupported_slash_taxonomy_issues(output, brief or {}, knowledge_snapshot or []))
     return issues

@@ -19,7 +19,8 @@ NUMBER_WITH_UNIT = re.compile(
     re.IGNORECASE,
 )
 NAMED_METHOD = re.compile(
-    r"\b(?P<name>(?:The\s+)?(?:[A-Z0-9][A-Za-z0-9'’-]*\s+){1,5}"
+    r"\b(?!(?:Use|Apply|Choose|Adopt|Follow|Try|Consider|Select|Build|Create|Implement)\b)"
+    r"(?P<name>(?:The[ \t]+)?(?:[A-Z0-9][A-Za-z0-9'’-]*[ \t]+){1,5}"
     r"(?i:Approach|Framework|Model|Method|System|Taxonomy|Matrix|Formula|Rule|Design|Strategy|Process))\b"
 )
 QUOTED_SHORT_LABEL = re.compile(r"['\"](?P<label>[A-Za-z][A-Za-z0-9/-]{0,5})['\"]")

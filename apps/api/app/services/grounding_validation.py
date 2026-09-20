@@ -13,7 +13,9 @@ PARENTHETICAL = re.compile(r"\((?P<body>[^()\n]{3,240})\)")
 NUMBER_WITH_UNIT = re.compile(
     r"(?<![\w.])(?P<first>\d+(?:\.\d+)?)"
     r"(?:\s*[-–]\s*(?P<second>\d+(?:\.\d+)?))?"
-    r"\s*(?P<unit>minutes?|mins?|hours?|hrs?|seconds?|secs?|days?|weeks?|%|percent)\b",
+    r"\s*(?:-\s*)?"
+    r"(?P<unit>minutes?|mins?|hours?|hrs?|seconds?|secs?|days?|weeks?|"
+    r"steps?|items?|rounds?|passes?|questions?|examples?|segments?|blocks?|percent\b|%)",
     re.IGNORECASE,
 )
 NAMED_METHOD = re.compile(

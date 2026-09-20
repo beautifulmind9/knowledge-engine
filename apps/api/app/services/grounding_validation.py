@@ -19,8 +19,8 @@ NUMBER_WITH_UNIT = re.compile(
     re.IGNORECASE,
 )
 NAMED_METHOD = re.compile(
-    r"\b(?P<name>(?:The\s+)?(?:[A-Z][A-Za-z0-9'’-]*\s+){1,5}"
-    r"(?:Approach|Framework|Model|Method|System|Taxonomy|Matrix|Formula))\b"
+    r"\b(?P<name>(?:The\s+)?(?:[A-Z0-9][A-Za-z0-9'’-]*\s+){1,5}"
+    r"(?i:Approach|Framework|Model|Method|System|Taxonomy|Matrix|Formula|Rule|Design|Strategy|Process))\b"
 )
 QUOTED_SHORT_LABEL = re.compile(r"['\"](?P<label>[A-Za-z][A-Za-z0-9/-]{0,5})['\"]")
 ADAPTATION_MARKERS = (
@@ -129,8 +129,31 @@ def _number_signatures(text: str) -> set[tuple[str, str | None, str]]:
     return {_number_signature(match) for match in NUMBER_WITH_UNIT.finditer(text or "")}
 
 
-def _context(text: str, start: int, end: int, radius: int = 140) -> str:
-    return (text or "")[max(0, start - radius): min(len(text or ""), end + radius)]
+def _claim_context(text: str, start: int, end: int) -> str:
+    """Return only the local sentence/line containing a claim.
+
+    Adaptation language in a later sentence must not retroactively excuse an
+    authoritative-looking claim that appeared earlier.
+    """
+    text = text or ""
+    left_candidates = [
+        text.rfind("\n", 0, start),
+        text.rfind(".", 0, start),
+        text.rfind("!", 0, start),
+        text.rfind("?", 0, start),
+    ]
+    left = max(left_candidates) + 1
+    right_candidates = [
+        idx for idx in (
+            text.find("\n", end),
+            text.find(".", end),
+            text.find("!", end),
+            text.find("?", end),
+        )
+        if idx != -1
+    ]
+    right = min(right_candidates) + 1 if right_candidates else len(text)
+    return text[left:right]
 
 
 def _is_visibly_adapted(context: str) -> bool:
@@ -189,12 +212,13 @@ def _unsupported_number_issues(output: dict, brief: dict, knowledge_snapshot: li
         signature = _number_signature(match)
         if signature in support_signatures or signature in seen:
             continue
-        seen.add(signature)
-        context = _context(content, match.start(), match.end())
-        # A generator-created quantity is acceptable only when the prose itself
-        # frames it as an adaptation/example AND the choice is tracked.
+        context = _claim_context(content, match.start(), match.end())
+        # A generator-created quantity is acceptable only when the same local
+        # claim frames it as an adaptation/example AND the choice is tracked.
+        # A later "Adaptation Note" cannot rescue an earlier prescriptive claim.
         if _is_visibly_adapted(context) and signature in choice_signatures:
             continue
+        seen.add(signature)
         display = match.group(0)
         issues.append(
             {
@@ -224,7 +248,7 @@ def _unsupported_named_method_issues(output: dict, brief: dict, knowledge_snapsh
         if not normalized or normalized in corpus or normalized in seen:
             continue
         seen.add(normalized)
-        context = _context(content, match.start(), match.end())
+        context = _claim_context(content, match.start(), match.end())
         if _is_visibly_adapted(context) and normalized in choices:
             continue
         issues.append(

@@ -345,7 +345,7 @@ def _slash_taxonomy_matches(text: str):
         if expansion:
             expanded_terms = [
                 term.strip(" \t'\".*`)[]")
-                for term in re.split(r"s*/s*", expansion)
+                for term in re.split(r"\\s*/\\s*", expansion)
                 if term.strip()
             ]
         explicit_taxonomy_language = bool(TAXONOMY_WORDS.search(context))
@@ -368,8 +368,7 @@ def _taxonomy_supported(labels: list[str], expansion: list[str], support_text: s
 
 
 def _unsupported_slash_taxonomy_issues(output: dict, brief: dict, knowledge_snapshot: list[dict]):
-    support_text = "
-".join(_support_strings(brief, knowledge_snapshot))
+    support_text = "\\n".join(_support_strings(brief, knowledge_snapshot))
     choices = _choice_text(output)
     issues = []
     attribution_issues = []

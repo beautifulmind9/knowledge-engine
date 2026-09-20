@@ -1,5 +1,37 @@
 # Build Log
 
+## 2026-09-20
+
+### Milestone
+
+Completed Acceptance Sprint A2: real-model output quality, grounding hardening, and a meaningful two-source synthesis comparison.
+
+### Completed
+
+- Hardened the shared grounding review through **report version 8** without weakening the strict internal Knowledge Asset models and without adding provider retries or repair calls.
+- Added conservative deterministic review for unsupported renamed frameworks, derived quantities, slash taxonomies such as `K/S/W (Knowledge/Skill/Wisdom)`, quoted lowercase formalized methods, and false source-attribution phrases.
+- Preserved legitimate exact terminology supplied by the brief/retrieved knowledge, ordinary slash notation, and locally disclosed/tracked generator-created labels.
+- Verified focused grounding regressions at **24 passed** and the full backend suite at **205 passed**, with the same two upstream deprecation warnings.
+- Completed real-provider Decision Brief acceptance. Repeated runs exposed renamed concepts, invented labels/taxonomies, unsupported timing specificity, and false source attribution. The accepted manual Version 2 removed unsupported K/S/W and generator-created framework names while preserving exact source terminology and provenance.
+- Completed real-provider Study Guide acceptance. The accepted manual Version 2 removed an unsupported `Iterative Design` label and tightened practice/checking guidance to the retrieved evidence.
+- Processed *Made to Stick* through the current production path for **10 of 91 chunks**, yielding **38 active assets / 35 consolidated Knowledge Units** for acceptance scope. This is intentionally partial and not a full-book interpretation claim.
+- Completed single-source Research / Synthesis baselines for *The Workshop Survival Guide* and *Made to Stick* using the same workshop-attention/retention task.
+- Completed the meaningful real two-source comparison. The first combined output overclaimed source agreement and introduced unsupported K/S/W and 20-minute guidance that were absent from the selected evidence. The accepted Version 2 removed those claims, preserved source-specific attribution, and explicitly labeled the combined workflow as cross-source synthesis.
+- Recorded that the lexical preview returned **0 candidate agreements / 0 possible tensions** while human review still found a meaningful complementary relationship and scope difference. Lexical signals remain advisory only.
+- Completed A2 with four materially different accepted real-provider modes: **Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis**.
+- All final grounding corrections above used the manual revision workflow and consumed **zero additional Gemini calls**; original model outputs remain preserved for audit and comparison.
+
+### Key learning
+
+Real-provider grounding failures are often subtle rather than obviously fabricated. Gemini can preserve a valid source idea while renaming it, adding unsupported specificity, or turning complementary sources into apparent consensus. Deterministic review can catch important recurring patterns, but human semantic review remains part of the product's acceptance model.
+
+The two-source test also confirmed that missing lexical agreement/tension flags do not imply the sources are unrelated. A useful relationship can be complementary rather than lexically overlapping, so cross-source synthesis must keep source scope and attribution visible.
+
+### Acceptance decision
+
+**Acceptance Sprint A2 is complete.** The remaining release work is A3: fresh setup/full browser acceptance, remaining error-state checks, external tester evidence, critical-defect resolution, and the final v1 beta decision.
+
+---
 ## 2026-09-15
 
 ### Milestone

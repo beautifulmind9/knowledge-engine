@@ -31,9 +31,9 @@ The remaining work is no longer about proving whether the core idea works. The g
 | R3 — Interpretation hardening | **Complete for v1 candidate** | *The Workshop Survival Guide* is complete at 46/46 chunks and audited; production extraction is one chunk per Gemini request. |
 | R4 — Output modes | **Complete for A2** | Four materially different real-provider modes were accepted after human grounding review: Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis. Shared grounding review is at version 8. |
 | R5 — Multi-source synthesis | **Complete for A2** | Same-task single-source and two-source synthesis was completed with *The Workshop Survival Guide* and a partial current-pipeline interpretation of *Made to Stick*. Human review corrected overclaimed agreement and unsupported cross-source additions. |
-| R6 — Web app MVP | **Implemented; final acceptance still open** | Core browser flow, saved outputs, revisions, provenance, export, mobile-width, and keyboard checks have been exercised. Fresh clean-state/full desktop happy-path acceptance and a few remaining error states are still A3 work. |
+| R6 — Web app MVP | **Complete for v1 candidate** | Fresh clean-state browser acceptance now covers library creation, source upload/extraction, manual structured interpretation, knowledge selection, Workshop preview, saved output, revision history, comparison, provenance, Markdown export, mobile-width, keyboard, and key error/recovery states. |
 | R7 — Durable storage/privacy/control | **Complete for v1 candidate** | Local SQLite persistence, deletion, export, backup/restore, integrity checks, and zero-cost quota controls are implemented and tested. |
-| R8 — Beta hardening/release candidate | **In progress** | Automated baseline is 205 passed with 2 unchanged upstream warnings. Remaining A3 work: fresh setup, remaining desktop/error-state checks, external tester, critical-defect resolution/deferral, and final v1 beta decision. |
+| R8 — Beta hardening/release candidate | **In progress** | Fresh Codespace acceptance is complete with 205 passed and 3 upstream deprecation warnings. Internal desktop/error-state acceptance is complete. Remaining A3 work: safe shareable beta deployment, external tester, critical-defect resolution/deferral, and final v1 beta decision. |
 
 **Current execution point:** A1 and A2 acceptance are complete. The project is now in **A3 / Remaining Sprint 8 release acceptance**, not feature expansion.
 
@@ -57,6 +57,7 @@ Knowledge Engine v1 beta is ready when a user can:
 10. Complete the main workflow through a real web interface rather than terminal commands.
 11. Delete/export their own data and understand processing/quota status.
 12. Run the project without paid API billing or automatic paid upgrades.
+13. Open a safe tester-facing beta from a shareable browser link without exposing the owner’s private sources, outputs, backups, or secrets.
 
 ### Product rules that apply to every remaining sprint
 
@@ -285,12 +286,13 @@ Turn the working product into a coherent v1 beta that another person can actuall
 | R8-05 | Must | Documentation refresh | Root README and active app docs describe the FastAPI/web architecture rather than the legacy prototype. |
 | R8-06 | Must | Setup script/checklist | A fresh environment can install dependencies, configure the free Gemini key, and run API/web apps. |
 | R8-07 | Should | Basic accessibility/responsive pass | Core web flow is usable on common desktop/mobile widths and with keyboard navigation where practical. |
-| R8-08 | Must | External beta test | At least one person other than the builder can complete the core workflow and provide feedback. |
-| R8-09 | Must | Release decision | Record what is in v1 beta, what is deliberately deferred, and the known limitations. |
+| R8-08 | Must | Beta deployment / shareable access | Provide a $0 tester-accessible browser link in an environment isolated from the owner’s private local storage. Do not expose private books/sources, saved outputs, backups, API keys, or secrets. Use only public-domain, licensed, or synthetic demo material and retain the no-paid-fallback quota protections. |
+| R8-09 | Must | External beta test | At least one person other than the builder can open the shareable beta and complete the core workflow without developer intervention, then provide feedback. |
+| R8-10 | Must | Release decision | Record what is in v1 beta, what is deliberately deferred, and the known limitations. |
 
 ## Sprint exit criteria
 
-Knowledge Engine can be handed to a beta tester with setup instructions and public-safe sample material, and the tester can complete the core workflow without developer intervention.
+Knowledge Engine can be opened by a beta tester from a safe shareable link using public-safe sample material, and the tester can complete the core workflow without developer intervention or access to the owner’s private data.
 
 ---
 
@@ -335,12 +337,11 @@ The order is intentional: persistence and revision come before more generation f
 
 ### Current position in that sequence
 
-R1–R5 and R7 are complete for the current v1 candidate. R6 is implemented and has substantial internal browser evidence, while its remaining acceptance checks are being closed under A3. The active release work is therefore **R8 / A3**, specifically:
+R1–R7 are complete for the current v1 candidate. Fresh-machine setup, the full internal desktop happy path, responsive/keyboard checks, quota-stop behavior, failed-job recovery, and stale-running recovery have now been exercised under A3. The active release work is therefore **R8 / A3**, specifically:
 
-1. fresh-machine/local setup acceptance;
-2. remaining full desktop happy-path and error-state checks;
-3. external beta tester completion;
-4. resolution or explicit deferral of critical defects;
-5. final evidence-based v1 beta release decision.
+1. safe $0 beta deployment with a shareable browser link and isolated public-safe data;
+2. external beta tester completion;
+3. resolution or explicit deferral of critical defects found during deployment/testing;
+4. final evidence-based v1 beta release decision.
 
 No additional Gemini output-mode testing is required to close A2.

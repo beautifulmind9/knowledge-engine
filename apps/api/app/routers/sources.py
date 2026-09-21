@@ -2,7 +2,7 @@ from pathlib import Path
 from shutil import copyfileobj
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 
@@ -14,6 +14,9 @@ from app.db.mock_data import (
     sources,
 )
 from app.db.persistence import save_state
+from app.persistence.contracts import ArtifactStore
+from app.persistence.local_artifacts import LocalArtifactStore
+from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
     extract_text_from_file,
@@ -27,6 +30,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 from app.db.persistence import STORAGE_ROOT
 
 UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
+_artifact_store: ArtifactStore = LocalArtifactStore()
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",
@@ -70,14 +74,15 @@ def _recover_pdf_structure(source: dict):
 
     file_path = source.get("file_path")
     chunks_path = source.get("chunks_path")
-    if not file_path or not Path(file_path).exists():
+    if not file_path or not _artifact_store.exists(Path(file_path)):
         raise HTTPException(404, "Uploaded PDF file not found on disk.")
     if not chunks_path or not Path(chunks_path).exists():
         raise HTTPException(400, "Chunk this source before recovering chapter structure.")
 
     chunks = load_chunks(chunks_path)
     try:
-        chunks, summary = annotate_pdf_chunks_with_outline(file_path, chunks)
+        with _artifact_store.materialize(Path(file_path)) as local_path:
+            chunks, summary = annotate_pdf_chunks_with_outline(str(local_path), chunks)
     except Exception as error:
         raise HTTPException(400, f"PDF chapter structure could not be read: {error}") from error
 
@@ -245,7 +250,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
             detail=f"Unsupported file type. Allowed types: {sorted(ALLOWED_FILE_EXTENSIONS)}"
         )
 
-    UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+    _artifact_store.create_directory(UPLOAD_FOLDER)
 
     safe_file_name = f"{source_id}{file_extension}"
     file_path = UPLOAD_FOLDER / safe_file_name
@@ -257,7 +262,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     temporary = file_path.with_suffix(file_path.suffix + ".tmp")
     size = 0
     try:
-        with temporary.open("wb") as buffer:
+        with _artifact_store.open_binary_write(temporary) as buffer:
             while data := file.file.read(1024 * 1024):
                 size += len(data)
                 if size > 25 * 1024 * 1024:
@@ -265,13 +270,13 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
                 buffer.write(data)
         if not size:
             raise HTTPException(400, "The uploaded file is empty.")
-        temporary.replace(file_path)
+        _artifact_store.replace(temporary, file_path)
     finally:
-        temporary.unlink(missing_ok=True)
+        _artifact_store.remove(temporary)
 
     for old_path in old_paths:
         if old_path != file_path.resolve():
-            old_path.unlink(missing_ok=True)
+            _artifact_store.remove(old_path)
 
     source["file_name"] = file.filename
     source["file_path"] = str(file_path)
@@ -314,14 +319,15 @@ def get_source_file(source_id: str):
 
     path = Path(file_path)
 
-    if not path.exists():
+    if not _artifact_store.exists(path):
         raise HTTPException(
             status_code=404,
             detail="Uploaded file not found on disk."
         )
 
-    return FileResponse(
+    return ArtifactFileResponse(
         path=path,
+        store=_artifact_store,
         filename=source.get("file_name") or path.name
     )
 
@@ -348,10 +354,11 @@ def extract_source_text(source_id: str):
         )
 
     try:
-        extracted_text = extract_text_from_file(
-            file_path=file_path,
-            file_type=file_type
-        )
+        with _artifact_store.materialize(Path(file_path)) as local_path:
+            extracted_text = extract_text_from_file(
+                file_path=str(local_path),
+                file_type=file_type
+            )
     except Exception as error:
         source["processing_status"] = "extraction_not_supported"
         persist_state()
@@ -451,7 +458,8 @@ def chunk_source_text(source_id: str):
     structure_summary = None
     if source.get("file_type") == ".pdf" and source.get("file_path"):
         try:
-            chunks, structure_summary = annotate_pdf_chunks_with_outline(source["file_path"], chunks)
+            with _artifact_store.materialize(Path(source["file_path"])) as local_path:
+                chunks, structure_summary = annotate_pdf_chunks_with_outline(str(local_path), chunks)
         except Exception:
             # Text extraction/chunking should still succeed when a PDF has no
             # usable outline or its bookmark metadata is malformed.

@@ -1,4 +1,5 @@
-from typing import Any, Protocol
+from contextlib import AbstractContextManager
+from typing import Any, BinaryIO, Protocol
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ class StateStore(Protocol):
 
 
 class ArtifactStore(Protocol):
-    """Filesystem operations needed by extracted-text and chunk artifacts."""
+    """Local filesystem operations needed by source, text, and chunk artifacts."""
 
     def create_directory(self, path: Path) -> None: ...
 
@@ -20,3 +21,13 @@ class ArtifactStore(Protocol):
     def read_text(self, path: Path) -> str: ...
 
     def exists(self, path: Path) -> bool: ...
+
+    def open_binary_write(self, path: Path) -> AbstractContextManager[BinaryIO]: ...
+
+    def replace(self, temporary: Path, destination: Path) -> None: ...
+
+    def remove(self, path: Path) -> None: ...
+
+    def materialize(self, path: Path) -> AbstractContextManager[Path]:
+        """Yield a local path guaranteed usable only while the context is active."""
+        ...

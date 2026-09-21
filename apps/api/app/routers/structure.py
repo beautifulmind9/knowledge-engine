@@ -4,10 +4,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.db.mock_data import extraction_jobs, knowledge_assets, libraries, sources
 from app.db.persistence import save_state
+from app.persistence.contracts import ArtifactStore
+from app.persistence.local_artifacts import LocalArtifactStore
 from app.services.source_structure import annotate_pdf_assets_with_outline_from_evidence
 
 
 router = APIRouter(prefix="/sources", tags=["sources"])
+_artifact_store: ArtifactStore = LocalArtifactStore()
 
 
 def _find_source(source_id: str):
@@ -28,14 +31,15 @@ def refine_asset_sections(source_id: str):
         raise HTTPException(status_code=400, detail="Evidence-based section refinement is available only for PDF sources.")
 
     file_path = source.get("file_path")
-    if not file_path or not Path(file_path).exists():
+    if not file_path or not _artifact_store.exists(Path(file_path)):
         raise HTTPException(status_code=404, detail="Uploaded PDF file not found on disk.")
 
     assets = [asset for asset in knowledge_assets if asset.get("source_id") == source_id]
     before = {asset.get("id"): asset.get("chapter_or_section") for asset in assets}
 
     try:
-        summary = annotate_pdf_assets_with_outline_from_evidence(file_path, assets)
+        with _artifact_store.materialize(Path(file_path)) as local_path:
+            summary = annotate_pdf_assets_with_outline_from_evidence(str(local_path), assets)
     except Exception as error:
         raise HTTPException(status_code=400, detail=f"Asset section refinement failed: {error}") from error
 

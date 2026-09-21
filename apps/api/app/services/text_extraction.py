@@ -8,8 +8,11 @@ from pypdf import PdfReader
 
 
 from app.db.persistence import STORAGE_ROOT
+from app.persistence.contracts import ArtifactStore
+from app.persistence.local_artifacts import LocalArtifactStore
 
 TEXT_OUTPUT_FOLDER = STORAGE_ROOT / "extracted_text"
+_artifact_store: ArtifactStore = LocalArtifactStore()
 
 
 class UnsupportedExtractionTypeError(Exception):
@@ -134,9 +137,9 @@ def extract_text_from_file(file_path: str, file_type: str) -> str:
 
 
 def save_extracted_text(source_id: str, text: str) -> str:
-    TEXT_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    _artifact_store.create_directory(TEXT_OUTPUT_FOLDER)
 
     output_path = TEXT_OUTPUT_FOLDER / f"{source_id}.txt"
-    output_path.write_text(text, encoding="utf-8")
+    _artifact_store.write_text(output_path, text)
 
     return str(output_path)

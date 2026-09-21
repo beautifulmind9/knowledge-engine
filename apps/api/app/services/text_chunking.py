@@ -3,8 +3,11 @@ from pathlib import Path
 
 
 from app.db.persistence import STORAGE_ROOT
+from app.persistence.contracts import ArtifactStore
+from app.persistence.local_artifacts import LocalArtifactStore
 
 CHUNK_OUTPUT_FOLDER = STORAGE_ROOT / "chunks"
+_artifact_store: ArtifactStore = LocalArtifactStore()
 
 
 def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int = 200):
@@ -57,12 +60,12 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
 
 
 def save_chunks(source_id: str, chunks):
-    CHUNK_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    _artifact_store.create_directory(CHUNK_OUTPUT_FOLDER)
 
     output_path = CHUNK_OUTPUT_FOLDER / f"{source_id}.json"
-    output_path.write_text(
-        json.dumps(chunks, indent=2, ensure_ascii=False),
-        encoding="utf-8"
+    _artifact_store.write_text(
+        output_path,
+        json.dumps(chunks, indent=2, ensure_ascii=False)
     )
 
     return str(output_path)
@@ -71,7 +74,7 @@ def save_chunks(source_id: str, chunks):
 def load_chunks(chunks_path: str):
     path = Path(chunks_path)
 
-    if not path.exists():
+    if not _artifact_store.exists(path):
         raise ValueError("Chunks file not found on disk. Restore the source data before continuing.")
 
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(_artifact_store.read_text(path))

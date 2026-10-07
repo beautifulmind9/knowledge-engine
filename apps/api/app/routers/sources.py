@@ -14,7 +14,7 @@ from app.db.mock_data import (
     sources,
 )
 from app.db.persistence import save_state
-from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.factory import get_local_artifact_store
 from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 from app.db.persistence import STORAGE_ROOT
 
 UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
-_artifact_store: LocalArtifactStore = LocalArtifactStore()
+_artifact_store = get_local_artifact_store()
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",

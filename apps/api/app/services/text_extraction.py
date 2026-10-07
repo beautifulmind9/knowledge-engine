@@ -9,10 +9,10 @@ from pypdf import PdfReader
 
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.contracts import ArtifactStore
-from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.factory import get_artifact_store
 
 TEXT_OUTPUT_FOLDER = STORAGE_ROOT / "extracted_text"
-_artifact_store: ArtifactStore = LocalArtifactStore()
+_artifact_store: ArtifactStore = get_artifact_store()
 
 
 class UnsupportedExtractionTypeError(Exception):

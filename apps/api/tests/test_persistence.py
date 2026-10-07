@@ -56,9 +56,7 @@ def test_complete_snapshot_round_trip(store, snapshot):
 
 
 def test_facade_preserves_complete_snapshot_and_collection_identity(store, snapshot, monkeypatch):
-    for name, value in (("STORAGE_ROOT", store.storage_root), ("STATE_PATH", store.state_path),
-                        ("DB_PATH", store.db_path), ("API_ROOT", store.api_root)):
-        monkeypatch.setattr(persistence, name, value)
+    monkeypatch.setattr(persistence, "get_state_store", lambda: store)
     collections = (db.libraries, db.sources, db.extraction_jobs, db.knowledge_assets, db.outputs, db.usage)
     for name in ("libraries", "sources", "extraction_jobs", "knowledge_assets", "outputs"):
         getattr(db, name).extend(deepcopy(snapshot[name]))

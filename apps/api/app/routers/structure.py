@@ -5,12 +5,12 @@ from fastapi import APIRouter, HTTPException
 from app.db.mock_data import extraction_jobs, knowledge_assets, libraries, sources
 from app.db.persistence import save_state
 from app.persistence.contracts import ArtifactStore
-from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.factory import get_artifact_store
 from app.services.source_structure import annotate_pdf_assets_with_outline_from_evidence
 
 
 router = APIRouter(prefix="/sources", tags=["sources"])
-_artifact_store: ArtifactStore = LocalArtifactStore()
+_artifact_store: ArtifactStore = get_artifact_store()
 
 
 def _find_source(source_id: str):

@@ -4,10 +4,10 @@ from pathlib import Path
 
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.contracts import ArtifactStore
-from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.factory import get_artifact_store
 
 CHUNK_OUTPUT_FOLDER = STORAGE_ROOT / "chunks"
-_artifact_store: ArtifactStore = LocalArtifactStore()
+_artifact_store: ArtifactStore = get_artifact_store()
 
 
 def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int = 200):

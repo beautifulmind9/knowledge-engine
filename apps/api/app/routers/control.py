@@ -7,12 +7,12 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs, usage
 from app.db.persistence import STORAGE_ROOT
-from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.factory import get_local_artifact_store
 from app.services.knowledge_extraction import find_source, persist_state
 from app.services.ai_gateway import status
 
 router=APIRouter(tags=["data control"])
-_artifact_store: LocalArtifactStore = LocalArtifactStore()
+_artifact_store = get_local_artifact_store()
 
 @router.get("/usage")
 def usage_status():

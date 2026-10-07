@@ -285,3 +285,63 @@ def test_missing_artifact_does_not_enter_materialization(client, empty_source, m
     assert response.status_code == 404
     assert response.json() == {"detail": "Uploaded file not found on disk."}
     assert temporary_store.exits == 0 and not temporary_store.temporary.exists()
+
+
+def test_extracted_text_reads_ignore_invalid_utf8_and_preserve_newlines(client, source, monkeypatch):
+    record, _ = source
+    current = stored(record)
+    path = Path(current['extracted_text_path'])
+    path.write_bytes(b'Caf\xc3\xa9\xff\r\nnext\rlast\n')
+    expected = path.read_text(encoding='utf-8', errors='ignore')
+    reads = []
+    class TrackingStore(LocalArtifactStore):
+        def read_text(self, target, *, errors='strict'):
+            reads.append((target, errors))
+            return super().read_text(target, errors=errors)
+    monkeypatch.setattr(router, '_artifact_store', TrackingStore())
+    response = client.get(f"/sources/{record['id']}/extracted-text")
+    assert response.status_code == 200 and response.text == expected
+    current['chunks_path'] = None
+    response = client.post(f"/sources/{record['id']}/chunk")
+    assert response.status_code == 200
+    assert client.get(f"/sources/{record['id']}/chunks").json()['items'][0]['text'] == 'Café next last'
+    assert reads == [(path, 'ignore'), (path, 'ignore')]
+
+
+@pytest.mark.parametrize('content', [b'[{"text":"Caf\xc3\xa9\\r\\nnext"}]', b'["\xff"]', b'{invalid'])
+def test_chunk_route_preserves_strict_utf8_and_json_behavior(client, source, content):
+    import json
+    record, _ = source
+    path = Path(stored(record)['chunks_path'])
+    path.write_bytes(content)
+    try:
+        expected = json.loads(path.read_text(encoding='utf-8'))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        with pytest.raises(type(error)) as actual:
+            router.get_source_chunks(record["id"])
+        assert str(actual.value) == str(error)
+        response = client.get(f"/sources/{record['id']}/chunks")
+        assert response.status_code == 400 and response.json() == {"detail": str(error)}
+    else:
+        response = client.get(f"/sources/{record['id']}/chunks")
+        assert response.status_code == 200 and response.json()['items'] == expected
+
+
+@pytest.mark.parametrize('action,method,key,status,message', [
+    ('extracted-text', 'get', 'extracted_text_path', 404, 'Extracted text file not found on disk.'),
+    ('chunk', 'post', 'extracted_text_path', 404, 'Extracted text file not found on disk.'),
+    ('chunks', 'get', 'chunks_path', 404, 'Chunks file not found on disk.'),
+    ('recover-structure', 'post', 'chunks_path', 400, 'Chunk this source before recovering chapter structure.'),
+])
+def test_source_text_and_chunk_checks_use_store(client, source, monkeypatch, action, method, key, status, message):
+    record, _ = source
+    current = stored(record)
+    current['file_type'] = '.pdf'
+    path = Path(current[key])
+    class MissingStore(LocalArtifactStore):
+        def exists(self, target):
+            return False if target == path else super().exists(target)
+    monkeypatch.setattr(router, '_artifact_store', MissingStore())
+    response = getattr(client, method)(f"/sources/{record['id']}/{action}")
+    assert response.status_code == status and response.json() == {'detail': message}
+    assert path.is_file()

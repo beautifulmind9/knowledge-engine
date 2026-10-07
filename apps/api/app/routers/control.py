@@ -1,15 +1,18 @@
 import io
 import json
+from shutil import copyfileobj
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs, usage
 from app.db.persistence import STORAGE_ROOT
+from app.persistence.local_artifacts import LocalArtifactStore
 from app.services.knowledge_extraction import find_source, persist_state
 from app.services.ai_gateway import status
 
 router=APIRouter(tags=["data control"])
+_artifact_store: LocalArtifactStore = LocalArtifactStore()
 
 @router.get("/usage")
 def usage_status():
@@ -31,7 +34,7 @@ def integrity():
         if source["library_id"] not in library_ids:
             issues.append({"id":source["id"],"problem":"orphaned library"})
         for key in ("file_path","chunks_path","extracted_text_path"):
-            if source.get(key) and not Path(source[key]).is_file():
+            if source.get(key) and _artifact_store.status(Path(source[key])) != "artifact":
                 issues.append({"id":source["id"],"problem":"missing "+key})
     for item in extraction_jobs+knowledge_assets:
         if item["source_id"] not in source_ids:
@@ -53,12 +56,19 @@ def export_data():
         for source in source_copy:
             for key in ("file_path","extracted_text_path","chunks_path"):
                 value=source.get(key)
-                if value and Path(value).is_file():
-                    path=Path(value).resolve()
+                if value and _artifact_store.status(Path(value)) == "artifact":
+                    path=_artifact_store.resolve(Path(value))
                     if not path.is_relative_to(STORAGE_ROOT):
                         raise HTTPException(409,"A legacy file is outside storage. Move it into storage before export.")
                     relative="storage/"+str(path.relative_to(STORAGE_ROOT))
-                    archive.write(path,relative)
+                    # Match ZipFile.write metadata and buffered copying through the store.
+                    entry = _artifact_store.zip_info(path, relative)
+                    if entry.is_dir():
+                        archive.mkdir(entry)
+                    else:
+                        entry.compress_type = archive.compression
+                        with _artifact_store.open_binary_read(path) as artifact, archive.open(entry, "w") as target:
+                            copyfileobj(artifact, target, 1024 * 8)
                     source[key]=relative
         archive.writestr("storage/state.json",json.dumps(dict(libraries=libraries,sources=source_copy,
             extraction_jobs=extraction_jobs,knowledge_assets=knowledge_assets,outputs=outputs,usage=usage),indent=2))
@@ -76,13 +86,13 @@ def delete_source(source_id:str,delete_outputs:bool=False):
     paths=[]
     for key in ("file_path","extracted_text_path","chunks_path"):
         if source.get(key):
-            path=Path(source[key]).resolve()
+            path=_artifact_store.resolve(Path(source[key]))
             if not path.is_relative_to(STORAGE_ROOT):
                 raise HTTPException(409,"A legacy file is outside the private storage directory. Resolve its location before deletion.")
             paths.append(path)
     # File failures stop deletion before removing records; integrity audit identifies partial disk deletion.
     for path in paths:
-        path.unlink(missing_ok=True)
+        _artifact_store.remove(path)
     outputs[:]=[o for o in outputs if o["root_output_id"] not in affected_roots]
     knowledge_assets[:]=[a for a in knowledge_assets if a["source_id"]!=source_id]
     extraction_jobs[:]=[j for j in extraction_jobs if j["source_id"]!=source_id]

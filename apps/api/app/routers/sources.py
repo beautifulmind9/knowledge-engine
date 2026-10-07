@@ -14,7 +14,6 @@ from app.db.mock_data import (
     sources,
 )
 from app.db.persistence import save_state
-from app.persistence.contracts import ArtifactStore
 from app.persistence.local_artifacts import LocalArtifactStore
 from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
@@ -30,7 +29,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 from app.db.persistence import STORAGE_ROOT
 
 UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
-_artifact_store: ArtifactStore = LocalArtifactStore()
+_artifact_store: LocalArtifactStore = LocalArtifactStore()
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",
@@ -76,7 +75,7 @@ def _recover_pdf_structure(source: dict):
     chunks_path = source.get("chunks_path")
     if not file_path or not _artifact_store.exists(Path(file_path)):
         raise HTTPException(404, "Uploaded PDF file not found on disk.")
-    if not chunks_path or not Path(chunks_path).exists():
+    if not chunks_path or not _artifact_store.exists(Path(chunks_path)):
         raise HTTPException(400, "Chunk this source before recovering chapter structure.")
 
     chunks = load_chunks(chunks_path)
@@ -255,7 +254,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     safe_file_name = f"{source_id}{file_extension}"
     file_path = UPLOAD_FOLDER / safe_file_name
 
-    old_paths = [Path(source[key]).resolve() for key in ("file_path", "extracted_text_path", "chunks_path") if source.get(key)]
+    old_paths = [_artifact_store.resolve(Path(source[key])) for key in ("file_path", "extracted_text_path", "chunks_path") if source.get(key)]
     if any(not path.is_relative_to(STORAGE_ROOT) for path in old_paths):
         raise HTTPException(409, "Move this source's legacy files into private storage before replacing its upload.")
 
@@ -275,7 +274,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
         _artifact_store.remove(temporary)
 
     for old_path in old_paths:
-        if old_path != file_path.resolve():
+        if old_path != _artifact_store.resolve(file_path):
             _artifact_store.remove(old_path)
 
     source["file_name"] = file.filename
@@ -412,13 +411,13 @@ def get_extracted_text(source_id: str):
 
     path = Path(extracted_text_path)
 
-    if not path.exists():
+    if not _artifact_store.exists(path):
         raise HTTPException(
             status_code=404,
             detail="Extracted text file not found on disk."
         )
 
-    return path.read_text(encoding="utf-8", errors="ignore")
+    return _artifact_store.read_text(path, errors="ignore")
 
 
 @router.post("/{source_id}/chunk")
@@ -441,7 +440,7 @@ def chunk_source_text(source_id: str):
 
     path = Path(extracted_text_path)
 
-    if not path.exists():
+    if not _artifact_store.exists(path):
         raise HTTPException(
             status_code=404,
             detail="Extracted text file not found on disk."
@@ -449,7 +448,7 @@ def chunk_source_text(source_id: str):
 
     if source.get("chunks_path"):
         return {"source_id":source_id,"chunk_count":len(load_chunks(source["chunks_path"])),"processing_status":source["processing_status"],"message":"Existing chunks preserved."}
-    extracted_text = path.read_text(encoding="utf-8", errors="ignore")
+    extracted_text = _artifact_store.read_text(path, errors="ignore")
     chunks = chunk_text(
         source_id=source_id,
         text=extracted_text
@@ -511,7 +510,7 @@ def get_source_chunks(source_id: str):
 
     path = Path(chunks_path)
 
-    if not path.exists():
+    if not _artifact_store.exists(path):
         raise HTTPException(
             status_code=404,
             detail="Chunks file not found on disk."

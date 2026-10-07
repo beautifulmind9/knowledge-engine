@@ -12,6 +12,10 @@ class WorkshopPrepareRequest(BaseModel):
     library_id: str | None = None
     asset_ids: list[str] = Field(default_factory=list)
     limit: int = Field(default=8, ge=1, le=20)
+    creative_intent: str | None = None
+    creator_context: str | None = None
+    preserve: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
 
 
 class WorkshopBrief(BaseModel):
@@ -22,3 +26,7 @@ class WorkshopBrief(BaseModel):
     output_type: str
     output_format: str | None = None
     retrieval_query: str
+    creative_intent: str | None = None
+    creator_context: str | None = None
+    preserve: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)

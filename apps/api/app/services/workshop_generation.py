@@ -56,8 +56,53 @@ def _compact_knowledge_unit(group: dict) -> dict:
     return compact
 
 
+def build_authorship_guidance(payload: WorkshopGenerateRequest) -> str:
+    has_creator_signals = any(
+        (
+            payload.creative_intent,
+            payload.creator_context,
+            payload.preserve,
+            payload.avoid,
+            payload.tone_or_style,
+        )
+    )
+    rules = [
+        "Authorship and individuality rules:",
+        "- Knowledge should expand the user's options and intentionality, not standardize their expression toward generic best practice.",
+        "- The model may contribute reasoning, structure and possibilities, but it must not become the user's authorial identity.",
+        "- Treat conventions, precedents and source examples as options or explanations unless the user explicitly asks for a standardized or convention-following result.",
+        "- Do not automatically polish away unusual phrasing, pacing, framing, imperfection, cultural texture, memory, personality or other distinctive qualities when they may be intentional.",
+        "- Do not fabricate a personal style, preference, memory, cultural context or identity signal that the user did not provide.",
+    ]
+    if has_creator_signals:
+        rules.extend(
+            [
+                "- Available creator-direction signals are authoritative constraints on the generated result. Preserve them unless they conflict with a higher-priority safety, legal, accessibility or explicit technical requirement.",
+                "- Respect explicit preserve and avoid instructions inside the artifact, not merely in an explanation after it.",
+                "- If source guidance conflicts with the creator's stated intent, explain the trade-off and adapt the guidance rather than silently overriding the creator.",
+            ]
+        )
+    else:
+        rules.extend(
+            [
+                "- No creator-specific direction has been supplied. Do not invent one and do not silently collapse the task to a single generic aesthetic or voice.",
+                "- When the task admits materially different creative choices, preserve meaningful optionality or frame the chosen direction as one possible direction rather than the objectively best one.",
+            ]
+        )
+    return "\n".join(rules)
+
+
 def generate_workshop_output(payload: WorkshopGenerateRequest, prepared=None, revision=None) -> dict:
     prepared = prepared or prepare_workshop(payload)
+    prepared["brief"].update(
+        {
+            "creative_intent": payload.creative_intent,
+            "creator_context": payload.creator_context,
+            "preserve": payload.preserve,
+            "avoid": payload.avoid,
+            "tone_or_style": payload.tone_or_style,
+        }
+    )
     knowledge_units = [
         _compact_knowledge_unit(group)
         for group in prepared["knowledge_units"]
@@ -92,6 +137,7 @@ Rules:
 17. If the requested output is a plan, structure it so the user can act on it directly.
 18. Before returning, audit every specific multi-part list, number, threshold, timing, named method/rule/design/strategy/process, taxonomy, component set, definition, technical rule, and domain framework. If it is not explicit in the brief or supplied knowledge, either remove/generalize it or clearly mark it as a generator-created adaptation in the same local sentence and track it in design_choices. A later uncertainty or adaptation note does not make an earlier prescriptive claim grounded. Source-sounding names and invented taxonomies should normally be removed rather than merely disclosed.
 """
+    instructions += "\n" + build_authorship_guidance(payload)
 
     from app.services.output_modes import MODES
     mode = MODES.get(payload.output_type, {})
@@ -108,6 +154,10 @@ Rules:
         "output_preferences": {
             "tone_or_style": payload.tone_or_style,
             "output_format": payload.output_format,
+            "creative_intent": payload.creative_intent,
+            "creator_context": payload.creator_context,
+            "preserve": payload.preserve,
+            "avoid": payload.avoid,
         },
     }
 

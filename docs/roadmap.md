@@ -146,6 +146,7 @@ Example outputs:
 - Business cases
 - Decision briefs
 - Communication plans
+- Creative decision guidance for photo and video work
 
 ### Completed
 
@@ -168,6 +169,16 @@ Example outputs:
 - Add output history/versioning
 - Generalize and test multiple output modes beyond workshop plans
 - Add stronger grounding checks for numerical claims and derived recommendations where needed
+- Add a creative decision-support path for photo and video work that can apply knowledge about color, composition, pacing, framing, sequencing, sound, storytelling, and related creative domains.
+- Implement the Creative Sovereignty principle for creative guidance: use source knowledge to explain options, effects, precedents, and trade-offs without treating convention or generalized best practice as an automatic aesthetic optimum.
+- Add creator-intent and preservation inputs where needed so Workshop can distinguish what the creator wants to change from what they want to keep.
+- Preserve meaningful imperfection and creator-specific context rather than automatically normalizing unusual choices.
+- Validate that creator preferences and project intent can materially change guidance even when the retrieved source knowledge is the same.
+- Add creative-mode acceptance tests covering convention-versus-prescription, multiple viable directions, creator intent, intentional rule-breaking, and the question: "What here should not be improved away?"
+
+Implementation note:
+
+The Creative Sovereignty principle is documented in `docs/workshop_creative_sovereignty.md` and specified as a delivery-ready story in `docs/user_stories.md`. Runtime enforcement belongs in the Workshop generation path and creative output-mode instructions when the creative decision-support capability is implemented; documentation alone does not change model behavior.
 
 ---
 

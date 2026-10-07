@@ -85,57 +85,166 @@ A user should be able to gather knowledge from books and sources, then enter a w
 
 ## Preserve Individuality While Using Creative Knowledge
 
+### User Story
+
 As a creator,
 
-I want Workshop to use knowledge from film, photography, editing, design, storytelling, and other creative sources without forcing me toward generic best practices,
+I want Workshop to use knowledge from film, photography, editing, design, storytelling, and other creative sources to help me understand and explore creative choices without optimizing me toward generic best practices,
 
-So that I can understand why creative choices work, explore alternatives, and make more intentional decisions while preserving my own visual language, personality, memories, cultural context, imperfections, and preferences.
+So that I can make more intentional decisions while preserving my own visual language, personality, memories, cultural context, imperfections, instincts, and preferences.
 
-### Why This Matters
+### Context
 
-Creative knowledge should expand the creator's vocabulary, not narrow it into a standardized aesthetic.
+Creative sources often describe principles, conventions, examples, patterns, and techniques that explain why particular choices work. Those sources are useful as a vocabulary for thinking, but they should not become a hidden scoring system for what a creator's work ought to look like.
 
-A convention, example, or precedent can explain one way to solve a creative problem, but it should not become the default answer for every creator or project.
+Workshop should therefore use creative knowledge to expand the creator's option space. It should explain effects, trade-offs, precedents, and possible directions while keeping the creator's intent and identity authoritative.
 
-Workshop should therefore treat the creator as the final authority over the work.
+A convention is evidence that a choice can work in a particular context. It is not automatically a prescription.
 
 ### Example Use Case
 
-The user uploads or references a video and asks how to approach the color edit.
+The creator is editing a personal video and asks how to approach the color grade.
 
-Workshop retrieves relevant knowledge about color relationships, contrast, mood, visual hierarchy, and cinematic examples.
+Workshop retrieves relevant knowledge about color relationships, contrast, mood, visual hierarchy, and examples from film.
 
-Instead of recommending one "best" grade, it explains how different choices could affect the piece and offers several viable directions, including preserving the footage's existing natural or imperfect qualities when those qualities support the user's intent.
+The footage already has a warm, slightly uneven home-video quality that carries personal meaning.
 
-### Inputs
+Instead of deciding that the footage should be corrected into a conventional cinematic palette, Workshop explains several viable directions. It may explain what stronger complementary contrast would do, what preserving the existing warmth would do, what desaturation would change, and what may be lost if the footage is made technically cleaner.
 
-- The creative work or project context
-- The creator's goal or intended feeling
+The creator can then choose, combine, reject, or deliberately invert those directions.
+
+### Preconditions
+
+- Relevant creative knowledge has been extracted from one or more sources.
+- The creator has provided a creative task, work-in-progress, or enough project context to describe the decision being made.
+- The creator can provide intent, feeling, references, constraints, or preferences when those are important to the decision.
+- When creator preferences are unknown, Workshop must not invent a personal style profile and present it as fact.
+
+### Inputs That May Matter
+
+- Creative work or project context
+- Creator's goal or intended feeling
 - Relevant source knowledge
-- Known creator preferences or style signals
-- Constraints or references the creator chooses to provide
+- Creator-provided references
+- Known creator preferences or prior choices, where available and appropriate
+- Cultural or personal context the creator chooses to provide
+- Constraints such as platform, duration, format, audience, equipment, or editing limits
+- Elements the creator explicitly wants preserved
 
 ### Expected Workshop Behavior
 
-- Explain why a creative choice may work.
-- Distinguish convention from requirement.
-- Offer meaningful alternatives rather than one optimized answer.
-- Explain trade-offs between those alternatives.
-- Respect creator preferences and project intent.
-- Avoid automatically correcting unusual choices that may be intentional.
-- Recognize that imperfection can carry meaning, memory, intimacy, cultural texture, or identity.
-- Allow the creator to reject, combine, invert, or deliberately break learned principles.
+Workshop should:
+
+- Explain why a creative choice may work and under what conditions.
+- Distinguish conventions, precedents, and common techniques from requirements.
+- Offer multiple meaningful directions when more than one direction could satisfy the creator's intent.
+- Explain the trade-offs, emotional effects, or communicative consequences of those directions.
+- Use source knowledge as a lens for understanding rather than a hidden aesthetic ranking system.
+- Respect explicit creator preferences and project intent over generalized best-practice defaults.
+- Avoid automatically correcting unusual choices merely because they depart from convention.
+- Recognize that imperfection can carry meaning, memory, intimacy, cultural texture, spontaneity, or identity.
+- Make clear when a suggestion is a source-grounded principle versus a generator-created creative option.
+- Allow the creator to reject, combine, invert, exaggerate, or deliberately break learned principles.
 - Treat the creator's final decision as authoritative.
+
+### Anti-Behavior
+
+Workshop should not:
+
+- Present one aesthetic as objectively best when several choices are viable.
+- Treat popularity, conventional polish, cinematic appearance, technical cleanliness, or engagement optimization as automatic proxies for quality.
+- Flatten culturally specific or personally meaningful choices into generic visual trends.
+- Infer that an irregularity is an error without considering whether it may be intentional.
+- silently replace the creator's stated preferences with source conventions.
+- Use examples from admired work as templates that the creator is expected to imitate.
+- Claim to know the creator's style when the system does not have enough evidence.
 
 ### Key Product Question
 
 **What here should not be improved away?**
 
-### Acceptance Signal
+Workshop should consider this alongside "What could be improved?" whenever a creative decision involves correction, refinement, optimization, or normalization.
 
-Two creators using the same underlying source knowledge should not be pushed toward the same aesthetic outcome unless they independently choose it.
+### Acceptance Criteria
+
+#### AC1 — Convention is not prescription
+
+**Given** the retrieved source knowledge describes a commonly used creative technique,
+
+**When** Workshop applies that knowledge to a creator's project,
+
+**Then** it must explain the technique as one possible approach unless the creator explicitly asks for the conventional or technically standard solution.
+
+#### AC2 — Creator intent remains authoritative
+
+**Given** the creator states an intended feeling, preference, or element they want preserved,
+
+**When** source guidance points toward a different conventional treatment,
+
+**Then** Workshop must preserve the stated creator intent and explain the trade-off rather than silently overriding it.
+
+#### AC3 — Multiple viable directions remain visible
+
+**Given** more than one creative direction could plausibly satisfy the project goal,
+
+**When** Workshop provides guidance,
+
+**Then** it should surface materially different options and explain what each option changes rather than collapsing them into a single optimized recommendation.
+
+#### AC4 — Imperfection is not automatically treated as defect
+
+**Given** the work contains an irregular, rough, imperfect, or non-standard element,
+
+**When** Workshop evaluates possible changes,
+
+**Then** it must consider whether that element contributes meaning, identity, intimacy, memory, cultural texture, or intentional style before recommending its removal or correction.
+
+#### AC5 — Source knowledge and generated choices remain distinct
+
+**Given** Workshop derives a creative suggestion that is not directly stated in the supplied knowledge,
+
+**When** the suggestion is presented,
+
+**Then** it must be framed as an option, adaptation, or design choice rather than as a source-backed rule.
+
+#### AC6 — Same knowledge does not imply same aesthetic
+
+**Given** two creators use the same underlying source knowledge for comparable creative tasks,
+
+**When** their goals, preferences, context, or existing work differ,
+
+**Then** Workshop should be capable of producing different creative directions rather than converging both creators toward the same aesthetic treatment.
+
+#### AC7 — The creator can deliberately break the rule
+
+**Given** Workshop explains a principle or convention,
+
+**When** the creator chooses to violate, invert, or exaggerate that principle intentionally,
+
+**Then** Workshop should help them understand the likely effect and work with that decision rather than repeatedly steering them back toward conformity.
+
+### Edge Cases
+
+- If the creator asks for a technically standardized result, Workshop may recommend the relevant standard while still identifying where the recommendation comes from.
+- If a choice creates a genuine technical, accessibility, legal, safety, or platform constraint, Workshop should surface that constraint clearly rather than treating every preference as equally feasible.
+- If the creator provides no style preferences or project intent, Workshop should ask through the product flow or present exploratory options instead of fabricating a personal aesthetic.
+- If source knowledge conflicts, Workshop should preserve the tension and explain the different assumptions or contexts rather than synthesizing a false universal rule.
+
+### Non-Goals
+
+This story does not require Workshop to:
+
+- imitate a named creator's exact style;
+- decide whether art is objectively good;
+- automatically edit photo or video files;
+- infer private personal history or cultural identity that the creator has not provided;
+- avoid all recommendations — it should still make recommendations when useful, but frame them in relation to creator intent, evidence, and alternatives.
+
+### Success Signal
 
 Workshop succeeds when the creator leaves with more options, clearer reasoning, and stronger intentionality — not merely a more conventionally "correct" edit.
+
+Two creators using the same source knowledge should not be pushed toward the same aesthetic outcome unless their own choices lead them there.
 
 ---
 

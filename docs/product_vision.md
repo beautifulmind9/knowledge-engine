@@ -70,6 +70,22 @@ Output families may expose a more specific format where useful. Content / social
 
 The format is a shape/channel preference. It should not alter which knowledge is considered relevant to the user's actual subject or problem.
 
+## Workshop creative sovereignty
+
+When Workshop supports creative work, knowledge should expand the creator's options rather than optimize them toward generic best practice.
+
+The creator remains the authority over the work. Their visual language, personality, memories, cultural context, taste, preferences, instincts, and meaningful imperfections should carry more weight than generalized conventions.
+
+Workshop should explain what a creative choice may communicate, why it may work, what alternatives exist, and what trade-offs those alternatives create. It should not decide what the creator's creativity should look like.
+
+The core rule is: **never confuse precedent with prescription.**
+
+Creative recommendations should emerge from the intersection of source knowledge, creator knowledge, and project intent. Source knowledge alone is not sufficient authority for a creative recommendation.
+
+A corresponding design question is: **What here should not be improved away?**
+
+See `docs/workshop_creative_sovereignty.md` for the full product principle and guidance requirements.
+
 ## Main workflow
 
 1. Add a source to a private library.

@@ -83,6 +83,62 @@ A user should be able to gather knowledge from books and sources, then enter a w
 
 ---
 
+## Preserve Individuality While Using Creative Knowledge
+
+As a creator,
+
+I want Workshop to use knowledge from film, photography, editing, design, storytelling, and other creative sources without forcing me toward generic best practices,
+
+So that I can understand why creative choices work, explore alternatives, and make more intentional decisions while preserving my own visual language, personality, memories, cultural context, imperfections, and preferences.
+
+### Why This Matters
+
+Creative knowledge should expand the creator's vocabulary, not narrow it into a standardized aesthetic.
+
+A convention, example, or precedent can explain one way to solve a creative problem, but it should not become the default answer for every creator or project.
+
+Workshop should therefore treat the creator as the final authority over the work.
+
+### Example Use Case
+
+The user uploads or references a video and asks how to approach the color edit.
+
+Workshop retrieves relevant knowledge about color relationships, contrast, mood, visual hierarchy, and cinematic examples.
+
+Instead of recommending one "best" grade, it explains how different choices could affect the piece and offers several viable directions, including preserving the footage's existing natural or imperfect qualities when those qualities support the user's intent.
+
+### Inputs
+
+- The creative work or project context
+- The creator's goal or intended feeling
+- Relevant source knowledge
+- Known creator preferences or style signals
+- Constraints or references the creator chooses to provide
+
+### Expected Workshop Behavior
+
+- Explain why a creative choice may work.
+- Distinguish convention from requirement.
+- Offer meaningful alternatives rather than one optimized answer.
+- Explain trade-offs between those alternatives.
+- Respect creator preferences and project intent.
+- Avoid automatically correcting unusual choices that may be intentional.
+- Recognize that imperfection can carry meaning, memory, intimacy, cultural texture, or identity.
+- Allow the creator to reject, combine, invert, or deliberately break learned principles.
+- Treat the creator's final decision as authoritative.
+
+### Key Product Question
+
+**What here should not be improved away?**
+
+### Acceptance Signal
+
+Two creators using the same underlying source knowledge should not be pushed toward the same aesthetic outcome unless they independently choose it.
+
+Workshop succeeds when the creator leaves with more options, clearer reasoning, and stronger intentionality — not merely a more conventionally "correct" edit.
+
+---
+
 ## Learn Without Reading Every Book
 
 As a user,

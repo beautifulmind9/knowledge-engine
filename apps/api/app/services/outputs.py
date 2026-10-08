@@ -51,17 +51,17 @@ def revise_output(output_id, request):
     if request.content is not None:
         result = {"brief":parent["brief"], "knowledge_snapshot":parent["knowledge_snapshot"], "provider":"manual", "model":None,
                   "output":{key:deepcopy(parent[key]) for key in ("title","output_type","content","applied_knowledge")}}
-        # A manual content edit can invalidate the generator's earlier rationale.
-        # Do not silently carry old design choices into the new version. The
-        # browser historically submitted its prefilled parent choices even when
-        # the user did not edit them, so treat an unchanged list the same as an
-        # omitted list. Only a materially changed list is an intentional
-        # replacement supplied by the caller.
+        # Prefilled choices are intentional only when they differ from the
+        # parent. Preserve the parent's rationale when content is identical;
+        # an actual content edit invalidates it and requires a review note.
         supplied_choices = deepcopy(request.design_choices) if request.design_choices is not None else None
-        manual_choices = [] if supplied_choices is None or supplied_choices == parent["design_choices"] else supplied_choices
+        choices_changed = supplied_choices is not None and supplied_choices != parent["design_choices"]
+        needs_review = request.content != parent["content"] or choices_changed
+        manual_choices = supplied_choices if choices_changed else ([] if needs_review else deepcopy(parent["design_choices"]))
         result["output"].update(content=request.content, title=request.title or parent["title"],
             design_choices=manual_choices)
-        result["output"]["design_choices"].append(_manual_revision_note(request.instruction))
+        if needs_review:
+            result["output"]["design_choices"].append(_manual_revision_note(request.instruction))
     else:
         from app.services.workshop_generation import generate_workshop_output
         payload=WorkshopGenerateRequest(**{k:v for k,v in parent["brief"].items() if k != "retrieval_query"})

@@ -10,9 +10,11 @@ from pydantic import ValidationError
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.factory import PERSISTENCE_MODE
 from app.beta_access import BetaAccess, same_origin, router as beta_router
+from app.deployment import public_host, LOCAL_HOSTS, HostedHTTPSMiddleware
 
 # Validate the gate before router imports can load hosted state.
 beta_access = BetaAccess.from_environment(PERSISTENCE_MODE)
+hosted_public_host = public_host(PERSISTENCE_MODE)
 from app.routers.health import router as health_router
 from app.routers.knowledge import router as knowledge_router
 from app.routers.libraries import router as libraries_router
@@ -40,7 +42,7 @@ async def lifespan(app):
 app=FastAPI(title="Knowledge Engine API",version="0.2.0",lifespan=lifespan)
 app.state.beta_access = beta_access
 # Single-owner local beta. This is not a multi-user authorization system.
-app.add_middleware(TrustedHostMiddleware,allowed_hosts=["localhost","127.0.0.1","[::1]","testserver"])
+app.add_middleware(TrustedHostMiddleware,allowed_hosts=LOCAL_HOSTS if hosted_public_host is None else [hosted_public_host], www_redirect=False)
 request_lock=asyncio.Lock()
 
 @app.middleware("http")
@@ -57,6 +59,10 @@ async def local_requests(request:Request,call_next):
     response.headers["Cache-Control"]="no-store"
     response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     return response
+
+# Outer hosted ingress validation also covers early authentication responses.
+if hosted_public_host is not None:
+    app.add_middleware(HostedHTTPSMiddleware, host=hosted_public_host)
 
 @app.exception_handler(ValueError)
 async def value_error(request, error):

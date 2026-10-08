@@ -16,7 +16,9 @@ Active FastAPI backend; run from the repository root with `bash scripts/run.sh` 
 
 Development tests: `.venv/bin/python -m pytest apps/api/tests -q` from the root. Tests select temporary storage before importing the app. Real-source data is never needed for automated tests.
 
-See the root README and `docs/storage_and_privacy.md` before changing persistence. One worker, loopback only. Do not enable public access without implementing authentication and a suitable storage/concurrency architecture.
+See the root README and `docs/storage_and_privacy.md` before changing persistence.
+Use one worker; local mode stays on loopback. For the private hosted beta, see
+[Render configuration](../../docs/render_deployment.md).
 
 
 Hosted persistence selects `PostgresStateStore` and `SupabaseArtifactStore` with
@@ -51,8 +53,8 @@ guarantee the old destination is preserved. Source publication does not use it.
 Continue to run exactly one worker/owner: cached application state and
 artifact mutations are not designed for concurrent workers. Postgres CAS rejects
 stale state writes, but does not serialize artifact operations. The private hosted
-beta gate is described below. Render host/proxy compatibility remains a separate
-deployment checkpoint.
+beta gate is described below. The root `render.yaml` prepares one free web service
+with no disk; `scripts/render_start.sh` requires hosted mode and Render's `PORT`.
 
 Storage tests replace the HTTP opener with an in-memory API and deny remote DNS/socket
 connections and the real Storage opener before importing the app, including
@@ -64,9 +66,11 @@ standard library; no new dependency or SDK is required.
 
 Hosted private-beta access requires `KNOWLEDGE_ENGINE_BETA_PASSWORD` and
 `KNOWLEDGE_ENGINE_SESSION_SECRET` at startup, before hosted state is loaded. Supply
-them through private server environment variables. The signing secret must contain
-at least 43 URL-safe characters, with obvious placeholders/repetition rejected;
-generate it independently with `secrets.token_urlsafe(32)` (32 random bytes). Use
+them through private server environment variables. The Render blueprint generates
+the session secret automatically; the shared password remains a manual private
+value. The signing secret must contain at least 43 URL-safe characters, with
+obvious placeholders/repetition rejected. Outside the Render blueprint, generate
+it independently with `secrets.token_urlsafe(32)` (32 random bytes). Use
 a long private shared password (maximum 1024 UTF-8 bytes). Local mode is ungated
 by default, even if these environment variables are inherited.
 
@@ -88,6 +92,12 @@ Keep one worker/owner. Global throttling can temporarily block the owner too and
 resets on process restart. Logout clears browser cookies; a copied valid token
 remains usable until expiry. Rotating either the password or session secret revokes
 all existing tokens. A stateful revocation service is deliberately absent.
-Render hostname/trusted proxy/HTTPS compatibility is Checkpoint 7; no deployment
-settings were changed here. Auth tests inject a gate into the local app without
+Hosted mode also requires `KNOWLEDGE_ENGINE_PUBLIC_HOST`, a single DNS hostname
+without scheme, path, port, wildcard, or list. The Render blueprint supplies it
+through a self-reference to `RENDER_EXTERNAL_HOSTNAME`. Only that exact Host is permitted.
+Uvicorn proxy headers are disabled; hosted middleware uses a fixed HTTPS scheme
+after Host validation, reflecting Render TLS termination without trusting client
+forwarding headers. Public ingress must be the HTTPS edge. Local host/scheme
+defaults remain unchanged. No Render deployment has been performed.
+Auth tests inject a gate into the local app without
 Postgres/Storage connections. Existing offline network guards remain active.

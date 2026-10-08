@@ -19,6 +19,7 @@ def run_configuration(code, root, mode=None):
     env.pop(MODE_ENV, None)
     env.pop('KNOWLEDGE_ENGINE_DATABASE_URL', None)
     env.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
+    env.pop('KNOWLEDGE_ENGINE_PUBLIC_HOST', None)
     for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
         env.pop(name, None)
     for name in ('KNOWLEDGE_ENGINE_BETA_PASSWORD', 'KNOWLEDGE_ENGINE_SESSION_SECRET'):
@@ -27,6 +28,7 @@ def run_configuration(code, root, mode=None):
         env.update(SUPABASE_URL='https://offline.supabase.co', SUPABASE_SECRET_KEY='sb_secret_offline',
                    KNOWLEDGE_ENGINE_STORAGE_BUCKET='knowledge-engine-artifacts',
                    KNOWLEDGE_ENGINE_BETA_PASSWORD='offline-beta-password',
+                   KNOWLEDGE_ENGINE_PUBLIC_HOST='offline.onrender.com',
                    KNOWLEDGE_ENGINE_SESSION_SECRET=__import__('secrets').token_urlsafe(32))
     env.pop('GEMINI_API_KEY', None)
     env.pop('GEMINI_FREE_TIER_CONFIRMED', None)

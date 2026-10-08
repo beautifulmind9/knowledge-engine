@@ -8,7 +8,7 @@ Short form: **Knowledge in. Useful outputs out.**
 
 Knowledge Engine is proprietary software. Access to this repository does not grant permission to copy, modify, distribute, host, commercialize, or create derivative works from the proprietary code or materials. See [LICENSE](LICENSE).
 
-The active application is a **local, single-owner FastAPI application with a browser interface**. Source text becomes chunks, validated Knowledge Assets, consolidated Knowledge Units, and saved outputs with revision history. The original Streamlit experiment is archived in `legacy/streamlit_prototype`; it is not the active app.
+The active application is a **single-owner FastAPI application with a browser interface**. It supports local storage and a private hosted beta using Supabase persistence. Source text becomes chunks, validated Knowledge Assets, consolidated Knowledge Units, and saved outputs with revision history. The original Streamlit experiment is archived in `legacy/streamlit_prototype`; it is not the active app.
 
 ## Run locally
 
@@ -81,7 +81,7 @@ Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CS
 
 Records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
 
-Run exactly one server worker. A process lock prevents simultaneous servers using the same storage, and requests are serialized. This simple arrangement is suitable for a small local beta; long AI requests can temporarily delay other actions. The app has local host/origin restrictions but no user accounts, multi-user authorization, encryption at rest, or public hosting support. Keep it bound to localhost.
+Run exactly one server worker. Locally, a process lock prevents simultaneous servers using the same storage, and requests are serialized. Long AI requests can temporarily delay other actions. Local development stays bound to localhost. Hosted mode uses a shared-password private-beta gate with signed sessions and CSRF protection, Supabase Postgres/Storage, and an explicitly configured HTTPS hostname. It has no user accounts or multi-user authorization. [Render configuration](docs/render_deployment.md) prepares one free service without a persistent disk; no deployment has been performed.
 
 Back up under Data & usage. The ZIP includes private source files and saved work; keep it private. Restore into a **new empty directory**, set `KNOWLEDGE_ENGINE_STORAGE` to the extracted storage folder, and start the server. Do not overwrite a live SQLite database. See [storage and privacy](docs/storage_and_privacy.md).
 

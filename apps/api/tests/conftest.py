@@ -13,6 +13,7 @@ install_storage_guard()
 os.environ['KNOWLEDGE_ENGINE_PERSISTENCE_MODE'] = 'local'
 os.environ.pop('KNOWLEDGE_ENGINE_DATABASE_URL', None)
 os.environ.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
+os.environ.pop('KNOWLEDGE_ENGINE_PUBLIC_HOST', None)
 os.environ['KNOWLEDGE_ENGINE_STORAGE']=tempfile.mkdtemp(prefix='ke-tests-')
 for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
     os.environ.pop(name, None)

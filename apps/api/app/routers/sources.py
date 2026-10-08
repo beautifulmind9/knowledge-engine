@@ -14,7 +14,8 @@ from app.db.mock_data import (
     sources,
 )
 from app.db.persistence import save_state
-from app.persistence.factory import get_local_artifact_store
+from app.persistence.factory import get_artifact_store
+from app.persistence.artifact_paths import contained_locator, upload_locator, cleanup_unpublished_or_superseded
 from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
@@ -29,7 +30,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 from app.db.persistence import STORAGE_ROOT
 
 UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
-_artifact_store = get_local_artifact_store()
+_artifact_store = get_artifact_store()
 
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf",
@@ -229,6 +230,18 @@ def recover_source_structure(source_id: str):
     return _recover_pdf_structure(source)
 
 
+def _write_source_upload(file: UploadFile, path: Path) -> None:
+    size = 0
+    with _artifact_store.open_binary_write(path) as buffer:
+        while data := file.file.read(1024 * 1024):
+            size += len(data)
+            if size > 25 * 1024 * 1024:
+                raise HTTPException(413, "Upload limit is 25 MB.")
+            buffer.write(data)
+        if not size:
+            raise HTTPException(400, "The uploaded file is empty.")
+
+
 @router.post("/{source_id}/upload")
 def upload_source_file(source_id: str, file: UploadFile = File(...)):
     source = find_source(source_id)
@@ -252,41 +265,51 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     _artifact_store.create_directory(UPLOAD_FOLDER)
 
     safe_file_name = f"{source_id}{file_extension}"
-    file_path = UPLOAD_FOLDER / safe_file_name
+    stable_path = UPLOAD_FOLDER / safe_file_name
+    file_path = upload_locator(_artifact_store, stable_path)
 
-    old_paths = [_artifact_store.resolve(Path(source[key])) for key in ("file_path", "extracted_text_path", "chunks_path") if source.get(key)]
-    if any(not path.is_relative_to(STORAGE_ROOT) for path in old_paths):
+    try:
+        old_paths = [contained_locator(_artifact_store, Path(source[key]), STORAGE_ROOT) for key in ("file_path", "extracted_text_path", "chunks_path") if source.get(key)]
+    except ValueError:
         raise HTTPException(409, "Move this source's legacy files into private storage before replacing its upload.")
 
-    temporary = file_path.with_suffix(file_path.suffix + ".tmp")
-    size = 0
-    try:
-        with _artifact_store.open_binary_write(temporary) as buffer:
-            while data := file.file.read(1024 * 1024):
-                size += len(data)
-                if size > 25 * 1024 * 1024:
-                    raise HTTPException(413, "Upload limit is 25 MB.")
-                buffer.write(data)
-        if not size:
-            raise HTTPException(400, "The uploaded file is empty.")
-        _artifact_store.replace(temporary, file_path)
-    finally:
-        _artifact_store.remove(temporary)
-
-    for old_path in old_paths:
-        if old_path != _artifact_store.resolve(file_path):
-            _artifact_store.remove(old_path)
-
-    source["file_name"] = file.filename
-    source["file_path"] = str(file_path)
-    source["file_type"] = file_extension
-    source["processing_status"] = "uploaded"
-    source["extracted_text_path"] = None
-    source["chunks_path"] = None
-    source["structure_status"] = None
-    source["structure_section_count"] = 0
-    source["structure_outline_entry_count"] = 0
-    persist_state()
+    updated_fields = dict(
+        file_name=file.filename, file_path=str(file_path), file_type=file_extension,
+        processing_status="uploaded", extracted_text_path=None, chunks_path=None,
+        structure_status=None, structure_section_count=0, structure_outline_entry_count=0,
+    )
+    if file_path != stable_path:
+        # Write directly to a fresh locator. A lost response can affect only this
+        # unpublished candidate, never the bytes referenced by the current source.
+        try:
+            _write_source_upload(file, file_path)
+        except Exception:
+            cleanup_unpublished_or_superseded(_artifact_store, [file_path])
+            raise
+        previous = dict(source)
+        source.update(updated_fields)
+        try:
+            persist_state()
+        except Exception:
+            source.clear()
+            source.update(previous)
+            # A state commit may have succeeded before its response was lost.
+            # Keep BOTH versions and derived files until state is reloaded.
+            raise
+        cleanup_unpublished_or_superseded(_artifact_store, old_paths)
+    else:
+        # Preserve legacy local filenames, replace ordering, and failure behavior.
+        temporary = file_path.with_suffix(file_path.suffix + ".tmp")
+        try:
+            _write_source_upload(file, temporary)
+            _artifact_store.replace(temporary, file_path)
+        finally:
+            _artifact_store.remove(temporary)
+        for old_path in old_paths:
+            if old_path != contained_locator(_artifact_store, file_path, STORAGE_ROOT):
+                _artifact_store.remove(old_path)
+        source.update(updated_fields)
+        persist_state()
 
     return {
         "source_id": source["id"],

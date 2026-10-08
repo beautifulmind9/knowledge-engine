@@ -7,12 +7,13 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs, usage
 from app.db.persistence import STORAGE_ROOT
-from app.persistence.factory import get_local_artifact_store
+from app.persistence.factory import get_artifact_store
+from app.persistence.artifact_paths import contained_locator, archive_entry
 from app.services.knowledge_extraction import find_source, persist_state
 from app.services.ai_gateway import status
 
 router=APIRouter(tags=["data control"])
-_artifact_store = get_local_artifact_store()
+_artifact_store = get_artifact_store()
 
 @router.get("/usage")
 def usage_status():
@@ -57,12 +58,13 @@ def export_data():
             for key in ("file_path","extracted_text_path","chunks_path"):
                 value=source.get(key)
                 if value and _artifact_store.status(Path(value)) == "artifact":
-                    path=_artifact_store.resolve(Path(value))
-                    if not path.is_relative_to(STORAGE_ROOT):
+                    try:
+                        path=contained_locator(_artifact_store, Path(value), STORAGE_ROOT)
+                    except ValueError:
                         raise HTTPException(409,"A legacy file is outside storage. Move it into storage before export.")
                     relative="storage/"+str(path.relative_to(STORAGE_ROOT))
                     # Match ZipFile.write metadata and buffered copying through the store.
-                    entry = _artifact_store.zip_info(path, relative)
+                    entry = archive_entry(_artifact_store, path, relative)
                     if entry.is_dir():
                         archive.mkdir(entry)
                     else:
@@ -86,8 +88,9 @@ def delete_source(source_id:str,delete_outputs:bool=False):
     paths=[]
     for key in ("file_path","extracted_text_path","chunks_path"):
         if source.get(key):
-            path=_artifact_store.resolve(Path(source[key]))
-            if not path.is_relative_to(STORAGE_ROOT):
+            try:
+                path=contained_locator(_artifact_store, Path(source[key]), STORAGE_ROOT)
+            except ValueError:
                 raise HTTPException(409,"A legacy file is outside the private storage directory. Resolve its location before deletion.")
             paths.append(path)
     # File failures stop deletion before removing records; integrity audit identifies partial disk deletion.

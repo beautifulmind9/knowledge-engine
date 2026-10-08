@@ -8,10 +8,14 @@ from postgres_test_guard import install_postgres_guard
 
 # Collection imports app.main below: isolate configuration and deny DB IO first.
 install_postgres_guard()
+from storage_test_guard import install_storage_guard
+install_storage_guard()
 os.environ['KNOWLEDGE_ENGINE_PERSISTENCE_MODE'] = 'local'
 os.environ.pop('KNOWLEDGE_ENGINE_DATABASE_URL', None)
 os.environ.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
 os.environ['KNOWLEDGE_ENGINE_STORAGE']=tempfile.mkdtemp(prefix='ke-tests-')
+for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
+    os.environ.pop(name, None)
 os.environ.pop('GEMINI_API_KEY',None)
 os.environ.pop('GEMINI_FREE_TIER_CONFIRMED',None)
 import pytest

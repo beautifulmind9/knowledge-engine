@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
 from app.db.persistence import STORAGE_ROOT
+from app.persistence.factory import PERSISTENCE_MODE
 from app.routers.health import router as health_router
 from app.routers.knowledge import router as knowledge_router
 from app.routers.libraries import router as libraries_router
@@ -21,6 +22,10 @@ from app.routers.control import router as control_router
 
 @asynccontextmanager
 async def lifespan(app):
+    if PERSISTENCE_MODE == "hosted":
+        # Postgres CAS guards state writes; hosted artifacts need no local disk lock.
+        yield
+        return
     STORAGE_ROOT.mkdir(parents=True,exist_ok=True)
     with (STORAGE_ROOT / "server.lock").open("a") as lock:
         try:

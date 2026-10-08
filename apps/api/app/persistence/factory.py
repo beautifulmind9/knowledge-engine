@@ -33,7 +33,14 @@ else:
         os.environ.get("KNOWLEDGE_ENGINE_DATABASE_URL", ""),
         os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
     )
-    _artifact_store = None
+    from app.persistence.supabase_artifacts import SupabaseArtifactStore
+
+    _artifact_store = SupabaseArtifactStore(
+        STORAGE_ROOT, os.environ.get("SUPABASE_URL", ""),
+        os.environ.get("SUPABASE_SECRET_KEY", ""),
+        os.environ.get("KNOWLEDGE_ENGINE_STORAGE_BUCKET", ""),
+        os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
+    )
 
 
 def get_state_store() -> StateStore:
@@ -41,13 +48,11 @@ def get_state_store() -> StateStore:
 
 
 def get_artifact_store() -> ArtifactStore:
-    if _artifact_store is None:
-        raise RuntimeError("Hosted ArtifactStore is not implemented yet.")
     return _artifact_store
 
 
 def get_local_artifact_store() -> LocalArtifactStore:
     """Local-only containment and backup capabilities, outside the generic contract."""
-    if _artifact_store is None:
-        raise RuntimeError("Hosted ArtifactStore is not implemented yet.")
+    if not isinstance(_artifact_store, LocalArtifactStore):
+        raise RuntimeError("Local artifact capabilities are unavailable in hosted mode.")
     return _artifact_store

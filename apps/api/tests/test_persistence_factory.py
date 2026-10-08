@@ -19,6 +19,11 @@ def run_configuration(code, root, mode=None):
     env.pop(MODE_ENV, None)
     env.pop('KNOWLEDGE_ENGINE_DATABASE_URL', None)
     env.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
+    for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
+        env.pop(name, None)
+    if mode == 'hosted':
+        env.update(SUPABASE_URL='https://offline.supabase.co', SUPABASE_SECRET_KEY='sb_secret_offline',
+                   KNOWLEDGE_ENGINE_STORAGE_BUCKET='knowledge-engine-artifacts')
     env.pop('GEMINI_API_KEY', None)
     env.pop('GEMINI_FREE_TIER_CONFIRMED', None)
     if mode is not None:
@@ -32,6 +37,8 @@ def run_configuration(code, root, mode=None):
         f"sys.path.insert(0, {str(API_ROOT / 'tests')!r})\n"
         "from postgres_test_guard import install_postgres_guard\n"
         "install_postgres_guard()\n"
+        "from storage_test_guard import install_storage_guard\n"
+        "install_storage_guard()\n"
     )
     result = subprocess.run([sys.executable, '-c', guard + textwrap.dedent(code)], cwd=API_ROOT,
                             env=env, capture_output=True, text=True, timeout=30)
@@ -226,19 +233,15 @@ def test_hosted_configuration_and_startup_fail_closed(tmp_path):
             with patch.object(PostgresStateStore, 'load', return_value=None) as load:
                 from app.db.persistence import load_state
                 assert load_state() is None
-                for getter in (factory.get_artifact_store, factory.get_local_artifact_store):
-                    try:
-                        getter()
-                    except RuntimeError as error:
-                        assert str(error) == 'Hosted ArtifactStore is not implemented yet.'
-                    else:
-                        raise AssertionError('hosted artifacts accepted')
+                from app.persistence.supabase_artifacts import SupabaseArtifactStore
+                assert isinstance(factory.get_artifact_store(), SupabaseArtifactStore)
                 try:
-                    import app.main
+                    factory.get_local_artifact_store()
                 except RuntimeError as error:
-                    assert str(error) == 'Hosted ArtifactStore is not implemented yet.'
+                    assert str(error) == 'Local artifact capabilities are unavailable in hosted mode.'
                 else:
-                    raise AssertionError('full startup succeeded')
+                    raise AssertionError('local capabilities accepted')
+                import app.main
             connect.assert_not_called()
     ''', root, 'hosted')
     assert not root.exists()

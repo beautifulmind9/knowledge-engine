@@ -17,3 +17,46 @@ Active FastAPI backend; run from the repository root with `bash scripts/run.sh` 
 Development tests: `.venv/bin/python -m pytest apps/api/tests -q` from the root. Tests select temporary storage before importing the app. Real-source data is never needed for automated tests.
 
 See the root README and `docs/storage_and_privacy.md` before changing persistence. One worker, loopback only. Do not enable public access without implementing authentication and a suitable storage/concurrency architecture.
+
+
+Hosted persistence selects `PostgresStateStore` and `SupabaseArtifactStore` with
+`KNOWLEDGE_ENGINE_PERSISTENCE_MODE=hosted`. Set the required private configuration
+in `.env.example` through server environment variables. Storage requires an HTTPS
+project URL, an `sb_secret_...` server key, a private bucket, and a workspace key
+containing only letters, digits, underscores, and hyphens (starting with a letter
+or digit). Missing or invalid configuration fails startup, without a local fallback.
+
+Artifact locators are mapped relative to `STORAGE_ROOT` beneath the workspace key.
+Hosted snapshots store root-relative source locators so restarting on another
+machine does not depend on the previous storage directory. Existing absolute
+locators must be beneath the configured root; outside paths and traversal are
+rejected. No directory or server lock is created in hosted mode. Temporary working
+files exist only during IO/parser contexts and are removed afterward. Export uses
+portable ZIP metadata in hosted mode and preserves filesystem metadata locally.
+The bucket reference SQL in `schema/create_knowledge_engine_artifacts_bucket.sql`
+is idempotent and private; it defines no public/anon/authenticated access policies.
+
+Hosted source uploads write to a fresh versioned locator. Only a confirmed upload
+is published in state, with extracted text/chunks and processing status invalidated.
+Superseded objects are cleaned up afterward, best effort. If an upload response is
+lost, previously published bytes and derived data remain unchanged; cleanup may
+leave a private unreferenced orphan. If state saving fails, the live record is
+restored and both object versions are retained: the state commit may have succeeded
+before its response was lost. Reload state before continuing after an indeterminate
+state save. Cleanup failures after confirmed publication do not undo publication.
+
+Generic hosted `replace()` still overwrites then deletes the source in separate
+operations. A failed or lost response may occur after remote mutation; it does not
+guarantee the old destination is preserved. Source publication does not use it.
+Continue to run exactly one worker/owner: cached application state and
+artifact mutations are not designed for concurrent workers. Postgres CAS rejects
+stale state writes, but does not serialize artifact operations. This checkpoint
+does not add authentication or change the loopback-only host/origin restrictions;
+public Render access requires separate access-control and deployment work.
+
+Storage tests replace the HTTP opener with an in-memory API and deny remote DNS/socket
+connections and the real Storage opener before importing the app, including
+configuration subprocesses. Target URL checks prevent loopback proxies from
+relaying remote requests; inherited proxy configuration is cleared. Loopback is
+allowed for the local server smoke test. No live project verification is part of automated tests. The adapter uses the Python
+standard library; no new dependency or SDK is required.

@@ -62,6 +62,8 @@ def test_hosted_subprocess_startup_denies_unmocked_connection(tmp_path):
 def test_collection_with_inherited_hosted_environment_is_offline():
     env = os.environ.copy()
     env['KNOWLEDGE_ENGINE_PERSISTENCE_MODE'] = 'hosted'
+    env.update(SUPABASE_URL='https://offline.supabase.co', SUPABASE_SECRET_KEY='sb_secret_offline',
+               KNOWLEDGE_ENGINE_STORAGE_BUCKET='private')
     env['KNOWLEDGE_ENGINE_DATABASE_URL'] = uuid4().hex
     env['KNOWLEDGE_ENGINE_WORKSPACE_KEY'] = uuid4().hex
     code = '''
@@ -80,6 +82,18 @@ def test_collection_with_inherited_hosted_environment_is_offline():
         assert isinstance(factory.get_state_store(), SQLiteStateStore)
         assert 'KNOWLEDGE_ENGINE_DATABASE_URL' not in os.environ
         assert 'KNOWLEDGE_ENGINE_WORKSPACE_KEY' not in os.environ
+        for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
+            assert name not in os.environ
+        from app.persistence.supabase_artifacts import SupabaseArtifactStore
+        from pathlib import Path
+        from storage_test_guard import StorageNetworkDenied
+        try:
+            SupabaseArtifactStore(Path('/unused'), 'https://offline.supabase.co',
+                                   'sb_secret_offline', 'private', 'workspace').exists(Path('file'))
+        except StorageNetworkDenied:
+            pass
+        else:
+            raise AssertionError('unguarded storage after collection')
         for connect in (psycopg.connect, psycopg.Connection.connect):
             try:
                 connect()

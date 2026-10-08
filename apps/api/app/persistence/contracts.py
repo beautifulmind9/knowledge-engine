@@ -12,7 +12,7 @@ class StateStore(Protocol):
 
 
 class ArtifactStore(Protocol):
-    """Artifact IO; the active local implementation retains legacy Path locators."""
+    """Artifact IO using logical Path locators; materialization provides filesystem paths."""
 
     def create_directory(self, path: Path) -> None: ...
 

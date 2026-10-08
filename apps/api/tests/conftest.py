@@ -16,6 +16,8 @@ os.environ.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
 os.environ['KNOWLEDGE_ENGINE_STORAGE']=tempfile.mkdtemp(prefix='ke-tests-')
 for name in ('SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'KNOWLEDGE_ENGINE_STORAGE_BUCKET'):
     os.environ.pop(name, None)
+for name in ('KNOWLEDGE_ENGINE_BETA_PASSWORD', 'KNOWLEDGE_ENGINE_SESSION_SECRET'):
+    os.environ.pop(name, None)
 os.environ.pop('GEMINI_API_KEY',None)
 os.environ.pop('GEMINI_FREE_TIER_CONFIRMED',None)
 import pytest

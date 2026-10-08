@@ -125,7 +125,7 @@ test('late grounded answer cannot render after scope changes',async()=>{
  const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],
  document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,
  knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){}}),makeElement:()=>({}),
- fetch:(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(r=>{resolve=r;});},
+ apiFetch:(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(r=>{resolve=r;});},
  renderKnowledgeAnswer:(...args)=>rendered.push(args)};
  vm.createContext(ctx);vm.runInContext(text.slice(text.indexOf('async function generateKnowledgeAnswer('),text.indexOf('function decorateKnowledgeView(')),ctx);
  const pending=ctx.generateKnowledgeAnswer('What does this source teach?');

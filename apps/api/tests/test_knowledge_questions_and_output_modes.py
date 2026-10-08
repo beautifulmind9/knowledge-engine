@@ -89,7 +89,7 @@ def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handof
         assert f'"{question}"' in javascript
 
     assert "generateKnowledgeAnswer(question, quickButton)" in javascript
-    assert 'fetch("/workshops/generate"' in javascript
+    assert 'apiFetch("/workshops/generate"' in javascript
     assert 'output_type: "knowledge_answer"' in javascript
     assert "save: false" in javascript
     assert 'button("Open in Workshop"' in javascript

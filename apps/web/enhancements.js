@@ -1,3 +1,4 @@
+import {apiFetch} from './api.js';
 import { scopeQuestion } from './knowledge-browser.js';
 
 const QUICK_KNOWLEDGE_QUESTIONS = [
@@ -247,7 +248,7 @@ async function generateKnowledgeAnswer(question, trigger) {
   if (trigger) trigger.disabled = true;
 
   try {
-    const response = await fetch("/workshops/generate", {
+    const response = await apiFetch("/workshops/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -427,7 +428,7 @@ async function decorateWorkshopView() {
   const constraints = form.elements.namedItem("constraints");
   if (!outputType || !constraints) return;
 
-  const response = await fetch("/outputs/modes");
+  const response = await apiFetch("/outputs/modes");
   if (!response.ok) return;
   const data = await response.json();
   const modes = new Map(data.items.map(mode => [mode.id, mode]));

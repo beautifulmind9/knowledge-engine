@@ -1,9 +1,9 @@
+import {api, apiFetch, csrfToken} from './api.js';
 import { PAGE_SIZE, filterUnits, createSearchController } from './knowledge-browser.js';
 const main=document.querySelector('main'), feedback=document.querySelector('#feedback');
 const state={library:null,source:null,selected:new Set(),view:'library'};
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
 function message(text,error=false){feedback.textContent=text;feedback.className=error?'error':'';}
-async function api(path, options={}){const init={...options};if(init.body && !(init.body instanceof FormData)){init.headers={'Content-Type':'application/json',...init.headers};init.body=JSON.stringify(init.body);}const r=await fetch(path,init);if(!r.ok){let data;try{data=await r.json();}catch{data={detail:`Request failed (${r.status})`};}throw new Error(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail));}return r.json();}
 function button(text,action,cls=''){const b=el('button',text,cls);b.type='button';b.onclick=()=>run(action,b);return b;}
 async function run(fn,b){if(b)b.disabled=true;main.setAttribute('aria-busy','true');message('Working…');try{await fn();if(feedback.textContent==='Working…')message('');}catch(e){message(e.message,true);}finally{if(b)b.disabled=false;main.removeAttribute('aria-busy');}}
 function field(label,name,kind='input',value=''){const l=el('label',label),i=el(kind);i.name=name;if(kind==='textarea')i.rows=4;i.value=value;l.append(i);return [l,i];}
@@ -80,3 +80,18 @@ async function outputView(id){const o=await api(`/outputs/${id}`);const quality=
 async function settingsView(){heading('05 / CONTROL','Your data, in your hands.','This beta runs locally for one owner. Keep backups private: they contain your uploaded sources and saved work.');const [usage,integrity]=await Promise.all([api('/usage'),api('/data/integrity')]);const aiState=!usage.configured?'Unavailable — Gemini key required':!usage.free_tier_confirmed?'Blocked — free-project confirmation required':usage.paused?'Paused':'Ready for explicit requests';const c=card('AI usage',`${usage.calls_today} / ${usage.daily_call_limit} local daily call budget used`);c.append(list([`Gemini key: ${usage.configured?'Configured':'Not configured'}`,`Free-project confirmation: ${usage.free_tier_confirmed?'Confirmed':'Required before AI calls'}`,`State: ${aiState}`]),el('p',usage.reason||usage.note,'muted'));if(usage.paused&&!usage.daily_limit_reached)c.append(button('Resume after quota reset',async()=>{await api('/usage/resume',{method:'POST'});await settingsView();}));const e=el('a','Download complete private backup');e.href='/data/export';const data=card('Export & integrity',integrity.ok?'No broken record links or missing source files detected.':`${integrity.issues.length} integrity issue(s) require attention.`);data.append(e,list(integrity.issues.map(i=>`${i.id}: ${i.problem}`)));main.append(c,data);}
 const views={library:libraryView,knowledge:knowledgeView,workshop:workshopView,outputs:savedView,settings:settingsView};
 run(()=>navigate('library'));
+const logoutButton = document.querySelector('#beta-logout');
+if (logoutButton && csrfToken()) {
+  logoutButton.hidden = false;
+  logoutButton.onclick = async () => {
+    logoutButton.disabled = true;
+    try {
+      const response = await apiFetch('/logout', {method: 'POST'});
+      if (response.ok || response.redirected) window.location.assign('/login');
+      else throw new Error('Unable to sign out. Try again.');
+    } catch (error) {
+      message(error.message, true);
+      logoutButton.disabled = false;
+    }
+  };
+}

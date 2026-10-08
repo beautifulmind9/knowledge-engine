@@ -17,6 +17,8 @@ MODE_ENV = 'KNOWLEDGE_ENGINE_PERSISTENCE_MODE'
 def run_configuration(code, root, mode=None):
     env = os.environ.copy()
     env.pop(MODE_ENV, None)
+    env.pop('KNOWLEDGE_ENGINE_DATABASE_URL', None)
+    env.pop('KNOWLEDGE_ENGINE_WORKSPACE_KEY', None)
     env.pop('GEMINI_API_KEY', None)
     env.pop('GEMINI_FREE_TIER_CONFIRMED', None)
     if mode is not None:
@@ -25,7 +27,13 @@ def run_configuration(code, root, mode=None):
         env.pop('KNOWLEDGE_ENGINE_STORAGE', None)
     else:
         env['KNOWLEDGE_ENGINE_STORAGE'] = str(root)
-    result = subprocess.run([sys.executable, '-c', textwrap.dedent(code)], cwd=API_ROOT,
+    guard = (
+        "import sys\n"
+        f"sys.path.insert(0, {str(API_ROOT / 'tests')!r})\n"
+        "from postgres_test_guard import install_postgres_guard\n"
+        "install_postgres_guard()\n"
+    )
+    result = subprocess.run([sys.executable, '-c', guard + textwrap.dedent(code)], cwd=API_ROOT,
                             env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
     return result.stdout.strip()
@@ -79,7 +87,7 @@ def test_default_storage_path_is_unchanged():
 @pytest.mark.parametrize('entrypoint', ['app.persistence.factory', 'app.main'])
 def test_unsupported_modes_fail_before_local_construction_or_io(tmp_path, mode, entrypoint):
     root = tmp_path / 'must-not-exist'
-    expected = ('Hosted persistence adapters are not implemented/configured yet.' if mode == 'hosted'
+    expected = ('Hosted StateStore requires KNOWLEDGE_ENGINE_DATABASE_URL.' if mode == 'hosted'
                 else f"Invalid {MODE_ENV} value {mode!r}. Expected 'local' or 'hosted'.")
     code = '''
         import importlib
@@ -180,10 +188,57 @@ def test_subprocess_configuration_does_not_contaminate_current_process(tmp_path)
         try:
             import app.persistence.factory
         except RuntimeError as error:
-            assert str(error) == 'Hosted persistence adapters are not implemented/configured yet.'
+            assert str(error) == 'Hosted StateStore requires KNOWLEDGE_ENGINE_DATABASE_URL.'
         else:
             raise AssertionError('hosted startup succeeded')
     ''', tmp_path / 'hosted', 'hosted')
     assert before == (factory.PERSISTENCE_MODE, factory.STORAGE_ROOT,
                       factory.get_state_store(), factory.get_artifact_store())
     assert os.environ.get(MODE_ENV) == environment
+
+
+def test_hosted_configuration_and_startup_fail_closed(tmp_path):
+    root = tmp_path / 'no-local-storage'
+    run_configuration('''
+        import os
+        from uuid import uuid4
+        from unittest.mock import patch
+        from app.persistence.sqlite import SQLiteStateStore
+        from app.persistence.local_artifacts import LocalArtifactStore
+        from app.persistence.postgres import PostgresStateStore
+        os.environ['KNOWLEDGE_ENGINE_DATABASE_URL'] = uuid4().hex
+        # Missing workspace key fails before any connection or local construction.
+        with patch('psycopg.connect') as connect, \
+             patch.object(SQLiteStateStore, '__init__', side_effect=AssertionError('local state')), \
+             patch.object(LocalArtifactStore, '__init__', side_effect=AssertionError('local artifacts')):
+            try:
+                import app.persistence.factory
+            except RuntimeError as error:
+                assert str(error) == 'Hosted StateStore requires KNOWLEDGE_ENGINE_WORKSPACE_KEY.'
+            else:
+                raise AssertionError('missing workspace accepted')
+            os.environ['KNOWLEDGE_ENGINE_WORKSPACE_KEY'] = uuid4().hex
+            from app.persistence import factory
+            store = factory.get_state_store()
+            assert isinstance(store, PostgresStateStore)
+            assert store is factory.get_state_store()
+            connect.assert_not_called()
+            with patch.object(PostgresStateStore, 'load', return_value=None) as load:
+                from app.db.persistence import load_state
+                assert load_state() is None
+                for getter in (factory.get_artifact_store, factory.get_local_artifact_store):
+                    try:
+                        getter()
+                    except RuntimeError as error:
+                        assert str(error) == 'Hosted ArtifactStore is not implemented yet.'
+                    else:
+                        raise AssertionError('hosted artifacts accepted')
+                try:
+                    import app.main
+                except RuntimeError as error:
+                    assert str(error) == 'Hosted ArtifactStore is not implemented yet.'
+                else:
+                    raise AssertionError('full startup succeeded')
+            connect.assert_not_called()
+    ''', root, 'hosted')
+    assert not root.exists()

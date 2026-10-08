@@ -349,3 +349,27 @@ Useful output
 ```
 
 The migration should preserve what has been learned while creating a foundation that can support real users, private libraries, uploads, saved outputs, and a better workspace experience.
+
+### Checkpoint 4: hosted snapshot StateStore
+
+Set `KNOWLEDGE_ENGINE_PERSISTENCE_MODE=hosted` and supply nonblank
+`KNOWLEDGE_ENGINE_DATABASE_URL` and `KNOWLEDGE_ENGINE_WORKSPACE_KEY` privately
+through the environment. Configuration is read once at startup; hosted mode
+never falls back to local storage. Use the intended database endpoint and TLS
+settings. Do not check private configuration into source control.
+
+The synchronous driver is `psycopg[binary]==3.3.6`, with `psycopg-binary==3.3.6`
+pinned in the lockfile. Bundled client libraries remove the need to manage
+system libpq for this beta. No connection-pool dependency is added.
+
+The store keeps complete JSONB snapshots in `knowledge_engine.state_snapshots`.
+Load before saving: absent rows return `None`, malformed non-dictionary payloads
+raise, and valid snapshots retain their domain data. The first save inserts
+revision 1; later saves compare the loaded revision and increment it atomically.
+Concurrent writers raise `StaleStateWriteError` instead of overwriting newer
+snapshots. Reload and reconcile after a conflict or uncertain commit outcome.
+The schema file describes the already-applied migration; do not reapply it.
+
+Hosted StateStore configuration now permits state loading, but full application
+startup still fails with `Hosted ArtifactStore is not implemented yet.`
+Hosted artifacts remain intentionally unavailable. Local SQLite mode is unchanged.

@@ -17,16 +17,23 @@ if PERSISTENCE_MODE not in ("local", "hosted"):
     raise RuntimeError(
         f"Invalid {MODE_ENV} value {PERSISTENCE_MODE!r}. Expected 'local' or 'hosted'."
     )
-if PERSISTENCE_MODE == "hosted":
-    raise RuntimeError("Hosted persistence adapters are not implemented/configured yet.")
 
 API_ROOT = Path(__file__).resolve().parents[2]
 STORAGE_ROOT = Path(os.environ.get("KNOWLEDGE_ENGINE_STORAGE", API_ROOT / "storage")).expanduser().resolve()
 STATE_PATH = STORAGE_ROOT / "state.json"
 DB_PATH = STORAGE_ROOT / "knowledge.sqlite3"
 
-_state_store = SQLiteStateStore(STORAGE_ROOT, STATE_PATH, DB_PATH, API_ROOT)
-_artifact_store = LocalArtifactStore()
+if PERSISTENCE_MODE == "local":
+    _state_store = SQLiteStateStore(STORAGE_ROOT, STATE_PATH, DB_PATH, API_ROOT)
+    _artifact_store = LocalArtifactStore()
+else:
+    from app.persistence.postgres import PostgresStateStore
+
+    _state_store = PostgresStateStore(
+        os.environ.get("KNOWLEDGE_ENGINE_DATABASE_URL", ""),
+        os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
+    )
+    _artifact_store = None
 
 
 def get_state_store() -> StateStore:
@@ -34,9 +41,13 @@ def get_state_store() -> StateStore:
 
 
 def get_artifact_store() -> ArtifactStore:
+    if _artifact_store is None:
+        raise RuntimeError("Hosted ArtifactStore is not implemented yet.")
     return _artifact_store
 
 
 def get_local_artifact_store() -> LocalArtifactStore:
     """Local-only containment and backup capabilities, outside the generic contract."""
+    if _artifact_store is None:
+        raise RuntimeError("Hosted ArtifactStore is not implemented yet.")
     return _artifact_store

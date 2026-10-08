@@ -309,6 +309,7 @@ These are valuable, but they should not block the first usable beta unless a spr
 | Enterprise SSO | Premature for v1. |
 | Complex analytics | Usage evidence should exist before building analytics dashboards. |
 | Native mobile apps | Responsive web flow first. |
+| Multimodal Workshop / creative asset understanding | Allow Workshop to inspect images and video directly as first-class working material, with frame/region-level provenance where practical, so instructions such as “preserve this” are grounded in what the system can actually see rather than only the creator’s textual description. Combine source knowledge with creator intent without treating learned conventions as a reason to erase individual creative choices; preservation anchors should remain under creator authority. |
 | Marketplace/shared copyrighted library | Conflicts with privacy/copyright direction. |
 
 ---

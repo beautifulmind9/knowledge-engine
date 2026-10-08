@@ -40,7 +40,7 @@ and application workers are explicitly limited to one.
 | `SUPABASE_SECRET_KEY` | Server-only secret key |
 | `KNOWLEDGE_ENGINE_STORAGE_BUCKET` | `knowledge-engine-artifacts` (private) |
 | `KNOWLEDGE_ENGINE_BETA_PASSWORD` | Long private shared password |
-| `KNOWLEDGE_ENGINE_SESSION_SECRET` | Render-generated random value (`generateValue: true`) |
+| `KNOWLEDGE_ENGINE_SESSION_SECRET` | Render-generated base64-encoded 256-bit random value (`generateValue: true`) |
 | `KNOWLEDGE_ENGINE_PUBLIC_HOST` | Self-reference to `RENDER_EXTERNAL_HOSTNAME` |
 | `PORT` | Automatically supplied by Render |
 

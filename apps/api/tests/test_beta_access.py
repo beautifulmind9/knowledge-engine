@@ -78,6 +78,54 @@ def test_weak_secrets_rejected_without_values_in_errors(secret):
         assert secret not in str(error.value)
 
 
+@pytest.mark.parametrize('encoding', ['urlsafe', 'standard', 'render'])
+@pytest.mark.parametrize('size', [32, 96])
+def test_canonical_random_session_secrets_accepted_and_signing_unchanged(encoding, size):
+    raw = secrets.token_bytes(size)
+    if encoding == 'urlsafe':
+        secret = secrets.token_urlsafe(size)
+    else:
+        if encoding == 'render':
+            # Force both standard-base64 special characters; 32 bytes also need padding.
+            raw = b'\xfb\xff' + raw[2:]
+        secret = base64.b64encode(raw).decode('ascii')
+        if encoding == 'render':
+            assert '+' in secret and '/' in secret
+            if size == 32:
+                assert secret.endswith('=')
+    gate = BetaAccess(PASSWORD, secret)
+    token, csrf_value = gate.issue_session()
+    assert gate.verify_session(token)['csrf'] == csrf_value
+    assert BetaAccess(PASSWORD, secret).verify_session(token)['csrf'] == csrf_value
+    # Preserve the pre-fix encoded-text key derivation and session signature.
+    key = hmac.digest(secret.encode('ascii'), b'knowledge-engine-beta-v1\0' + hashlib.sha256(PASSWORD.encode()).digest(), 'sha256')
+    payload, signature = token.split('.')
+    assert signature == base64.urlsafe_b64encode(hmac.digest(key, payload.encode(), 'sha256')).rstrip(b'=').decode()
+
+
+@pytest.mark.parametrize('secret', [
+    base64.b64encode(bytes(range(31))).decode(),  # Padded but only 31 decoded bytes.
+    secrets.token_urlsafe(31),
+    base64.b64encode(bytes(range(97))).decode(),  # Over the decoded/encoded upper bounds.
+    base64.b64encode(bytes(range(32))).decode() + '=',  # Extra padding.
+    base64.b64encode(bytes(range(32))).decode()[:-2] + '9=',  # Nonzero discarded padding bits.
+    base64.b64encode(b'\xfb\xff' + bytes(range(30))).decode().rstrip('='),  # Standard alphabet needs padding.
+    base64.b64encode(bytes(range(32))).decode() + '\n',
+    '!' + secrets.token_urlsafe(32),
+    '学' + secrets.token_urlsafe(32),
+    base64.b64encode(b'\x00' * 32).decode(),
+    base64.b64encode(b'abcDEFghiJKLmnopQ' * 2).decode(),
+    base64.b64encode(b'placeholder-ABCDEFGHIJKLMNOPQRSTUVWXYZ-more').decode(),
+])
+def test_invalid_encoded_session_secrets_fail_without_echo(secret):
+    with pytest.raises(RuntimeError) as error:
+        BetaAccess(PASSWORD, secret)
+    assert secret not in str(error.value)
+    assert PASSWORD not in str(error.value)
+    assert 'canonical base64 or URL-safe unpadded base64' in str(error.value)
+    assert error.value.__suppress_context__
+
+
 @pytest.mark.parametrize('password', ['', ' ', 'p' * 1025])
 def test_invalid_password_config_sanitized(password):
     with pytest.raises(RuntimeError) as error:

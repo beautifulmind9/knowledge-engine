@@ -68,9 +68,11 @@ Hosted private-beta access requires `KNOWLEDGE_ENGINE_BETA_PASSWORD` and
 `KNOWLEDGE_ENGINE_SESSION_SECRET` at startup, before hosted state is loaded. Supply
 them through private server environment variables. The Render blueprint generates
 the session secret automatically; the shared password remains a manual private
-value. The signing secret must contain at least 43 URL-safe characters, with
-obvious placeholders/repetition rejected. Outside the Render blueprint, generate
-it independently with `secrets.token_urlsafe(32)` (32 random bytes). Use
+value. The signing secret must encode 32 to 96 random bytes as canonical standard
+base64 (including normal `+`, `/`, and `=` padding) or URL-safe unpadded base64,
+with malformed encodings and obvious placeholders/repetition rejected. Outside
+the Render blueprint, generate it independently with `secrets.token_urlsafe(32)`
+(32 random bytes). Use
 a long private shared password (maximum 1024 UTF-8 bytes). Local mode is ungated
 by default, even if these environment variables are inherited.
 

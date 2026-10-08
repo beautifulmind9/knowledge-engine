@@ -52,19 +52,44 @@ def _decode(value: str) -> bytes:
     return raw
 
 
+def _validate_session_secret(secret: str) -> None:
+    """Accept canonical URL-safe unpadded or standard padded base64.
+
+    Validate decoded size/obvious weak patterns without changing the encoded
+    signing key: existing sessions keep the same signature derivation.
+    """
+    message = ("KNOWLEDGE_ENGINE_SESSION_SECRET must be a strong random secret "
+               "(32 to 96 random bytes encoded as canonical base64 or URL-safe unpadded base64).")
+    try:
+        if not 43 <= len(secret) <= 128:
+            raise ValueError()
+        if re.fullmatch(r"[A-Za-z0-9_-]+", secret):
+            raw = _decode(secret)
+        else:
+            raw = base64.b64decode(secret, validate=True)
+            if base64.b64encode(raw).decode("ascii") != secret:
+                raise ValueError()
+        if not 32 <= len(raw) <= 96:
+            raise ValueError()
+        markers = (b"change", b"replace", b"placeholder", b"example", b"password",
+                   b"session_secret", b"session-secret", b"abcdefghijklmnopqrstuvwxyz", b"0123456789")
+        for value in (secret.encode("ascii"), raw):
+            if (len(set(value)) < 12
+                    or any(value == value[:size] * (len(value) // size)
+                           for size in range(1, len(value) // 2 + 1) if len(value) % size == 0)
+                    or any(marker in value.lower() for marker in markers)):
+                raise ValueError()
+    except (ValueError, UnicodeError):
+        raise RuntimeError(message) from None
+
+
 class BetaAccess:
     def __init__(self, password: str, session_secret: str, *, clock=time.time, throttle_clock=time.monotonic):
         if not password or not password.strip():
             raise RuntimeError("Hosted beta access requires KNOWLEDGE_ENGINE_BETA_PASSWORD.")
         if not session_secret or not session_secret.strip():
             raise RuntimeError("Hosted beta access requires KNOWLEDGE_ENGINE_SESSION_SECRET.")
-        lower = session_secret.lower()
-        if (not re.fullmatch(r"[A-Za-z0-9_-]{43,128}", session_secret) or len(set(session_secret)) < 12
-                or any(session_secret == session_secret[:size] * (len(session_secret) // size)
-                       for size in range(1, len(session_secret) // 2 + 1) if len(session_secret) % size == 0)
-                or any(marker in lower for marker in ("change", "replace", "placeholder", "example", "password",
-                                                       "session_secret", "session-secret", "abcdefghijklmnopqrstuvwxyz", "0123456789"))):
-            raise RuntimeError("KNOWLEDGE_ENGINE_SESSION_SECRET must be a strong random secret (at least 32 random bytes encoded as URL-safe text).")
+        _validate_session_secret(session_secret)
         try:
             encoded_password = password.encode("utf-8")
             if len(encoded_password) > 1024:

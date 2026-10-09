@@ -10,11 +10,12 @@ from pydantic import ValidationError
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.factory import PERSISTENCE_MODE
 from app.beta_access import BetaAccess, same_origin, router as beta_router
-from app.deployment import public_host, LOCAL_HOSTS, HostedHTTPSMiddleware
+from app.deployment import public_host, local_https_forwarding_host, LOCAL_HOSTS, HostedHTTPSMiddleware
 
 # Validate the gate before router imports can load hosted state.
 beta_access = BetaAccess.from_environment(PERSISTENCE_MODE)
 hosted_public_host = public_host(PERSISTENCE_MODE)
+local_forwarding_host = local_https_forwarding_host(PERSISTENCE_MODE)
 from app.routers.health import router as health_router
 from app.routers.knowledge import router as knowledge_router
 from app.routers.libraries import router as libraries_router
@@ -42,12 +43,15 @@ async def lifespan(app):
 app=FastAPI(title="Knowledge Engine API",version="0.2.0",lifespan=lifespan)
 app.state.beta_access = beta_access
 # Single-owner local beta. This is not a multi-user authorization system.
-app.add_middleware(TrustedHostMiddleware,allowed_hosts=LOCAL_HOSTS if hosted_public_host is None else [hosted_public_host], www_redirect=False)
+allowed_hosts = [hosted_public_host] if hosted_public_host else LOCAL_HOSTS + (
+    [local_forwarding_host] if local_forwarding_host else []
+)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts, www_redirect=False)
 request_lock=asyncio.Lock()
 
 @app.middleware("http")
 async def local_requests(request:Request,call_next):
-    if not same_origin(request):
+    if not same_origin(request, https_forwarding_host=local_forwarding_host):
         response = JSONResponse({"detail":"Cross-origin access is disabled for this local private beta."}, status_code=403)
     else:
         gate = request.app.state.beta_access

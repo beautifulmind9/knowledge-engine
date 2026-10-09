@@ -14,7 +14,9 @@ def main():
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()
     load_dotenv(ROOT / '.env', override=False)
-    uvicorn.run('app.main:app', host='127.0.0.1', port=args.port, workers=1)
+    # Local HTTP is authoritative. Codespaces can rewrite Origin/Host to loopback
+    # while forwarding HTTPS scheme headers; trusting those produces false 403s.
+    uvicorn.run('app.main:app', host='127.0.0.1', port=args.port, workers=1, proxy_headers=False)
 
 
 if __name__ == '__main__':

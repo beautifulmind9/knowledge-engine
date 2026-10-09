@@ -112,7 +112,9 @@ def test_real_hosted_app_boot_health_auth_static_and_ai_disabled_without_disk(tm
                     assert client.get('/docs').status_code == 401
                     assert client.get('/login').status_code == 200
                     assert client.get('/static/style.css').status_code == 200
-                    assert client.get('/static/app.js').status_code == 401
+                    for module in ('app.js', 'enhancements.js', 'creator-direction.js', 'api.js',
+                                   'knowledge-browser.js', 'output-revision.js'):
+                        assert client.get('/static/' + module, headers={'Origin': 'https://' + host}).status_code == 401
                     login = client.post('/login', data={'password': os.environ['KNOWLEDGE_ENGINE_BETA_PASSWORD']},
                                         headers={'Origin': 'https://' + host, 'X-Forwarded-Proto': 'http'})
                     assert login.status_code == 303

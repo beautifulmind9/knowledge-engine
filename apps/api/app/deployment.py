@@ -2,7 +2,8 @@
 
 Hosted ingress must be Render's HTTPS edge. Uvicorn ignores proxy headers, and
 the application uses a configured canonical HTTPS origin instead of inferring
-it from untrusted X-Forwarded-* values. Local HTTP behavior is unchanged.
+it from untrusted X-Forwarded-* values. Local Codespaces forwarding trusts only
+the exact port-8000 hostname derived from the workspace environment.
 """
 import os
 import re
@@ -10,6 +11,22 @@ import re
 from starlette.responses import PlainTextResponse
 
 LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "testserver"]
+
+
+def local_https_forwarding_host(mode: str) -> str | None:
+    """Opt in only for this Codespace's standard port-8000 HTTPS forwarding.
+
+    Never derive authority from request headers or permit a domain wildcard.
+    Hosted mode ignores Codespaces environment variables entirely.
+    """
+    if (mode != "local" or os.environ.get("CODESPACES") != "true"
+            or os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN") != "app.github.dev"):
+        return None
+    name = os.environ.get("CODESPACE_NAME", "")
+    # The name plus '-8000' must fit one DNS label.
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,56}[a-z0-9])?", name):
+        return None
+    return f"{name}-8000.app.github.dev"
 
 
 def public_host(mode: str) -> str | None:

@@ -27,14 +27,28 @@ WEB_ROOT = Path(__file__).resolve().parents[2] / "web"
 LOGIN_ERROR = "Unable to sign in. Check the password and try again."
 
 
-def same_origin(request: Request) -> bool:
-    """Compare scheme AND authority. Reject opaque/malformed Origins explicitly."""
+def same_origin(request: Request, *, https_forwarding_host: str | None = None) -> bool:
+    """Compare origins, accounting for the explicitly configured local tunnel.
+
+    Codespaces may preserve the public Host or rewrite it to port-8000 loopback.
+    The caller supplies its environment-derived host only in local mode; no
+    request-supplied forwarding header establishes trust.
+    """
     origin = request.headers.get("origin")
     if origin is None:
         return True  # Session-bound CSRF still applies to authenticated writes.
     try:
         parsed = urlsplit(origin)
-        return (parsed.scheme == request.url.scheme and parsed.netloc == request.headers.get("host")
+        scheme_matches = parsed.scheme == request.url.scheme
+        authority = request.headers.get("host")
+        authority_matches = parsed.netloc == authority
+        if (https_forwarding_host is not None and request.url.scheme == "http"
+                and parsed.scheme == "https" and parsed.netloc == https_forwarding_host):
+            scheme_matches = True
+            authority_matches = authority in {
+                https_forwarding_host, "localhost:8000", "127.0.0.1:8000"
+            }
+        return (scheme_matches and authority_matches
                 and not parsed.username and not parsed.password and not parsed.path
                 and not parsed.query and not parsed.fragment)
     except ValueError:

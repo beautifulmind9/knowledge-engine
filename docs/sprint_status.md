@@ -1,4 +1,6 @@
-# Remaining sprint status — 2026-09-20
+# Remaining sprint status — 2026-10-08
+
+As of **2026-10-08**, R8-08 hosted deployment/shareable access is **Complete**. R8-09 external beta test and R8-10 final release decision remain **Pending**. Detailed hosted workflow, usage, restart, and regression evidence is recorded in the [hosted acceptance evidence](release_acceptance_backlog.md#current-release-decision).
 
 This document records the current state of the active `feature/knowledge-assets` implementation. **Verified** means implemented and exercised by automated checks and/or the stated real-source acceptance work. **Implemented** means code exists but a material acceptance check remains. **Pending** means the original acceptance criterion is not yet satisfied.
 
@@ -151,23 +153,23 @@ Desktop browser inspection has covered completed-source status, knowledge browsi
 | R8-04 | Verified | Synthetic public-safe demo is idempotent. |
 | R8-05 | Verified | README, product vision, architecture, sprint status, and release documents describe the active product. |
 | R8-06 | Verified | Setup/launcher and dependency lock are exercised; platform-specific acceptance may still reveal issues. |
-| R8-07 | Implemented | Accessibility/responsive foundations exist; manual browser/mobile pass remains. |
-| R8-08 | Pending | External tester must complete the workflow and provide feedback. |
-| R8-09 | Verified | Release decision and remaining gates are explicit. |
+| R8-07 | Verified internally | Responsive/mobile-width and core keyboard passes completed; external acceptance remains pending. |
+| R8-08 | Complete | Render hosted beta/shareable access and internal hosted acceptance verified; see evidence above. |
+| R8-09 | Pending | External tester must complete the workflow and provide feedback. |
+| R8-10 | Pending | Final evidence-based v1 beta release decision remains open. |
 
 ## Current automated verification
 
-Latest local suite on 2026-09-20: **205 passed, 2 unchanged upstream deprecation warnings**. The warnings are from Starlette/AnyIO and `google.genai` type internals and are unrelated to Knowledge Engine behavior.
+Latest backend suite after fix **971c449**: **760 passed, 3 unchanged upstream dependency deprecation warnings**. Frontend after fix **693511e**: **34 passed**, including **6 focused output-revision tests**.
 
 The automated suite uses fake/in-memory provider responses and consumes no Gemini quota. Real-provider extraction and A2 output acceptance were run separately within the explicit free-tier budget.
 
 ## Remaining release blockers
 
-1. Complete fresh-machine/local setup acceptance.
-2. Complete the remaining desktop happy-path steps, including any still-unchecked create/upload/process flow from a clean state.
-3. Complete remaining error-state checks, including quota pause and stale/failed-job handling where not already exercised.
-4. Have at least one external tester complete the core workflow and record feedback.
-5. Resolve or explicitly defer any critical acceptance defects, then record the final v1 beta decision.
+Internal fresh setup, desktop happy path, quota-stop, failed-job recovery, and stale-running recovery acceptance are complete. Hosted deployment acceptance is recorded above.
+
+1. Have at least one external tester complete the core workflow and record feedback (R8-09).
+2. Resolve or explicitly defer any critical acceptance defects, then record the final v1 beta decision (R8-10).
 
 **A2 real-model output acceptance is complete** and is no longer a release blocker. The real-book interpretation/audit, two real output revisions, mobile-width pass, and core keyboard pass are also no longer blockers.
 

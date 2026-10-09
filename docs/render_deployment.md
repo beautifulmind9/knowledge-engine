@@ -1,6 +1,7 @@
 # Render private beta configuration
 
-Configuration is prepared; no service has been created or deployed. One free
+As of 2026-10-08, the private beta is live at
+https://knowledge-engine-sb50.onrender.com/ on commit **693511e**. One free
 Python web service serves FastAPI and the existing static frontend. It uses
 Supabase Postgres for state and the private Supabase Storage bucket for artifacts.
 There is no persistent Render disk, paid database, or additional service.
@@ -44,11 +45,11 @@ and application workers are explicitly limited to one.
 | `KNOWLEDGE_ENGINE_PUBLIC_HOST` | Self-reference to `RENDER_EXTERNAL_HOSTNAME` |
 | `PORT` | Automatically supplied by Render |
 
-For the first deployment, leave `GEMINI_API_KEY` unset and keep
-`GEMINI_FREE_TIER_CONFIRMED=false` (blueprint default). AI configuration is not
-needed at startup. Manual/non-AI operations remain available; AI-required actions
-return a clean configuration error without calling a provider. Existing free-tier
-safeguards remain in place. Do not add a Gemini key for this checkpoint.
+The live hosted beta has Gemini configured with `GEMINI_FREE_TIER_CONFIRMED=true`
+and `GEMINI_DAILY_CALL_LIMIT=20`, free-tier only with no paid fallback and a $0
+cost target. The blueprint default remains unconfirmed; AI configuration is not
+needed at startup. Without a confirmed free-tier key, AI-required actions return
+a configuration error without calling a provider.
 
 ## HTTPS, hosts, and health
 
@@ -79,8 +80,9 @@ files cleaned at context exit; ZIP export is buffered in memory. Python caches a
 runtime temporary files can be discarded. Sessions survive restart while their
 password/secret and expiry remain valid; login throttle memory resets.
 
-Before the first deployment, review the blueprint in Render, enter the private
-`sync: false` environment values, and confirm free-plan/runtime support.
-After separately authorizing deployment, verify HTTPS login/cookies, health-check
-Host behavior, and persistence across a restart. These live checks have not been
-performed here. Free services may sleep or restart; no paid fallback is configured.
+The beta access gate and hosted persistence across restart are verified; restart
+preserves usage accounting. See the
+[release acceptance backlog](release_acceptance_backlog.md#current-release-decision)
+for the detailed workflow, call snapshot, and regression evidence. R8-08 is
+complete; R8-09 external testing and R8-10 final release decision remain pending.
+Free services may sleep or restart; no paid fallback is configured.

@@ -2,7 +2,15 @@
 
 ## Current release decision
 
-**Internal local candidate; not yet an externally validated v1 beta.**
+**Private hosted beta live; internally accepted, not yet an externally validated v1 beta.**
+
+Verified hosted acceptance on **2026-10-08**: the private Render beta is live at [knowledge-engine-sb50.onrender.com](https://knowledge-engine-sb50.onrender.com/), deployed commit **693511e**, using **Supabase Postgres + private Supabase Storage**. The beta access gate works. Source upload, extract/chunk, one-chunk Gemini interpretation, knowledge browse/selection, Workshop generation, saved output, restart persistence, Markdown export, manual revision, version history, and comparison were exercised successfully.
+
+The hosted Gemini guardrail requires **free-tier confirmed only**, with **no paid fallback** and a **daily app cap of 20**. Hosted acceptance used **exactly 2 Gemini calls**; manual revisions and export did not increase usage, and restart did not reset usage accounting. The development cost target remains **$0**.
+
+The title-only revision regression is fixed live: **v4 compared with v1 reports only `title`**, with content and design choices unchanged. Frontend fix: **693511e**; backend fix: **971c449**. After the backend fix, the full backend suite reported **760 passed, 3 unchanged upstream dependency deprecation warnings**. After the browser fix, frontend verification reported **34 passed**, including **6 focused output-revision tests**.
+
+**R8-08 beta deployment/shareable access is complete. R8-09 external beta test and R8-10 final release decision remain pending.** This is internal hosted acceptance; no external tester completion or full v1 beta release is claimed.
 
 The original Remaining Sprint 1–8 backlog remains the historical feature scope. Implementation now exists across those areas, and the real-book extraction/audit acceptance work has been completed. The focus is no longer on rebuilding the extraction architecture; it is on proving output usefulness, browser usability, and external-user readiness.
 
@@ -156,7 +164,7 @@ Prove that a non-technical person can use the product through the browser and ma
 - **A3-05 core keyboard pass:** the main source/search/Ask/Browse/filter/selection/Workshop handoff flow was exercised in Safari. Safari may require Option+Tab or the browser keyboard-navigation setting for buttons.
 - Several error states were exercised with zero provider calls: missing-key Knowledge generation, missing-key Data & usage messaging, blank chapter/idea validation, and duplicate-storage server locking.
 - Markdown export, manual revision, version preservation, comparison, applied evidence, and provenance display were exercised repeatedly during A2.
-- Still open: fresh setup, the remaining complete desktop happy path, quota-pause and any still-unverified stale/failed-job states, external tester acceptance, critical-defect resolution/deferral, and the final release decision.
+- Internal fresh setup, desktop happy path, and quota-pause/failed-job/stale-running recovery acceptance are complete. Hosted evidence is recorded above. Still open: external tester acceptance, any critical-defect resolution/deferral, and the final release decision.
 
 ## Backlog
 
@@ -179,7 +187,7 @@ Another person can complete the intended workflow through the browser, critical 
 
 # Current verification baseline
 
-Latest local automated verification on 2026-09-20: **205 tests passed**, with two unchanged upstream deprecation warnings. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
+Latest verification as of 2026-10-08: backend **760 passed**, with **3 unchanged upstream dependency deprecation warnings** after fix **971c449**; frontend **34 passed**, including **6 focused output-revision tests**, after fix **693511e**. The suite uses fake/in-memory provider behavior and does not consume Gemini quota.
 
 The real-provider extraction and Workshop output validation were performed separately under the project's explicit free-tier call budget. Live evidence is documented in `docs/sprint_status.md` and `docs/build_log.md`.
 

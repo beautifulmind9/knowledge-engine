@@ -1,8 +1,10 @@
 # v1 beta release decision and acceptance checklist
 
-Date: 2026-09-20. Decision: **internal local candidate; A2 complete, not yet an externally validated v1 beta**.
+Date: 2026-10-08. Decision: **private hosted beta live; A2 and internal hosted acceptance complete, external test and final v1 beta decision pending**.
 
-In scope: source upload/processing, validated knowledge extraction and reprocessing, deterministic retrieval, six output modes, saved output revisions, multi-source context, browser screens, quota controls, private local storage, deletion and export. Deferred: public hosting/authentication, team access, embeddings, paid integrations, OCR, native mobile, and semantic contradiction guarantees.
+R8-08 beta deployment/shareable access is **Complete**; R8-09 external beta test and R8-10 final release decision remain **Pending**. See the [hosted acceptance evidence](release_acceptance_backlog.md#current-release-decision) for the verified hosted workflow, usage snapshot, and regression results. The $0 target, Gemini free-tier-only rule, no paid fallback, and hosted daily app cap of 20 remain in force.
+
+In scope: source upload/processing, validated knowledge extraction and reprocessing, deterministic retrieval, six output modes, saved output revisions, multi-source context, browser screens, quota controls, private local and hosted storage, beta access gate, deletion and export. Deferred: public access, user accounts/team access, embeddings, paid integrations, OCR, native mobile, and semantic contradiction guarantees.
 
 ## Reproducible internal exercise
 
@@ -46,8 +48,11 @@ Gemini's asynchronous Batch API is also not used because the current Gemini Deve
 - [x] Missing-key states: Knowledge generation and Data & usage show clear unavailable/key-required messaging without a provider call.
 - [x] Storage lock prevents a duplicate server from using the same storage.
 - [x] Markdown export, manual revision, version preservation, comparison, and provenance display were exercised with real outputs.
-- [ ] Quota-pause simulation and remaining stale/failed-job browser checks still need explicit A3 acceptance.
-- [ ] Fresh setup/full desktop happy path from a clean state still needs explicit A3 acceptance.
+- [x] Internal quota-stop, failed-job recovery, and stale-running recovery acceptance completed.
+- [x] Fresh setup/full internal desktop happy path from a clean state completed.
+- [x] R8-08 hosted deployment/shareable access completed; hosted workflow and restart evidence recorded above.
+- [ ] R8-09 external beta test: another person must complete the workflow and provide feedback.
+- [ ] R8-10 final release decision remains pending.
 
 Tester: ______  Date: ______  OS/browser: ______  Result: ______
 
@@ -61,8 +66,8 @@ Tester: ______  Date: ______  OS/browser: ______  Result: ______
 - [ ] Check desktop and narrow mobile widths for clipped fields, unreadable text, and horizontal page overflow.
 - [ ] Have someone other than the builder complete the main workflow and record feedback below.
 
-The automated suite exercises a live localhost server, demo seeding and server restart within its test process. Full visual/mobile acceptance and external-user acceptance remain separate manual gates.
+The automated suite exercises a live localhost server, demo seeding and server restart within its test process. Internal responsive/keyboard evidence is recorded above; external-user acceptance remains a separate manual gate.
 
 Feedback: task attempted, expected result, actual result, screenshot if useful, severity, and suggested change. Do not attach private source books or API keys to public issues.
 
-Release gate: **A2 real-output acceptance is complete.** Close the remaining A3 setup/browser/error-state and external-tester checks, resolve or explicitly defer critical defects, and then record the final v1 beta decision. The completed real-book extraction/audit work is also no longer a release blocker.
+Release gate: **A2 real-output acceptance is complete.** Complete the external-tester check, resolve or explicitly defer critical defects, and then record the final v1 beta decision. The completed real-book extraction/audit work is also no longer a release blocker.

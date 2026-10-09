@@ -2,7 +2,7 @@
 
 ## Execution status
 
-Implementation and verification were reviewed through **2026-09-20**. See [item-level sprint status](sprint_status.md), [release acceptance backlog](release_acceptance_backlog.md), and [beta test checklist](beta_test_checklist.md) for the current evidence. The original acceptance criteria below remain authoritative; this file now also records which historical Remaining Sprints are complete versus which still have release-acceptance work.
+Implementation and verification were reviewed through **2026-10-08**. See [item-level sprint status](sprint_status.md), [release acceptance backlog](release_acceptance_backlog.md), and [beta test checklist](beta_test_checklist.md) for the current evidence. The original acceptance criteria below remain authoritative; this file now also records which historical Remaining Sprints are complete versus which still have release-acceptance work.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Source
 
 The remaining work is no longer about proving whether the core idea works. The goal is to turn the validated backend vertical slice into a usable, persistent, testable v1 beta.
 
-### Current execution status — 2026-09-20
+### Current execution status — 2026-10-08
 
 | Remaining Sprint | Current status | Evidence / remaining work |
 |---|---|---|
@@ -33,7 +33,9 @@ The remaining work is no longer about proving whether the core idea works. The g
 | R5 — Multi-source synthesis | **Complete for A2** | Same-task single-source and two-source synthesis was completed with *The Workshop Survival Guide* and a partial current-pipeline interpretation of *Made to Stick*. Human review corrected overclaimed agreement and unsupported cross-source additions. |
 | R6 — Web app MVP | **Complete for v1 candidate** | Fresh clean-state browser acceptance now covers library creation, source upload/extraction, manual structured interpretation, knowledge selection, Workshop preview, saved output, revision history, comparison, provenance, Markdown export, mobile-width, keyboard, and key error/recovery states. |
 | R7 — Durable storage/privacy/control | **Complete for v1 candidate** | Local SQLite persistence, deletion, export, backup/restore, integrity checks, and zero-cost quota controls are implemented and tested. |
-| R8 — Beta hardening/release candidate | **In progress** | Fresh Codespace acceptance is complete with 205 passed and 3 upstream deprecation warnings. Internal desktop/error-state acceptance is complete. Remaining A3 work: safe shareable beta deployment, external tester, critical-defect resolution/deferral, and final v1 beta decision. |
+| R8 — Beta hardening/release candidate | **In progress** | Internal setup/browser/error-state acceptance and R8-08 hosted deployment are complete. R8-09 external test and R8-10 final release decision remain pending, including critical-defect resolution/deferral. |
+
+R8-08 is **Complete**: the [private Render beta](https://knowledge-engine-sb50.onrender.com/) is live with the access gate and hosted persistence verified. R8-09 external beta test and R8-10 final release decision remain **Pending**. See the [hosted acceptance evidence](release_acceptance_backlog.md#current-release-decision) for the workflow, quota, and regression results.
 
 **Current execution point:** A1 and A2 acceptance are complete. The project is now in **A3 / Remaining Sprint 8 release acceptance**, not feature expansion.
 
@@ -286,9 +288,9 @@ Turn the working product into a coherent v1 beta that another person can actuall
 | R8-05 | Must | Documentation refresh | Root README and active app docs describe the FastAPI/web architecture rather than the legacy prototype. |
 | R8-06 | Must | Setup script/checklist | A fresh environment can install dependencies, configure the free Gemini key, and run API/web apps. |
 | R8-07 | Should | Basic accessibility/responsive pass | Core web flow is usable on common desktop/mobile widths and with keyboard navigation where practical. |
-| R8-08 | Must | Beta deployment / shareable access | Provide a $0 tester-accessible browser link in an environment isolated from the owner’s private local storage. Do not expose private books/sources, saved outputs, backups, API keys, or secrets. Use only public-domain, licensed, or synthetic demo material and retain the no-paid-fallback quota protections. |
-| R8-09 | Must | External beta test | At least one person other than the builder can open the shareable beta and complete the core workflow without developer intervention, then provide feedback. |
-| R8-10 | Must | Release decision | Record what is in v1 beta, what is deliberately deferred, and the known limitations. |
+| R8-08 | Must | Beta deployment / shareable access — **Complete** | Provide a $0 tester-accessible browser link in an environment isolated from the owner’s private local storage. Do not expose private books/sources, saved outputs, backups, API keys, or secrets. Use only public-domain, licensed, or synthetic demo material and retain the no-paid-fallback quota protections. |
+| R8-09 | Must | External beta test — **Pending** | At least one person other than the builder can open the shareable beta and complete the core workflow without developer intervention, then provide feedback. |
+| R8-10 | Must | Release decision — **Pending** | Record what is in v1 beta, what is deliberately deferred, and the known limitations. |
 
 ## Sprint exit criteria
 
@@ -340,9 +342,10 @@ The order is intentional: persistence and revision come before more generation f
 
 R1–R7 are complete for the current v1 candidate. Fresh-machine setup, the full internal desktop happy path, responsive/keyboard checks, quota-stop behavior, failed-job recovery, and stale-running recovery have now been exercised under A3. The active release work is therefore **R8 / A3**, specifically:
 
-1. safe $0 beta deployment with a shareable browser link and isolated public-safe data;
-2. external beta tester completion;
-3. resolution or explicit deferral of critical defects found during deployment/testing;
-4. final evidence-based v1 beta release decision.
+1. external beta tester completion (R8-09);
+2. resolution or explicit deferral of critical defects found during testing;
+3. final evidence-based v1 beta release decision (R8-10).
+
+R8-08 safe $0 beta deployment/shareable access is complete; see the hosted acceptance evidence above.
 
 No additional Gemini output-mode testing is required to close A2.

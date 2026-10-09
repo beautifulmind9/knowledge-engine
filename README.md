@@ -79,9 +79,11 @@ Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CS
 | `scripts` | Setup, local launcher and no-API demo seed |
 | `docs` | Architecture, product vision, sprint status, storage decisions and beta acceptance |
 
-Records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
+In local mode, records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
 
-Run exactly one server worker. Locally, a process lock prevents simultaneous servers using the same storage, and requests are serialized. Long AI requests can temporarily delay other actions. Local development stays bound to localhost. Hosted mode uses a shared-password private-beta gate with signed sessions and CSRF protection, Supabase Postgres/Storage, and an explicitly configured HTTPS hostname. It has no user accounts or multi-user authorization. [Render configuration](docs/render_deployment.md) prepares one free service without a persistent disk; no deployment has been performed.
+Run exactly one server worker. Locally, a process lock prevents simultaneous servers using the same storage, and requests are serialized. Long AI requests can temporarily delay other actions. Local development stays bound to localhost. Hosted mode uses a shared-password private-beta gate with signed sessions and CSRF protection, Supabase Postgres/Storage, and an explicitly configured HTTPS hostname. It has no user accounts or multi-user authorization. [Render configuration](docs/render_deployment.md) describes the live free service without a persistent disk.
+
+As of **2026-10-08**, the [private Render beta](https://knowledge-engine-sb50.onrender.com/) is live on application commit **693511e**, using **Supabase Postgres + private Supabase Storage**, with the beta access gate verified. R8-08 is complete; R8-09 external testing and R8-10 final release decision remain pending. The hosted app retains the **$0 target, Gemini free-tier-only, no paid fallback, and daily app cap of 20**. See the [hosted acceptance evidence](docs/release_acceptance_backlog.md#current-release-decision).
 
 Back up under Data & usage. The ZIP includes private source files and saved work; keep it private. Restore into a **new empty directory**, set `KNOWLEDGE_ENGINE_STORAGE` to the extracted storage folder, and start the server. Do not overwrite a live SQLite database. See [storage and privacy](docs/storage_and_privacy.md).
 
@@ -91,7 +93,7 @@ The real *Workshop Survival Guide* source is complete at **46/46 chunks**. The l
 
 A live strict single-chunk control returned the expected five valid assets for chunk 007. A known compound crowd-recovery asset was repaired deterministically so `Talking in circles` and `Borrowing goodwill` are now separate atomic assets with correct chunk provenance.
 
-Shared grounding review is currently at **report version 8**. The latest local backend suite is **205 passed** with two unchanged upstream deprecation warnings. Real-provider A2 acceptance covered Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis, including a same-task two-source comparison.
+Shared grounding review is currently at **report version 8**. Current automated results are recorded with the [release acceptance evidence](docs/release_acceptance_backlog.md#current-verification-baseline). Real-provider A2 acceptance covered Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis, including a same-task two-source comparison.
 
 For that two-source acceptance exercise, *Made to Stick* was intentionally interpreted only far enough to provide a legitimate second current-pipeline source: **10 of 91 chunks**, yielding **38 active assets / 35 consolidated Knowledge Units**. This is acceptance-scope evidence, not a claim that the full source has been interpreted or audited.
 
@@ -99,13 +101,10 @@ For that two-source acceptance exercise, *Made to Stick* was intentionally inter
 
 The implementation covers all eight remaining sprint areas. Real-source extraction/audit acceptance and **Acceptance Sprint A2 (real-model output and multi-source quality) are complete**. **The full v1 beta acceptance gates are still not closed.** Remaining material gates are A3 release-readiness work:
 
-- fresh-machine/local setup acceptance;
-- completion of the remaining desktop happy-path checks from a clean state;
-- remaining error-state checks, including quota pause and any still-unverified stale/failed-job behavior;
 - one external tester completing the core workflow;
 - resolution or explicit deferral of critical defects followed by the final v1 beta decision.
 
-A narrow mobile-width pass and the core keyboard workflow have already been exercised internally; they are not substitutes for the external-user acceptance gate.
+Fresh setup, internal desktop/error-state acceptance, hosted workflow/restart acceptance, a narrow mobile-width pass, and the core keyboard workflow have already been exercised internally; they are not substitutes for the external-user acceptance gate.
 
 Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
 

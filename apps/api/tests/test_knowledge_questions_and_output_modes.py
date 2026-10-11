@@ -78,13 +78,15 @@ def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handof
     for question in questions:
         assert f'"{question}"' in javascript
 
-    assert "generateKnowledgeAnswer(question, quickButton)" in javascript
+    assert "request.value=scopeQuestion(question" in javascript
+    assert "request.dispatchEvent(new Event('input'" in javascript
+    assert "generateKnowledgeAnswer(question, quickButton)" not in javascript
     assert 'apiFetch("/workshops/generate"' in javascript
     assert 'output_type: "knowledge_answer"' in javascript
     assert "save: false" in javascript
     assert 'button("Open in Create"' in javascript
-    assert "Answers appear here using one explicit Gemini request" in javascript
-    assert 'makeElement("button", "Ask your library", "primary")' in javascript
+    assert "One AI drafting attempt. No automatic retry, repair or fallback." in javascript
+    assert "button('Ask with AI'" in javascript
 
 
 def test_knowledge_answer_enhancement_has_its_own_rendering_helpers():
@@ -114,7 +116,7 @@ def test_context_dependent_knowledge_shortcuts_require_scope_before_gemini():
     assert "if (!validateKnowledgeQuestionScope(question)) return;" in javascript
     assert "Choose a chapter or section first" in javascript
     assert "Name the idea first" in javascript
-    assert "No Gemini request was used." in javascript
+    assert "No AI request was made." in javascript
 
 
 def test_knowledge_question_can_target_asset_type():

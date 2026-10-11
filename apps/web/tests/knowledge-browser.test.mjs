@@ -56,6 +56,7 @@ class Element {
  append(...nodes){this.children.push(...nodes);}
  replaceChildren(...nodes){this.children=[];this.append(...nodes);if(this.tag==='select')this.value=nodes[0]?.value||'';}
  setAttribute(){}
+ querySelector(){return null;}
  querySelectorAll(){return [];}
 }
 function descendants(node){return [node,...node.children.flatMap(descendants)];}
@@ -63,9 +64,9 @@ const groups=Array.from({length:25},(_,i)=>({canonical_asset:{id:`a${i}`,title:`
 async function viewFixture(){
  const main=new Element('main'),requests=[];
  const el=(tag,text)=>new Element(tag,text);
- const ctx={beginView:()=>()=>true,createMaterials:null,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
+ const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:null,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
  main,state:{source:null,library:'lib1',selected:new Set()},el,
- heading(){},sourceItems:async()=>[{id:'s1',title:'First source'}],message(){},navigate(){},
+ heading(){},libraries:async()=>[{id:'lib1',name:'Reading'}],sourceItems:async()=>[{id:'s1',title:'First source'}],message(){},navigate(){},
  document:{dispatchEvent(){}},
  run:async fn=>fn(),
  api:async path=>{requests.push(path);return {items:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
@@ -86,7 +87,7 @@ test('browse loads on demand, pages by ten, filters, preserves evidence and sele
  const f=await viewFixture();assert.equal(f.requests.length,0);
  const browse=f.nodes().find(n=>n.id==='ke-browse');browse.open=true;await browse.ontoggle();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,10);
- assert.equal(f.nodes().filter(n=>n.textContent==='Evidence & provenance').length,10);
+ assert.equal(f.nodes().filter(n=>n.textContent==='Source & evidence').length,10);
  await f.nodes().find(n=>n.textContent==='Show more').click();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,20);
  const type=f.nodes().find(n=>n.textContent==='Idea type').children[0];type.value='principle';type.onchange();
@@ -124,7 +125,7 @@ test('late grounded answer cannot render after scope changes',async()=>{
  let resolve;const rendered=[],requests=[];
  const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],
  document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,
- knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){}}),makeElement:()=>({}),
+ detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){}}),makeElement:()=>({}),
  apiFetch:(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(r=>{resolve=r;});},
  renderKnowledgeAnswer:(...args)=>rendered.push(args)};
  vm.createContext(ctx);vm.runInContext(text.slice(text.indexOf('async function generateKnowledgeAnswer('),text.indexOf('function decorateKnowledgeView(')),ctx);

@@ -13,9 +13,6 @@ const QUICK_KNOWLEDGE_QUESTIONS = [
 const CHAPTER_QUESTION = "What did this chapter teach?";
 const IDEA_EXAMPLES_QUESTION = "What examples support this idea?";
 
-let pendingKnowledgeQuestion = null;
-let decorating = false;
-let decorationPending = false;
 let answerRevision = 0;
 document.addEventListener("ke-scope-change", () => {
   answerRevision++;
@@ -56,23 +53,8 @@ function button(text, action, className = "") {
   return node;
 }
 
-function currentViewTitle() {
-  return document.querySelector("#main h1")?.textContent?.trim() || "";
-}
-
 function selectedKnowledgeSourceIds() {
-  const searchForm = document.querySelector("#main > form");
-  const sourceSelect = searchForm?.querySelector("select");
-  if (!sourceSelect) return [];
-
-  if (sourceSelect.value) return [sourceSelect.value];
-
-  // When the user is viewing all sources in the current library, the source
-  // selector contains exactly that visible scope. Passing those IDs keeps a
-  // direct Knowledge answer inside the same scope without needing app.js state.
-  return [...sourceSelect.options]
-    .map(option => option.value)
-    .filter(Boolean);
+  return document.querySelector('#main')?.exploreContext?.sourceIds() || [];
 }
 
 function knowledgeScopeValue(id) {
@@ -89,12 +71,8 @@ function scopedKnowledgeQuestion(question) {
 }
 
 function openKnowledgeQuestionInWorkshop(question, context = null) {
-  pendingKnowledgeQuestion = context || {
-    question: scopedKnowledgeQuestion(question),
-    sourceIds: selectedKnowledgeSourceIds(),
-  };
-
-  document.querySelector('nav button[data-view="workshop"]')?.click();
+  const scope=context || {question:scopedKnowledgeQuestion(question),sourceIds:selectedKnowledgeSourceIds()};
+  return document.querySelector('#main')?.exploreContext?.handoff(scope.question,scope.sourceIds);
 }
 
 function findKnowledgeUnitTitle(snapshot, assetId) {
@@ -103,10 +81,10 @@ function findKnowledgeUnitTitle(snapshot, assetId) {
       group?.canonical_asset?.id === assetId ||
       (group?.asset_ids || []).includes(assetId)
     ) {
-      return group.canonical_asset?.title || assetId;
+      return group.canonical_asset?.title || "Referenced idea";
     }
   }
-  return assetId;
+  return "Referenced idea";
 }
 
 function knowledgeAnswerCard() {
@@ -114,7 +92,7 @@ function knowledgeAnswerCard() {
   if (!card) {
     card = makeElement("section", undefined, "card");
     card.id = "ke-knowledge-answer";
-    document.querySelector("#ke-ask-card")?.after(card);
+    document.querySelector("#ke-search-form")?.after(card);
   }
   return card;
 }
@@ -125,28 +103,30 @@ function showKnowledgeScopePrompt(title, message, inputSelector) {
     makeElement("h3", title),
     makeElement("p", message, "muted")
   );
-  document.querySelector(inputSelector)?.focus();
+  const target=document.querySelector(inputSelector);
+  if(target?.closest('details')){target.closest('details').open=true;target.closest('label').hidden=false;}
+  target?.focus();
   card.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function validateKnowledgeQuestionScope(question) {
-  if (question === CHAPTER_QUESTION && !document.querySelector('#ke-source-scope')?.value) {
-    showKnowledgeScopePrompt("Choose one material first", "Choose a material before asking about its chapter. No Gemini request was used.", "#ke-source-scope");
+  if ((question === CHAPTER_QUESTION || document.querySelector('#main')?.exploreContext?.state?.promptMode === 'section') && !document.querySelector('#ke-source-scope')?.value) {
+    showKnowledgeScopePrompt("Choose one material first", "Choose a material before asking about its chapter. No AI request was made.", "#ke-source-scope");
     return false;
   }
-  if (question === CHAPTER_QUESTION && !knowledgeScopeValue("#ke-chapter-scope")) {
+  if ((question === CHAPTER_QUESTION || document.querySelector('#main')?.exploreContext?.state?.promptMode === 'section') && !knowledgeScopeValue("#ke-chapter-scope")) {
     showKnowledgeScopePrompt(
       "Choose a chapter or section first",
-      "Enter the chapter or section above, then ask the chapter question again. No Gemini request was used.",
+      "Enter the chapter or section above, then ask the chapter question again. No AI request was made.",
       "#ke-chapter-scope"
     );
     return false;
   }
 
-  if (question === IDEA_EXAMPLES_QUESTION && !knowledgeScopeValue("#ke-idea-scope")) {
+  if ((question === IDEA_EXAMPLES_QUESTION || document.querySelector('#main')?.exploreContext?.state?.promptMode === 'idea') && !knowledgeScopeValue("#ke-idea-scope")) {
     showKnowledgeScopePrompt(
       "Name the idea first",
-      "Enter the idea or concept you want examples for, then ask the examples question again. No Gemini request was used.",
+      "Enter the idea or concept you want examples for, then ask the examples question again. No AI request was made.",
       "#ke-idea-scope"
     );
     return false;
@@ -205,16 +185,18 @@ async function generateKnowledgeAnswer(question, trigger) {
 
   const sourceIds = selectedKnowledgeSourceIds();
   if (!sourceIds.length) {
-    showKnowledgeScopePrompt("No materials in scope", "Add a prepared material before asking. No Gemini request was used.", "#ke-source-scope");
+    showKnowledgeScopePrompt("No materials in scope", "Add a prepared material before asking. No AI request was made.", "#ke-source-scope");
     return;
   }
   const scopedQuestion = scopedKnowledgeQuestion(scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
+  const viewState=document.querySelector('#main')?.exploreContext?.state;
   const ticket = ++answerRevision;
   const card = knowledgeAnswerCard();
 
   card.replaceChildren(
     makeElement("h3", "Generating grounded answer…"),
-    makeElement("p", "Using the selected materials. This is one explicit Gemini request.", "muted")
+    makeElement("p", "Using knowledge from your selected scope.", "muted"),
+    detail("AI usage",makeElement("p","One AI drafting attempt. No automatic retry, repair or fallback.","muted"))
   );
 
   if (trigger) trigger.disabled = true;
@@ -256,6 +238,7 @@ async function generateKnowledgeAnswer(question, trigger) {
 
     const data = await response.json();
     if (ticket !== answerRevision || !card.isConnected) return;
+    if(viewState)viewState.answer={data,question,context:{question:scopedQuestion,sourceIds}};
     renderKnowledgeAnswer(data, question, {question: scopedQuestion, sourceIds});
   } catch (error) {
     if (ticket !== answerRevision || !card.isConnected) return;
@@ -269,116 +252,63 @@ async function generateKnowledgeAnswer(question, trigger) {
 }
 
 function decorateKnowledgeView() {
-  if (document.querySelector("#ke-ask-card")) return;
-
-  const main = document.querySelector("#main");
-  const searchForm = main?.querySelector(":scope > form");
-  if (!main || !searchForm) return;
-
-  const card = makeElement("section", undefined, "card");
-  card.id = "ke-ask-card";
-  card.append(
-    makeElement("h3", "Ask your library"),
-    makeElement(
-      "p",
-      "Ask a grounded question about the selected material or current library. Answers appear here using one explicit Gemini request and are not saved automatically."
-    )
-  );
-
-  const chapterLabel = makeElement(
-    "label",
-    "Chapter / section — required for the chapter question"
-  );
-  const chapterInput = document.createElement("input");
-  chapterInput.id = "ke-chapter-scope";
-  chapterInput.placeholder = "e.g. Chapter 3, Simple";
-  chapterLabel.append(chapterInput);
-  card.append(chapterLabel);
-
-  const ideaLabel = makeElement(
-    "label",
-    "Idea / concept — required for the examples question"
-  );
-  const ideaInput = document.createElement("input");
-  ideaInput.id = "ke-idea-scope";
-  ideaInput.placeholder = "e.g. keeping workshops interactive";
-  ideaLabel.append(ideaInput);
-  card.append(ideaLabel);
-
-  const quickActions = makeElement("div", undefined, "actions");
-  for (const question of QUICK_KNOWLEDGE_QUESTIONS) {
-    const quickButton = makeElement("button", scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value).replaceAll('sources','materials').replaceAll('source','material'));
-    quickButton.dataset.question = question;
-    quickButton.type = "button";
-    quickButton.addEventListener("click", () =>
-      generateKnowledgeAnswer(question, quickButton)
-    );
-    quickActions.append(quickButton);
-  }
-  card.append(quickActions);
-
-  const askForm = document.createElement("form");
-  const askLabel = makeElement("label", "Ask my knowledge");
-  const askInput = document.createElement("input");
-  askInput.name = "knowledge_question";
-  askInput.required = true;
-  askInput.minLength = 2;
-  askInput.placeholder = "Ask a question across the selected material or library";
-  askLabel.append(askInput);
-  const askButton = makeElement("button", "Ask your library", "primary");
-  askButton.type = "submit";
-  askForm.append(askLabel, askButton);
-  askForm.addEventListener("submit", event => {
-    event.preventDefault();
-    generateKnowledgeAnswer(askInput.value.trim(), askButton);
+  if (document.querySelector('#ke-ask-card')) return;
+  const main=document.querySelector('#main'),viewState=main?.exploreContext?.state;
+  const searchForm=main?.querySelector('#ke-search-form');
+  if(!searchForm||!viewState)return;
+  const request=searchForm.elements.namedItem('q');
+  const askButton=button('Ask with AI',()=>{
+    if(request.value.trim().length<2){request.reportValidity();return;}
+    generateKnowledgeAnswer(request.value,askButton);
   });
-  card.append(askForm);
-
-  const refreshScope = () => {
-    if (!card.isConnected) return;
-    const single = !!document.querySelector('#ke-source-scope')?.value;
-    for (const node of quickActions.children) node.textContent = scopeQuestion(node.dataset.question, single).replaceAll('sources','materials').replaceAll('source','material');
-    card.querySelector('h3').textContent = single ? 'Ask this material' : 'Ask these materials';
+  request.required=true;request.minLength=2;
+  document.querySelector('#explore-actions').append(askButton);
+  const optional=makeElement('div');optional.id='ke-ask-card';optional.className='explore-options';
+  const suggestions=detail('Try a question');suggestions.className='question-suggestions';
+  const prompts=makeElement('div');prompts.className='prompt-options';
+  const context=detail('Add context');context.id='explore-context';context.open=!!viewState.contextOpen;
+  const chapterLabel=makeElement('label','Chapter or section'),chapterInput=makeElement('input');
+  chapterInput.id='ke-chapter-scope';chapterInput.value=viewState.chapter;chapterInput.placeholder='e.g. Practice, Chapter 3';chapterLabel.append(chapterInput);
+  const ideaLabel=makeElement('label','Idea or concept'),ideaInput=makeElement('input');
+  ideaInput.id='ke-idea-scope';ideaInput.value=viewState.idea;ideaInput.placeholder='e.g. Practice breaks';ideaLabel.append(ideaInput);
+  const note=makeElement('p','Context guides the question; it does not restrict evidence to that chapter or section.','muted');
+  context.append(chapterLabel,ideaLabel,note);
+  function refreshContext(){
+    chapterLabel.hidden=viewState.contextMode==='idea';ideaLabel.hidden=viewState.contextMode==='section';
+    context.open=!!viewState.contextOpen;
+    const values=[viewState.chapter,viewState.idea].filter(Boolean);
+    context.querySelector('summary').textContent=values.length?'Context · '+values.join(' · '):'Add context';
+  }
+  function invalidateAnswer(){answerRevision++;viewState.answer=null;document.querySelector('#ke-knowledge-answer')?.remove();document.querySelector('#create-handoff')?.remove();}
+  const labels=['What does this teach?','Concepts','Problems','Ask about a section','Examples','Decision rules'];
+  QUICK_KNOWLEDGE_QUESTIONS.forEach((question,index)=>{
+    const prompt=button(labels[index],()=>{
+      request.value=scopeQuestion(question,!!document.querySelector('#ke-source-scope')?.value);
+      request.dispatchEvent(new Event('input',{bubbles:true}));
+      viewState.promptMode=question===CHAPTER_QUESTION?'section':question===IDEA_EXAMPLES_QUESTION?'idea':null;
+      viewState.contextMode=viewState.promptMode||'both';
+      viewState.contextOpen=!!viewState.promptMode||!!(viewState.chapter||viewState.idea);
+      suggestions.open=false;refreshContext();
+      if(viewState.promptMode==='section')chapterInput.focus();else if(viewState.promptMode==='idea')ideaInput.focus();else request.focus();
+    });
+    prompts.append(prompt);
+  });
+  suggestions.append(prompts);optional.append(suggestions,context);searchForm.append(optional);
+  context.addEventListener('toggle',()=>{viewState.contextOpen=context.open;});
+  context.querySelector('summary').addEventListener('click',()=>{if(!context.open){viewState.contextMode='both';chapterLabel.hidden=false;ideaLabel.hidden=false;}});
+  for(const input of [chapterInput,ideaInput])input.addEventListener('input',()=>{
+    viewState.chapter=chapterInput.value;viewState.idea=ideaInput.value;invalidateAnswer();refreshContext();
+  });
+  request.addEventListener('input',()=>{viewState.promptMode=null;viewState.query=request.value;invalidateAnswer();});
+  const capture=main.captureExplore;
+  main.captureExplore=()=>{capture?.();viewState.chapter=chapterInput.value;viewState.idea=ideaInput.value;viewState.contextOpen=context.open;};
+  main.exploreContext.configureIdea=title=>{
+    request.value=IDEA_EXAMPLES_QUESTION;request.dispatchEvent(new Event('input',{bubbles:true}));
+    viewState.idea=title;viewState.promptMode='idea';viewState.contextMode='idea';viewState.contextOpen=true;
+    ideaInput.value=title;refreshContext();request.focus();
   };
-  searchForm.addEventListener('change', refreshScope);
-  for (const input of [chapterInput, ideaInput]) input.addEventListener('input', () => {
-    answerRevision++;
-    document.querySelector('#ke-knowledge-answer')?.remove();
-  });
-  searchForm.after(card);
-  refreshScope();
+  refreshContext();
+  if(viewState.answer){const a=viewState.answer;renderKnowledgeAnswer(a.data,a.question,a.context);}
 }
 
-function applyPendingKnowledgeQuestion() {
-  if (!pendingKnowledgeQuestion) return;
-  const form = document.querySelector('#create-brief');
-  if (!form?.seedInteraction) return;
-  const pending = pendingKnowledgeQuestion;
-  pendingKnowledgeQuestion = null;
-  form.seedInteraction(pending.question, pending.sourceIds || []);
-}
-
-async function decorateCurrentView() {
-  if (decorating) { decorationPending = true; return; }
-  decorating = true;
-  try {
-    const title = currentViewTitle();
-    if (title === "Ideas you can put to work.") {
-      decorateKnowledgeView();
-    } else if (title === "What are you working on?") {
-      applyPendingKnowledgeQuestion();
-    }
-  } finally {
-    decorating = false;
-    if (decorationPending) { decorationPending = false; queueMicrotask(decorateCurrentView); }
-  }
-}
-
-const main = document.querySelector("#main");
-if (main) {
-  const observer = new MutationObserver(() => {
-    queueMicrotask(decorateCurrentView);
-  });
-  observer.observe(main, { childList: true, subtree: true });
-  decorateCurrentView();
-}
+document.addEventListener('ke-explore-ready',decorateKnowledgeView);

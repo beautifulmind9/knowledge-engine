@@ -38,7 +38,7 @@ test('shell modules initialize Home without requests or runtime errors', () => {
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(document.querySelector('#main h1')?.textContent,'What would you like to do?');
     const choices=main.children.find(n=>n.className==='home-choices');
-    assert.deepEqual(choices.children.map(n=>n.children[0].textContent),['Add to my library','Create something','Continue my work']);
+    assert.deepEqual(choices.children.map(n=>n.children[0].textContent),['Add to my library','Continue my work']);
     assert.equal(feedback.textContent,'');
     assert.equal(document.activeElement,main);
     assert.ok(nav.every(n=>typeof n.onclick==='function'));

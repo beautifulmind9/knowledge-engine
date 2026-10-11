@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {createNavigation, parseRoute, routeHash} from '../navigation.js';
-import {PAGE_SIZE, filterUnits, createSearchController} from '../knowledge-browser.js';
+import {scopeQuestion, PAGE_SIZE, filterUnits, createSearchController} from '../knowledge-browser.js';
 import {revisionPayload} from '../output-revision.js';
 import * as interaction from '../interaction-draft.js';
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
@@ -27,26 +27,29 @@ class Node {
  addEventListener(type,fn){(this.listeners[type]??=[]).push(fn);}
  dispatchEvent(event){this['on'+event.type]?.(event);for(const fn of this.listeners[event.type]||[])fn(event);if(event.bubbles)this.parent?.dispatchEvent(event);return true;}
  reportValidity(){return true;}
+ scrollIntoView(){}
 }
 function matches(n,selector){const attr=selector.match(/\[([^=]+)=['"]?([^'"\]]+)['"]?\]/);if(attr&&String(n[attr[1]])!==attr[2])return false;selector=selector.replace(/\[.*?\]/,'');const id=selector.match(/#([\w-]+)/),cls=selector.match(/\.([\w-]+)/),tag=selector.match(/^[\w-]+/);return (!id||n.id===id[1])&&(!cls||n.className?.split(' ').includes(cls[1]))&&(!tag||n.tag===tag[0]);}
 const all=n=>[n,...n.children.flatMap(all)];
 function browserStub(hash=''){
- const location={hash},entries=[hash],listeners={};let index=0;
+ const location={hash},entries=[{hash,state:null}],listeners={};let index=0;
  const browser={location,addEventListener(type,fn){(listeners[type]??=[]).push(fn);},async dispatch(type){await Promise.all((listeners[type]||[]).map(fn=>fn()));},history:{
-  pushState(_state,_title,next){entries.splice(++index);entries.push(next);location.hash=next;},
-  replaceState(_state,_title,next){entries[index]=next;location.hash=next;},
-  async back(){if(index){location.hash=entries[--index];await Promise.all((listeners.popstate||[]).map(fn=>fn()));}},
-  async forward(){if(index<entries.length-1){location.hash=entries[++index];await Promise.all((listeners.popstate||[]).map(fn=>fn()));}},
+  state:null,pushState(state,_title,next){entries.splice(++index);entries.push({hash:next,state});this.state=state;location.hash=next;},
+  replaceState(state,_title,next){entries[index]={hash:next,state};this.state=state;location.hash=next;},
+  async back(){if(index){location.hash=entries[--index].hash;this.state=entries[index].state;await Promise.all((listeners.popstate||[]).map(fn=>fn()));}},
+  async forward(){if(index<entries.length-1){location.hash=entries[++index].hash;this.state=entries[index].state;await Promise.all((listeners.popstate||[]).map(fn=>fn()));}},
  }};return browser;
 }
-async function fixture(hash='',authenticated=false){
+async function fixture(hash='',authenticated=false,enhance=false){
  const main=new Node('main'),feedback=new Node('div'),body=new Node('body'),requests=[],browser=browserStub(hash);main.id='main';feedback.id='feedback';body.append(main,feedback);const nav=['home','library','workshop','outputs','settings'].map(view=>{const n=new Node(view==='home'?'a':'button');n.dataset={view};return n;});
  const source={id:'s1',title:'A book',author:'A writer',library_id:'l1',file_path:'file',processing_status:'uploaded'};
  const audit={interpretation:{completed_chunks:1,total_chunks:3},overlap_rate:0,superseded_assets:[],old_schema_assets:[],missing_evidence:[],missing_keywords:[],evidence_needing_review:[],asset_types:{},confidence_distribution:{},jobs:[{id:'j1',chunk_id:'c1',status:'failed'}]};
- const document={body,querySelector:s=>s==='main'?main:s==='#feedback'?feedback:body.querySelector(s),querySelectorAll:s=>s==='[data-view]'?nav:s==='nav button'?nav.filter(n=>n.tag==='button'):body.querySelectorAll(s),createElement:tag=>new Node(tag),dispatchEvent(){}};
+ const events=new Map();
+ const document={addEventListener(type,fn){const callbacks=events.get(type)||[];callbacks.push(fn);events.set(type,callbacks);},dispatchEvent(event){for(const callback of events.get(event.type)||[])callback(event);},body,querySelector:s=>s==='main'?main:s==='#feedback'?feedback:body.querySelector(s),querySelectorAll:s=>s==='[data-view]'?nav:s==='nav button'?nav.filter(n=>n.tag==='button'):body.querySelectorAll(s),createElement:tag=>new Node(tag)};
  const ctx={...interaction,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
- vm.createContext(ctx);vm.runInContext(readFileSync(new URL('../create-draft.js',import.meta.url),'utf8').replaceAll('export ',''),ctx);vm.runInContext(app.replace(/^import .*;\n/gm,''),ctx);await new Promise(resolve=>setImmediate(resolve));
- return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>n.tag==='button'&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick();else await n.closest('form').onsubmit({preventDefault(){}});}};
+ vm.createContext(ctx);vm.runInContext(readFileSync(new URL('../create-draft.js',import.meta.url),'utf8').replaceAll('export ',''),ctx);if(enhance){const extension={document,Event,scopeQuestion,apiFetch:async(path,options)=>({ok:true,json:async()=>ctx.api(path,{...options,body:JSON.parse(options.body)})})};vm.createContext(extension);vm.runInContext(readFileSync(new URL('../enhancements.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),extension);}
+ vm.runInContext(app.replace(/^import .*;\n/gm,''),ctx);await new Promise(resolve=>setImmediate(resolve));
+ return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>n.tag==='button'&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick();else if(n.listeners.click)await Promise.all(n.listeners.click.map(fn=>fn()));else await n.closest('form').onsubmit({preventDefault(){}});}};
 }
 test('Home actions route to Library, Create and My work; shell has task navigation',async()=>{
  const f=await fixture();
@@ -76,7 +79,7 @@ test('Create previews retrieved ideas and sends explicit selections; picker pres
  await f.ctx.workshopView();const situation=f.nodes().find(n=>n.name==='original_request');situation.value='Write a thoughtful essay';
  await f.click('Continue');const preview=f.requests.find(r=>r.path==='/workshops/prepare');assert.deepEqual([...preview.options.body.asset_ids],['idea1']);assert.deepEqual([...preview.options.body.source_ids],['s1']);assert.equal(preview.options.body.situation,situation.value);
  assert.ok(f.nodes().some(n=>n.textContent==='1 relevant idea found'));
- await f.click('Choose ideas myself');assert.equal(parseRoute(f.browser.location.hash).view,'knowledge');await f.click('Use selected ideas →');assert.equal(f.nodes().find(n=>n.name==='original_request').value,'Write a thoughtful essay');
+ await f.click('Choose ideas myself');assert.equal(parseRoute(f.browser.location.hash).view,'knowledge');await f.click('Use selected ideas in Create');assert.equal(f.nodes().find(n=>n.name==='original_request').value,'Write a thoughtful essay');
  await f.click('Create essay');await new Promise(resolve=>setImmediate(resolve));assert.equal(f.browser.location.hash,'#/my-work/new-work?library=l1');assert.ok(f.requests.some(r=>r.path==='/workshops/generate'));
 });
 test('Stored work shows artifact first, expandable evidence, history, compare and revision',async()=>{
@@ -112,7 +115,7 @@ test('delayed view loads cannot append controls or headings after navigation to 
   f.ctx.api=(url,options)=>url===path?new Promise(resolve=>{release=async()=>resolve(await original(url,options));}):original(url,options);
   const pending=f.ctx.navigate(view,{id:view==='material'?'s1':'o1'});await settle();assert.ok(release,`${view} ${path}`);
   await f.ctx.navigate('home');await release();await pending;
-  assert.deepEqual(f.main.children.map(n=>n.tag),['div','h1','p','div'],`${view} ${path}`);assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'What would you like to do?');assert.equal(f.main.attributes['aria-busy'],undefined);
+  assert.deepEqual(f.main.children.map(n=>n.tag),['div','h1','p','section','div'],`${view} ${path}`);assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'What would you like to do?');assert.equal(f.main.attributes['aria-busy'],undefined);
  }
 });
 test('Create navigation round-trip restores core, format and creator fields; clear selection preserves edits',async()=>{
@@ -120,7 +123,7 @@ test('Create navigation round-trip restores core, format and creator fields; cle
  const values={situation:'An intimate essay',goal:'Explain my experience',audience:'Friends',constraints:'Keep the pauses',tone_or_style:'Personal',output_format:'Email',creative_intent:'Imperfect',creator_context:'A personal memory',preserve:'My voice\nLong pause',avoid:'Jargon'};
  for(const [name,value] of Object.entries(values))f.document.querySelector(`[name="${name}"]`).value=value;
  vm.runInContext("state.selected.add('a1')",f.ctx);await f.click('Clear idea selection');assert.equal(f.document.querySelector('[name="situation"]').value,values.situation);
- await f.click('Choose ideas myself');await f.click('Use selected ideas →');
+ await f.click('Choose ideas myself');await f.click('Use this scope in Create');
  for(const [name,value] of Object.entries(values))assert.equal(f.document.querySelector(`[name="${name}"]`).value,value,name);
  assert.ok(!f.browser.location.hash.includes('intimate'));await f.ctx.navigate('settings');await f.browser.history.back();assert.equal(f.document.querySelector('[name="creative_intent"]').value,values.creative_intent);
 });
@@ -132,7 +135,7 @@ test('chosen material subset bounds picker search/browse and stays consistent on
  await f.click('Choose ideas myself');const scope=f.document.querySelector('#ke-source-scope');assert.deepEqual(scope.options.map(o=>o.value),['','s1','s2']);assert.equal(scope.value,'');
  f.document.querySelector('[name="q"]').value='useful ideas';await f.click('Find ideas');const searches=f.requests.filter(r=>r.path.startsWith('/knowledge-assets/search?'));assert.deepEqual(searches.map(r=>new URLSearchParams(r.path.split('?')[1]).get('source_id')),['s1','s2']);
  const browse=f.document.querySelector('#ke-browse');browse.open=true;await browse.ontoggle();assert.ok(!f.requests.some(r=>r.path==='/sources/s3/knowledge-units'));
- scope.value='s2';scope.onchange();vm.runInContext("state.selected.add('idea-from-s2')",f.ctx);await f.click('Use selected ideas →');
+ scope.value='s2';scope.onchange();vm.runInContext("state.selected.add('idea-from-s2')",f.ctx);await f.click('Use this scope in Create');
  const materials=f.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_'));assert.deepEqual(materials.filter(n=>n.checked).map(n=>n.value),['s1','s2']);assert.deepEqual([...f.requests.filter(r=>r.path==='/workshops/prepare').at(-1).options.body.asset_ids],['idea-from-s2']);
  materials.forEach(o=>o.checked=o.value==='s1');await materials[0].onchange();const last=f.requests.filter(r=>r.path==='/workshops/prepare').at(-1);assert.deepEqual([...last.options.body.source_ids],['s1']);assert.deepEqual([...last.options.body.asset_ids],[]);
  const refreshed=await fixture(f.browser.location.hash);refreshed.document.querySelector('[name=original_request]').value='Write an essay';await refreshed.click('Continue');assert.deepEqual(refreshed.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_')&&n.checked).map(n=>n.value),['s1']);assert.equal(refreshed.document.querySelector('[name="Library scope"]').value,'l1');
@@ -215,7 +218,7 @@ test('ambiguous natural scope requires a local choice, with no preparation/provi
 });
 
 test('knowledge question bridge preserves exact question, explicit result type and real material scope',async()=>{
- const f=await fixture('#/create'),form=f.main.querySelector('#create-brief');form.seedInteraction('What does this source teach?\nChapter or section: Focus',['s1']);
+ const f=await fixture('#/create'),form=f.main.querySelector('#create-brief');await form.seedInteraction('What does this source teach?\nChapter or section: Focus',['s1']);
  await f.click('Continue');const payload=f.requests.find(r=>r.path==='/workshops/prepare').options.body;
  assert.ok(payload.situation.startsWith('What does this source teach?\nChapter or section: Focus'));assert.equal(payload.output_type,'knowledge_answer');
  assert.deepEqual([...payload.source_ids],['s1']);assert.throws(()=>form.seedInteraction('Question',['invented']),/Choose the materials/);
@@ -300,4 +303,100 @@ test('expanding the mobile preview is local presentation and preserves every pre
  await f.click('Show fewer ideas');await f.click('Create essay');
  assert.equal(f.requests.filter(r=>r.path==='/workshops/prepare').length,1);
  assert.equal(f.requests.find(r=>r.path==='/workshops/generate').options.body.prepared_snapshot_id,'server-snapshot-reference-12345');
+});
+
+test('Home carries exact natural text to either destination without execution or URL disclosure',async()=>{
+ for(const target of ['Ask & Explore','Create something']){
+  const f=await fixture(),request='  Write an essay about practice.\nKeep my exact wording.  ';
+  const input=f.document.querySelector('[name=home_request]');input.value=request;input.oninput();await f.click(target);
+  assert.equal(f.document.querySelector(target==='Ask & Explore'?'[name=q]':'[name=original_request]').value,request);
+  assert.equal(f.requests.filter(r=>r.options).length,0);assert.ok(!f.browser.location.hash.includes('wording'));
+  assert.deepEqual(Object.keys(f.browser.history.state),['keEntry']);
+  await f.browser.history.back();assert.equal(f.document.querySelector('[name=home_request]').value,request);
+  await f.browser.history.forward();assert.equal(f.document.querySelector(target==='Ask & Explore'?'[name=q]':'[name=original_request]').value,request);
+ }
+});
+test('Home handoff protects an interpreted Create draft, Keep preserves snapshot, Replace starts natural capture',async()=>{
+ for(const choice of ['Keep current draft','Use new request']){
+  const f=await fixture('#/create');const input=f.document.querySelector('[name=original_request]');input.value='Write my existing essay';await f.click('Continue');
+  const original=vm.runInContext('interactionDraft',f.ctx);await f.ctx.navigate('home');
+  const home=f.document.querySelector('[name=home_request]');home.value='Write a new essay';home.oninput();await f.click('Create something');
+  assert.equal(vm.runInContext('interactionDraft',f.ctx),original);assert.ok(f.document.querySelector('#create-handoff'));
+  const calls=f.requests.filter(r=>r.options).length;await f.click(choice);
+  assert.equal(f.document.querySelector('[name=original_request]').value,choice==='Keep current draft'?'Write my existing essay':'Write a new essay');
+  assert.equal(f.requests.filter(r=>r.options).length,calls);
+  if(choice==='Keep current draft')assert.equal(vm.runInContext('interactionDraft.prepared',f.ctx),original.prepared);
+  else assert.ok(f.nodes().some(n=>n.textContent==='Continue'));
+ }
+});
+test('Library exploration is library-wide while source entry remains scoped; legacy picker routes work',async()=>{
+ const f=await fixture('#/library?library=l1');await f.click('Ask & Explore');assert.equal(parseRoute(f.browser.location.hash).view,'knowledge');
+ assert.equal(parseRoute(f.browser.location.hash).library,'l1');assert.deepEqual(parseRoute(f.browser.location.hash).materials,[]);
+ assert.equal(f.nav.find(n=>n.dataset.view==='library').attributes['aria-current'],'page');
+ await f.ctx.navigate('knowledge',{library:'l1',materials:['s1'],source:'s1'});assert.equal(f.document.querySelector('#ke-source-scope').value,'s1');
+ assert.equal(parseRoute('#/create/ideas?material=s1').picker,true);assert.equal(parseRoute('#/create/ideas').view,'knowledge');
+ assert.equal(f.requests.filter(r=>r.options).length,0);
+});
+test('independent exploration handoff carries exact query, scope and selections; protects existing draft',async()=>{
+ for(const existing of [false,true])for(const selected of [false,true]){
+  const f=await fixture(existing?'#/create':'#/home');if(existing){f.document.querySelector('[name=original_request]').value='Old request';await f.ctx.navigate('library');}
+  if(selected)vm.runInContext("state.selected.add('idea1')",f.ctx);
+  await f.ctx.navigate('knowledge',{library:'l1',materials:['s1'],source:'s1',selectedIds:selected?['idea1']:[]});
+  const q=f.document.querySelector('[name=q]');q.value='Write an essay using practice';q.oninput();
+  const label=selected?'Use selected ideas in Create':'Use this scope in Create';assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent===label));
+  await f.click(label);if(existing){assert.equal(vm.runInContext('interactionDraft.originalRequest',f.ctx),'Old request');await f.click('Use new request');}
+  assert.equal(f.document.querySelector('[name=original_request]').value,q.value);
+  assert.deepEqual([...vm.runInContext('interactionDraft.scope.value.sourceIds',f.ctx)],['s1']);assert.deepEqual([...vm.runInContext('interactionDraft.scope.value.assetIds',f.ctx)],selected?['idea1']:[]);
+  assert.equal(f.requests.filter(r=>r.options).length,0);
+ }
+});
+test('Create picker returns without a replacement decision and retains original request',async()=>{
+ const f=await fixture('#/create');f.document.querySelector('[name=original_request]').value='Write my original essay';await f.click('Continue');await f.click('Choose ideas myself');
+ const q=f.document.querySelector('[name=q]');q.value='Different search terms';q.oninput();await f.click('Use this scope in Create');
+ assert.equal(f.document.querySelector('[name=original_request]').value,'Write my original essay');assert.equal(f.document.querySelector('#create-handoff'),null);
+});
+test('Back and Forward restore distinct exploration queries on the same scoped route',async()=>{
+ const f=await fixture();for(const request of ['First request','Second request']){
+  const home=f.document.querySelector('[name=home_request]');home.value=request;home.oninput();await f.click('Ask & Explore');await f.ctx.navigate('home');
+ }
+ await f.browser.history.back();assert.equal(f.document.querySelector('[name=q]').value,'Second request');
+ await f.browser.history.back();await f.browser.history.back();assert.equal(f.document.querySelector('[name=q]').value,'First request');
+ await f.browser.history.forward();await f.browser.history.forward();assert.equal(f.document.querySelector('[name=q]').value,'Second request');
+ assert.equal(f.requests.filter(r=>r.options).length,0);
+});
+
+test('source-only handoff cannot silently change an existing Create scope or evidence',async()=>{
+ const f=await fixture('#/create');f.document.querySelector('[name=original_request]').value='Write an essay';await f.click('Continue');
+ const original=vm.runInContext('interactionDraft',f.ctx);await f.ctx.navigate('material',{id:'s1'});
+ await f.ctx.openCreate({request:'',library:'l1',materials:['s1'],selectedIds:[]});assert.equal(vm.runInContext('interactionDraft',f.ctx),original);
+ await f.click('Keep current draft');assert.equal(vm.runInContext('interactionDraft.prepared',f.ctx),original.prepared);
+ assert.deepEqual([...vm.runInContext('interactionDraft.scope.value.sourceIds',f.ctx)],[]);
+});
+test('Create nav resumes its own scope after visiting another library without invalidating reviewed evidence',async()=>{
+ const f=await fixture('#/create?library=l1&material=s1');f.document.querySelector('[name=original_request]').value='Write an essay';await f.click('Continue');
+ const original=vm.runInContext('interactionDraft',f.ctx);await f.ctx.navigate('library',{library:null});await f.ctx.navigate('workshop');
+ assert.equal(vm.runInContext('interactionDraft.prepared',f.ctx),original.prepared);
+ assert.deepEqual([...vm.runInContext('interactionDraft.scope.value.sourceIds',f.ctx)],['s1']);
+ assert.equal(f.requests.filter(r=>r.path==='/workshops/prepare').length,1);
+});
+
+test('unified exploration keeps optional context hidden and prompt selection local',async()=>{
+ const f=await fixture('#/library/explore',false,true);
+ assert.equal(f.nodes().filter(n=>n.tag==='textarea').length,1);
+ assert.equal(f.nodes().filter(n=>n.name==='knowledge_question').length,0);
+ assert.equal(f.document.querySelector('#explore-context').open,false);
+ assert.ok(f.nodes().some(n=>n.textContent==='Across your library'));
+ assert.ok(!f.nodes().some(n=>n.textContent?.includes('All materials across libraries')));
+ await f.click('Ask about a section');
+ assert.equal(f.document.querySelector('#explore-context').open,true);
+ assert.equal(f.document.querySelector('#ke-idea-scope').closest('label').hidden,true);
+ assert.equal(f.requests.filter(r=>r.options).length,0);
+ await f.click('Concepts');assert.equal(f.requests.filter(r=>r.options).length,0);
+ assert.ok(f.document.querySelector('[name=q]').value.length>2);
+});
+test('Home destination buttons have equal emphasis and no operational helper',async()=>{
+ const f=await fixture();const buttons=['Ask & Explore','Create something'].map(t=>f.nodes().find(n=>n.tag==='button'&&n.textContent===t));
+ assert.equal(buttons[0].className,buttons[1].className);
+ assert.ok(f.nodes().some(n=>n.textContent==='Choose what you’d like to do with your request.'));
+ assert.equal(f.requests.filter(r=>r.options).length,0);
 });

@@ -9,3 +9,16 @@
 #create-brief .preview-idea{margin:16px 0}#create-brief .preview-idea h3{font-size:16px;margin-bottom:6px}#create-brief .preview-idea details{margin:0}#create-brief .preview-idea summary{font-size:12px;color:var(--muted);font-weight:500}
 /* Only small screens bound the default idea preview; the snapshot keeps every idea. */
 #create-brief .preview-more-toggle{display:none}@media(max-width:600px){#create-brief .preview-ideas:not(.expanded)>.preview-extra{display:none}#create-brief .preview-more-toggle{display:inline-flex;justify-self:start}}
+
+/* Slice 2A: intent routing and Library exploration entry. */
+.home-intent{max-width:720px}.home-intent textarea{min-height:120px}.home-intent .actions{margin-bottom:8px}.home-intent+.home-choices{margin-top:24px}
+#create-handoff{margin-top:24px;border-color:#b0803d;max-width:720px}#create-handoff .handoff-request{white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto}
+#ke-search-form textarea{min-height:90px}#ke-ask-card textarea{min-height:90px}#ke-browse .check,#ke-search-results .check{min-height:44px}#ke-browse .check input,#ke-search-results .check input{width:20px;height:20px}
+@media(max-width:600px){.home-intent .actions{display:grid;grid-template-columns:1fr}.home-intent .actions button{width:100%}#create-handoff .actions{display:grid}#create-handoff button{width:100%}}
+
+/* Ask & Explore: one capture surface with optional prompts and context. */
+.home-intent .actions>button{flex:1}.home-intent .actions{align-items:stretch}
+#ke-search-form{gap:12px}#explore-actions{margin:0;gap:10px}#explore-actions button{min-height:44px}
+.explore-options{display:flex;flex-wrap:wrap;gap:0 24px;align-items:flex-start}.explore-options details{margin:0}.explore-options summary{font-size:13px;color:var(--muted);min-height:44px;padding:12px 0}.explore-options details[open]{flex-basis:100%}.prompt-options{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px}.prompt-options button{font-size:13px;padding:8px 12px;min-height:44px;font-weight:500}#explore-context label{margin:10px 0}
+#ke-knowledge-answer{margin-top:20px}#ke-search-results .card>button,#ke-browse .card>button{font-size:13px;min-height:44px;margin-top:8px}
+@media(max-width:600px){#explore-actions{display:grid;grid-template-columns:1fr 1fr}#explore-actions button{padding:10px 8px}.explore-options{gap:0 20px}}

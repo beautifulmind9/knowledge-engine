@@ -54,7 +54,7 @@ Chunks
 - Structured model request generation
 - Gemini free-tier integration behind a provider service
 - Structured JSON validation
-- One repair attempt for invalid model output
+- Invalid model output fails local validation; another attempt requires explicit user action
 - Asset provenance back to source and chunk
 - Persistent extraction jobs and Knowledge Assets
 - Asset retrieval by source, chunk, and type

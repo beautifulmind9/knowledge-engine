@@ -162,7 +162,7 @@ A knowledge extraction job can:
 - define the exact structured output expected from the model
 - run automatically through the current free-tier model provider
 - validate returned assets and their provenance
-- request one repair attempt for structurally invalid model output
+- reject structurally invalid model output without automatic repair; retry only through a new explicit user action
 - assign asset IDs and timestamps
 - store validated assets in the current prototype store
 - retrieve assets by source, chunk, or asset type

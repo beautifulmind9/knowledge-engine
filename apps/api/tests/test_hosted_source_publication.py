@@ -160,5 +160,6 @@ def test_source_errors_never_expose_malformed_http_diagnostics(client, published
     api.open = malformed
     response = client.post(f"/sources/{record['id']}/extract")
     assert response.status_code == 400
-    assert response.json() == {'detail': 'Hosted artifact transport failed.'}
+    assert response.json() == {'detail': 'This file could not be read. Try reading again or supply a readable file.'}
+    assert record['reading_failure'] == 'read_failed'
     assert 'sb_secret_remote' not in response.text + caplog.text

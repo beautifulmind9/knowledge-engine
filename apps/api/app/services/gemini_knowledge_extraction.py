@@ -42,7 +42,7 @@ def _validation_summary(error: ValidationError, limit: int = 8) -> str:
     return "; ".join(parts) or "unknown schema validation error"
 
 
-def validate_or_repair_result(client, model: str, request: dict, interaction):
+def validate_extraction_result(client, model: str, request: dict, interaction):
     if not interaction.output_text:
         raise RuntimeError("The AI returned no structured extraction output.")
 
@@ -53,51 +53,11 @@ def validate_or_repair_result(client, model: str, request: dict, interaction):
         return result, interaction
     except ValidationError as validation_error:
         validation_summary = _validation_summary(validation_error)
-        if os.getenv("GEMINI_ALLOW_REPAIR") != "true":
-            raise RuntimeError(
-                "AI output failed validation: "
-                f"{validation_summary}. No assets saved. "
-                "Repair calls are disabled; retry explicitly."
-            ) from validation_error
-        repair_payload = {
-            "task": "Repair the previous knowledge extraction so it passes validation.",
-            "rules": [
-                "Use only information supported by the original chunk.",
-                "Do not invent missing facts just to satisfy validation.",
-                "If an asset cannot satisfy the rules from the source, change it to a better-fitting asset type or remove it.",
-                "Every retained asset must include short source-grounded evidence and grounded keywords.",
-                "For decision_rule assets, action must be a concrete behavior or choice supported by the chunk.",
-                "Do not turn book scope, author credentials, publication details, or other source metadata into decision rules.",
-                "For process assets, steps must contain at least one source-supported step.",
-                "Return only the corrected structured result.",
-            ],
-            "validation_error": validation_summary,
-            "previous_output": interaction.output_text,
-            "source_id": request["source_id"],
-            "chunk_id": request["chunk_id"],
-            "chunk_text": request["chunk_text"],
-        }
-
-        repaired_interaction = generate_structured_interaction(
-            client=client,
-            model=model,
-            request=request,
-            payload=repair_payload,
-        )
-
-        if not repaired_interaction.output_text:
-            raise RuntimeError("The AI repair attempt returned no structured output.")
-
-        try:
-            repaired_result = KnowledgeExtractionResultSubmission.model_validate_json(
-                repaired_interaction.output_text
-            )
-        except ValidationError as repair_error:
-            raise RuntimeError(
-                "AI repair output failed validation: "
-                f"{_validation_summary(repair_error)}. No assets saved."
-            ) from repair_error
-        return repaired_result, repaired_interaction
+        raise RuntimeError(
+            "AI output failed validation: "
+            f"{validation_summary}. No assets saved. "
+            "Automatic repair is disabled; retry explicitly."
+        ) from validation_error
 
 
 def run_gemini_knowledge_extraction(job_id: str):
@@ -133,7 +93,7 @@ def run_gemini_knowledge_extraction(job_id: str):
             payload=model_input,
         )
 
-        result, final_interaction = validate_or_repair_result(
+        result, final_interaction = validate_extraction_result(
             client=client,
             model=model,
             request=request,

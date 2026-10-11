@@ -19,11 +19,15 @@ from app.persistence.artifact_paths import contained_locator, upload_locator, cl
 from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
     UnsupportedExtractionTypeError,
+    OCRRequiredError,
     extract_text_from_file,
     save_extracted_text
 )
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 from app.services.source_structure import annotate_pdf_chunks_with_outline
+
+from app.models.source_summary import SourceSummary
+from app.services.source_summary import source_summaries
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -140,6 +144,16 @@ def get_sources(library_id: str | None = None):
     }
 
 
+@router.get("/summaries", response_model=list[SourceSummary])
+def get_source_summaries(library_id: str | None = None):
+    return source_summaries(library_id=library_id)
+
+
+@router.get("/{source_id}/summary", response_model=SourceSummary)
+def get_source_summary(source_id: str):
+    return source_summaries(source_id=source_id)[0]
+
+
 @router.post("")
 def create_source(payload: SourceCreate):
     if not any(l["id"] == payload.library_id for l in libraries):
@@ -219,7 +233,12 @@ def request_source_processing(source_id: str):
 
     if not source.get("extracted_text_path"):
         extract_source_text(source_id)
-    return chunk_source_text(source_id)
+    try:
+        return chunk_source_text(source_id)
+    except Exception as error:
+        source["reading_failure"] = "read_failed"
+        persist_state()
+        raise HTTPException(400, "Source reading could not finish. Retry reading or restore the source data.") from error
 
 
 @router.post("/{source_id}/recover-structure")
@@ -276,6 +295,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     updated_fields = dict(
         file_name=file.filename, file_path=str(file_path), file_type=file_extension,
         processing_status="uploaded", extracted_text_path=None, chunks_path=None,
+        reading_failure=None, stopped_reason=None,
         structure_status=None, structure_section_count=0, structure_outline_entry_count=0,
     )
     if file_path != stable_path:
@@ -382,16 +402,16 @@ def extract_source_text(source_id: str):
                 file_type=file_type
             )
     except Exception as error:
-        source["processing_status"] = "extraction_not_supported"
+        category = "ocr_required" if isinstance(error, OCRRequiredError) else "unsupported_extraction" if isinstance(error, UnsupportedExtractionTypeError) else "read_failed"
+        source["reading_failure"] = category
+        source["processing_status"] = "extraction_not_supported" if category != "read_failed" else "extraction_failed"
         persist_state()
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(error)
-        )
+        from app.services.source_summary import MESSAGES
+        raise HTTPException(400, MESSAGES[category]) from error
 
     if not extracted_text.strip():
         source["processing_status"] = "extraction_failed"
+        source["reading_failure"] = "read_failed"
         persist_state()
         raise HTTPException(400, "No readable text found in the file.")
     extracted_text_path = save_extracted_text(
@@ -400,6 +420,7 @@ def extract_source_text(source_id: str):
     )
 
     source["extracted_text_path"] = extracted_text_path
+    source["reading_failure"] = None
     source["processing_status"] = "text_extracted"
     persist_state()
 
@@ -493,6 +514,7 @@ def chunk_source_text(source_id: str):
     )
 
     source["chunks_path"] = chunks_path
+    source["reading_failure"] = None
     source["processing_status"] = "chunked"
     if structure_summary is not None:
         source["structure_status"] = (

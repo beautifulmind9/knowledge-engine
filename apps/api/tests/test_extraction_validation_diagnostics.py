@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
 from app.services.ai_gateway import _gemini_response_schema
-from app.services.gemini_knowledge_extraction import validate_or_repair_result
+from app.services.gemini_knowledge_extraction import validate_extraction_result
 from app.services.knowledge_extraction_prompt import build_knowledge_extraction_request
 
 
@@ -27,7 +27,7 @@ def test_invalid_extraction_reports_schema_locations_without_raw_input(monkeypat
     )
 
     with pytest.raises(RuntimeError) as exc:
-        validate_or_repair_result(
+        validate_extraction_result(
             client=None,
             model="test-model",
             request={},

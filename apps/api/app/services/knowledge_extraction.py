@@ -608,17 +608,35 @@ def potential_tension(left, right):
     return opposite or bool(ln and rn and ln != rn)
 
 
+def recovery_eligibility(job, now=None):
+    """Shared by read models and mutation: the server owns the ten-minute rule."""
+    from datetime import timedelta
+    if job["status"] == "failed":
+        return True, None
+    if job["status"] != "running":
+        return False, None
+    started = datetime.fromisoformat(job.get("started_at") or job["created_at"])
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    eligible_at = started + timedelta(seconds=600)
+    return (now or utc_now()) >= eligible_at, eligible_at
+
+
 def recover_job(job_id):
-    job=get_extraction_job(job_id)
-    if job["status"] == "running":
-        started=datetime.fromisoformat(job.get("started_at") or job["created_at"])
-        if started.tzinfo is None:
-            started=started.replace(tzinfo=timezone.utc)
-        if (utc_now()-started).total_seconds() < 600:
+    job = get_extraction_job(job_id)
+    allowed, _ = recovery_eligibility(job)
+    if not allowed:
+        if job["status"] == "running":
             raise ValueError("Job is still running. Recovery requires ten minutes without completion.")
-    elif job["status"] != "failed":
         raise ValueError("Only failed or stale-running jobs can be recovered.")
-    job.update(status="pending_ai",error=None,recovered_at=utc_now().isoformat())
+    job.update(status="pending_ai", error=None, recovered_at=utc_now().isoformat())
+    # A reset resolves the old stop, never invokes AI. Other failures still matter.
+    latest = {}
+    for candidate in extraction_jobs:
+        if candidate["source_id"] == job["source_id"]:
+            latest[candidate["chunk_id"]] = candidate
+    if not any(j["status"] in {"failed", "running"} for j in latest.values()):
+        find_source(job["source_id"])["stopped_reason"] = None
     persist_state()
     return job
 

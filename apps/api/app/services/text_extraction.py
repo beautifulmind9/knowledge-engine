@@ -19,6 +19,10 @@ class UnsupportedExtractionTypeError(Exception):
     pass
 
 
+class OCRRequiredError(UnsupportedExtractionTypeError):
+    pass
+
+
 def clean_html_to_text(html_content: str) -> str:
     soup = BeautifulSoup(html_content, "html.parser")
 
@@ -46,7 +50,7 @@ def extract_text_from_pdf(file_path: str) -> str:
     extracted_text = "\n\n".join(pages)
 
     if not extracted_text.strip():
-        raise UnsupportedExtractionTypeError(
+        raise OCRRequiredError(
             "This PDF does not contain extractable text. OCR is not implemented yet."
         )
 

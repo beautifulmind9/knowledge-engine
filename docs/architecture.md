@@ -88,10 +88,14 @@ The application is designed around the zero-cost rule:
 
 - no paid fallback;
 - no automatic repair call;
-- one provider attempt per explicit request;
+- one provider attempt per accepted UI AI action (the interpret API can still orchestrate multiple attempts; see the policy below);
 - local daily Gemini cap;
-- free-tier confirmation must be explicitly enabled by the user;
+- free-tier confirmation must be explicitly enabled by the owner/admin;
 - Gemini asynchronous Batch API is not part of the production path because the current Developer API free tier does not provide Batch processing.
+
+### AI access and quota policy
+
+KE owns the server-side provider integration; ordinary users do not supply keys or need AI Studio accounts. The current hosted shared-password beta supports one trusted external acceptance tester at a time in a shared workspace, with 20 admitted attempts per Pacific day and no per-user isolation claim. See [AI access and quota policy](ai_access_and_quota_policy.md) for invitation checks, current accounting, the known `max_chunks` API contract gap, and the settled future identity/ownership and quota hierarchy. Future multi-user architecture is not implemented or authorized by that policy checkpoint.
 
 ## Storage and process ownership
 

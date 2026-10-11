@@ -16,6 +16,8 @@ The original Remaining Sprint 1–8 backlog remains the historical feature scope
 
 ## Product rules
 
+The [AI access and quota policy](ai_access_and_quota_policy.md) settles the immediate shared one-tester acceptance boundary and future identifiable-beta requirements. Ordinary users never need provider keys. The hosted allowance remains shared at 20 admitted attempts/Pacific day; future personal/global/minute limits are policy, not current enforcement. Track the documented `max_chunks > 1` API gap before broader external/multi-user beta: the accepted UI is single-attempt, but a direct interpret API request can orchestrate multiple attempts. No route or quota implementation change is authorized by this documentation checkpoint.
+
 - Development cost target: **$0**.
 - Paid API billing and automatic paid fallback: **off**.
 - Stop safely when free quota is exhausted.

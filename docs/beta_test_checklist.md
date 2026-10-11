@@ -41,6 +41,17 @@ Gemini's asynchronous Batch API is also not used because the current Gemini Deve
 
 ## Browser and external tester acceptance
 
+### Required before invitation
+
+Use the [settled one-tester AI access policy](ai_access_and_quota_policy.md#immediate-external-acceptance): one trusted tester at a time, KE-owned server credential, shared 20 admitted attempts per Pacific day, no personal-account or personal-allowance claim. Different browser sessions do not isolate data. No tester Google AI Studio account/key is required.
+
+- [ ] Owner verifies live hosted cap/configuration and billing-disabled $0-only operation.
+- [ ] Owner verifies current provider/tester eligibility and applicable provider terms for the chosen material; external terms require current verification.
+- [ ] Shared workspace contents are approved for tester access; no private owner material is unintentionally exposed.
+- [ ] Tester understands shared data/control access and owner visibility into their material/work.
+
+Broader external/multi-user beta requires closure of the [interpret API attempt-contract gap](ai_access_and_quota_policy.md#known-interpret-api-contract-gap). Genuine multi-user beta additionally requires the identity/ownership boundary in that policy; it is not authorized now.
+
 ### Internal browser evidence completed so far
 
 - [x] Narrow mobile-width pass: Workshop, Saved outputs, and Knowledge views were checked at 393×852 without blocking overflow; stacked layouts remained usable. Navigation remains horizontally scrollable and discoverability polish is deferred.

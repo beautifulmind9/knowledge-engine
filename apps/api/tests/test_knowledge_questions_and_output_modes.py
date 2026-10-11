@@ -61,16 +61,6 @@ def test_prepare_preserves_output_format(monkeypatch):
     assert prepared["brief"]["output_format"] == "LinkedIn post"
 
 
-def test_browser_forwards_format_as_field_not_retrieval_constraint():
-    repo_root = Path(__file__).resolve().parents[3]
-    javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
-        encoding="utf-8"
-    )
-
-    assert "payload.output_format = selectedFormat" in javascript
-    assert "lines.push(`${prefix}${value}`)" not in javascript
-
-
 def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handoff():
     repo_root = Path(__file__).resolve().parents[3]
     javascript = (repo_root / "apps" / "web" / "enhancements.js").read_text(
@@ -92,9 +82,9 @@ def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handof
     assert 'apiFetch("/workshops/generate"' in javascript
     assert 'output_type: "knowledge_answer"' in javascript
     assert "save: false" in javascript
-    assert 'button("Open in Workshop"' in javascript
+    assert 'button("Open in Create"' in javascript
     assert "Answers appear here using one explicit Gemini request" in javascript
-    assert 'makeElement("button", "Ask knowledge", "primary")' in javascript
+    assert 'makeElement("button", "Ask your library", "primary")' in javascript
 
 
 def test_knowledge_answer_enhancement_has_its_own_rendering_helpers():

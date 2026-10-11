@@ -1,4 +1,4 @@
-// Shared request transport. Workshop fetch decorators still enrich payloads.
+// Shared request transport. Create payloads are complete before reaching this layer.
 export const CSRF_COOKIE = '__Host-ke-beta-csrf';
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

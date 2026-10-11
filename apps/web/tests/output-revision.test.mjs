@@ -74,7 +74,7 @@ test('actual output view submits title-only FormData through revisionPayload', a
   const requests = [];
   const node = () => ({append() {}});
   const ctx = {
-    revisionPayload, heading() {}, card: node, el: node, list: node,
+    beginView:()=>()=>true,navigate:async()=>{},revisionPayload, heading() {}, card: node, el: node, list: node,
     actions: node, button: node, detail: node, submit: node,
     main: node(), message() {}, field: () => [node(), node()],
     form: callback => {submitRevision = callback; return node();},

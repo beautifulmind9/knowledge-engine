@@ -1,0 +1,43 @@
+// Hash routes keep refresh/back/forward within the existing FastAPI shell.
+const paths = {home:'home', library:'library', workshop:'create', knowledge:'create/ideas', outputs:'my-work', settings:'settings'};
+export function routeHash(route) {
+  let path = paths[route.view] || 'home';
+  if (route.view === 'material') path = 'library/material/' + encodeURIComponent(route.id);
+  if (route.view === 'work') path = 'my-work/' + encodeURIComponent(route.id);
+  const query = new URLSearchParams();
+  if (route.library) query.set('library', route.library);
+  if (route.add && route.view === 'library') query.set('add', '1');
+  if (['workshop', 'knowledge'].includes(route.view)) {
+    for (const id of route.materials || []) query.append('material', id);
+    if (route.view === 'knowledge' && route.source) query.set('source', route.source);
+  }
+  return '#/' + path + (query.size ? '?' + query : '');
+}
+export function parseRoute(hash = '') {
+  try {
+    const [path, search = ''] = hash.replace(/^#\/?/, '').split('?');
+    const query = new URLSearchParams(search);
+    let view = Object.keys(paths).find(key => paths[key] === path), id;
+    if (path.startsWith('library/material/') && path.slice(17)) { view = 'material'; id = decodeURIComponent(path.slice(17)); }
+    if (path.startsWith('my-work/') && path.slice(8)) { view = 'work'; id = decodeURIComponent(path.slice(8)); }
+    if (!view) return {view:'home'};
+    return {view, id, library:query.get('library'), add:query.get('add') === '1', materials:[...new Set(query.getAll('material'))], source:query.get('source')};
+  } catch { return {view:'home'}; }
+}
+export function createNavigation(browser, render) {
+  let lastHash;
+  function go(route, replace = false, renderView = true) {
+    const hash = routeHash(route);
+    if (browser.location.hash !== hash) browser.history[replace ? 'replaceState' : 'pushState'](null, '', hash);
+    lastHash = hash;
+    if (renderView) return render(route);
+  }
+  function restore() {
+    // Preserve the native skip-to-content link without changing the active view.
+    if (browser.location.hash === '#main' || browser.location.hash === lastHash) return;
+    return go(parseRoute(browser.location.hash), true);
+  }
+  browser.addEventListener('popstate', restore);
+  browser.addEventListener('hashchange', restore);
+  return {go, start:() => go(parseRoute(browser.location.hash), true)};
+}

@@ -15,40 +15,12 @@ const IDEA_EXAMPLES_QUESTION = "What examples support this idea?";
 
 let pendingKnowledgeQuestion = null;
 let decorating = false;
+let decorationPending = false;
 let answerRevision = 0;
 document.addEventListener("ke-scope-change", () => {
   answerRevision++;
   document.querySelector("#ke-knowledge-answer")?.remove();
 });
-
-// app.js currently builds the Workshop payload without the dynamically added
-// output_format field. Keep the enhancement layer responsible for forwarding
-// the selected format until the base Workshop form is consolidated.
-const nativeFetch = window.fetch.bind(window);
-window.fetch = async (input, init = {}) => {
-  const path = typeof input === "string" ? input : input?.url || "";
-  const isWorkshopRequest =
-    path === "/workshops/prepare" || path === "/workshops/generate";
-
-  if (isWorkshopRequest && typeof init.body === "string") {
-    try {
-      const payload = JSON.parse(init.body);
-      const selectedFormat = document
-        .querySelector('#ke-output-format-host select[name="output_format"]')
-        ?.value?.trim();
-
-      if (selectedFormat && !payload.output_format) {
-        payload.output_format = selectedFormat;
-        init = { ...init, body: JSON.stringify(payload) };
-      }
-    } catch {
-      // Leave non-JSON or malformed requests untouched; the normal request
-      // path will surface the underlying validation error.
-    }
-  }
-
-  return nativeFetch(input, init);
-};
 
 function makeElement(tag, text, className) {
   const node = document.createElement(tag);
@@ -159,7 +131,7 @@ function showKnowledgeScopePrompt(title, message, inputSelector) {
 
 function validateKnowledgeQuestionScope(question) {
   if (question === CHAPTER_QUESTION && !document.querySelector('#ke-source-scope')?.value) {
-    showKnowledgeScopePrompt("Choose one source first", "Choose a source before asking about its chapter. No Gemini request was used.", "#ke-source-scope");
+    showKnowledgeScopePrompt("Choose one material first", "Choose a material before asking about its chapter. No Gemini request was used.", "#ke-source-scope");
     return false;
   }
   if (question === CHAPTER_QUESTION && !knowledgeScopeValue("#ke-chapter-scope")) {
@@ -189,10 +161,10 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
 
   const output = data.output || {};
   card.append(
-    makeElement("h3", output.title || "Knowledge answer"),
+    makeElement("h3", output.title || "Answer from your library"),
     makeElement(
       "p",
-      `Grounded answer · ${data.knowledge_unit_count || 0} retrieved knowledge units · not saved automatically`,
+      `Grounded answer · ${data.knowledge_unit_count || 0} useful ideas · not saved automatically`,
       "muted"
     )
   );
@@ -212,7 +184,7 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
         )
       );
     }
-    card.append(detail(`Applied knowledge (${applied.length})`, appliedList));
+    card.append(detail(`Ideas and evidence used (${applied.length})`, appliedList));
   }
 
   if ((output.design_choices || []).length) {
@@ -221,7 +193,7 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
 
   card.append(
     actions(
-      button("Open in Workshop", () => openKnowledgeQuestionInWorkshop(originalQuestion, context))
+      button("Open in Create", () => openKnowledgeQuestionInWorkshop(originalQuestion, context))
     )
   );
 
@@ -233,7 +205,7 @@ async function generateKnowledgeAnswer(question, trigger) {
 
   const sourceIds = selectedKnowledgeSourceIds();
   if (!sourceIds.length) {
-    showKnowledgeScopePrompt("No sources in scope", "Add a source with interpreted knowledge before asking. No Gemini request was used.", "#ke-source-scope");
+    showKnowledgeScopePrompt("No materials in scope", "Add a prepared material before asking. No Gemini request was used.", "#ke-source-scope");
     return;
   }
   const scopedQuestion = scopedKnowledgeQuestion(scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
@@ -242,7 +214,7 @@ async function generateKnowledgeAnswer(question, trigger) {
 
   card.replaceChildren(
     makeElement("h3", "Generating grounded answer…"),
-    makeElement("p", "Using the selected Knowledge scope. This is one explicit Gemini request.", "muted")
+    makeElement("p", "Using the selected materials. This is one explicit Gemini request.", "muted")
   );
 
   if (trigger) trigger.disabled = true;
@@ -288,7 +260,7 @@ async function generateKnowledgeAnswer(question, trigger) {
   } catch (error) {
     if (ticket !== answerRevision || !card.isConnected) return;
     card.replaceChildren(
-      makeElement("h3", "Knowledge answer could not be generated"),
+      makeElement("h3", "Answer could not be generated"),
       makeElement("p", error.message || String(error), "error")
     );
   } finally {
@@ -306,10 +278,10 @@ function decorateKnowledgeView() {
   const card = makeElement("section", undefined, "card");
   card.id = "ke-ask-card";
   card.append(
-    makeElement("h3", "Ask this knowledge"),
+    makeElement("h3", "Ask your library"),
     makeElement(
       "p",
-      "Ask a grounded question about the selected source or current library. Answers appear here using one explicit Gemini request and are not saved automatically."
+      "Ask a grounded question about the selected material or current library. Answers appear here using one explicit Gemini request and are not saved automatically."
     )
   );
 
@@ -335,7 +307,7 @@ function decorateKnowledgeView() {
 
   const quickActions = makeElement("div", undefined, "actions");
   for (const question of QUICK_KNOWLEDGE_QUESTIONS) {
-    const quickButton = makeElement("button", scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
+    const quickButton = makeElement("button", scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value).replaceAll('sources','materials').replaceAll('source','material'));
     quickButton.dataset.question = question;
     quickButton.type = "button";
     quickButton.addEventListener("click", () =>
@@ -351,9 +323,9 @@ function decorateKnowledgeView() {
   askInput.name = "knowledge_question";
   askInput.required = true;
   askInput.minLength = 2;
-  askInput.placeholder = "Ask a question across the selected source or library";
+  askInput.placeholder = "Ask a question across the selected material or library";
   askLabel.append(askInput);
-  const askButton = makeElement("button", "Ask knowledge", "primary");
+  const askButton = makeElement("button", "Ask your library", "primary");
   askButton.type = "submit";
   askForm.append(askLabel, askButton);
   askForm.addEventListener("submit", event => {
@@ -365,8 +337,8 @@ function decorateKnowledgeView() {
   const refreshScope = () => {
     if (!card.isConnected) return;
     const single = !!document.querySelector('#ke-source-scope')?.value;
-    for (const node of quickActions.children) node.textContent = scopeQuestion(node.dataset.question, single);
-    card.querySelector('h3').textContent = single ? 'Ask this source' : 'Ask these sources';
+    for (const node of quickActions.children) node.textContent = scopeQuestion(node.dataset.question, single).replaceAll('sources','materials').replaceAll('source','material');
+    card.querySelector('h3').textContent = single ? 'Ask this material' : 'Ask these materials';
   };
   searchForm.addEventListener('change', refreshScope);
   for (const input of [chapterInput, ideaInput]) input.addEventListener('input', () => {
@@ -379,98 +351,26 @@ function decorateKnowledgeView() {
 
 function applyPendingKnowledgeQuestion() {
   if (!pendingKnowledgeQuestion) return;
-
-  const form = document.querySelector("#main section.card form");
-  if (!form) return;
-
-  const situation = form.elements.namedItem("situation");
-  const goal = form.elements.namedItem("goal");
-  const outputType = form.elements.namedItem("Output type");
-  const sources = form.elements.namedItem(
-    "Sources — optional; use Ctrl / Command to select several"
-  );
-
-  if (!situation || !goal || !outputType || !sources) return;
-
-  situation.value = pendingKnowledgeQuestion.question;
-  goal.value = pendingKnowledgeQuestion.question;
-  outputType.value = "knowledge_answer";
-  outputType.dispatchEvent(new Event("change", { bubbles: true }));
-
-  const selected = new Set(pendingKnowledgeQuestion.sourceIds || []);
-  if (selected.size) {
-    for (const option of sources.options) {
-      option.selected = selected.has(option.value);
-    }
-  }
-
+  const form = document.querySelector('#create-brief');
+  if (!form?.seedInteraction) return;
+  const pending = pendingKnowledgeQuestion;
   pendingKnowledgeQuestion = null;
-}
-
-function clearLegacyFormatConstraint(constraints) {
-  const prefix = "Output format: ";
-  const lines = constraints.value
-    .split("\n")
-    .filter(line => line.trim() && !line.startsWith(prefix));
-  constraints.value = lines.join("\n");
-}
-
-async function decorateWorkshopView() {
-  if (document.querySelector("#ke-output-format-host")) {
-    applyPendingKnowledgeQuestion();
-    return;
-  }
-
-  const form = document.querySelector("#main section.card form");
-  if (!form) return;
-
-  const outputType = form.elements.namedItem("Output type");
-  const constraints = form.elements.namedItem("constraints");
-  if (!outputType || !constraints) return;
-
-  const response = await apiFetch("/outputs/modes");
-  if (!response.ok) return;
-  const data = await response.json();
-  const modes = new Map(data.items.map(mode => [mode.id, mode]));
-
-  const host = document.createElement("div");
-  host.id = "ke-output-format-host";
-  outputType.closest("label")?.after(host);
-
-  const renderFormat = () => {
-    host.replaceChildren();
-    clearLegacyFormatConstraint(constraints);
-
-    const mode = modes.get(outputType.value);
-    const formats = mode?.formats || [];
-    if (!formats.length) return;
-
-    const label = makeElement("label", "Format");
-    const select = document.createElement("select");
-    select.name = "output_format";
-    select.append(new Option("Choose a format", ""));
-    for (const format of formats) select.append(new Option(format, format));
-    label.append(select);
-    host.append(label);
-  };
-
-  outputType.addEventListener("change", renderFormat);
-  renderFormat();
-  applyPendingKnowledgeQuestion();
+  form.seedInteraction(pending.question, pending.sourceIds || []);
 }
 
 async function decorateCurrentView() {
-  if (decorating) return;
+  if (decorating) { decorationPending = true; return; }
   decorating = true;
   try {
     const title = currentViewTitle();
     if (title === "Ideas you can put to work.") {
       decorateKnowledgeView();
     } else if (title === "What are you working on?") {
-      await decorateWorkshopView();
+      applyPendingKnowledgeQuestion();
     }
   } finally {
     decorating = false;
+    if (decorationPending) { decorationPending = false; queueMicrotask(decorateCurrentView); }
   }
 }
 

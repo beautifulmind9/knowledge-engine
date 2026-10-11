@@ -6,6 +6,14 @@
 
 Short form: **Knowledge in. Useful outputs out.**
 
+## Interaction doctrine
+
+> Capture naturally. Structure invisibly. Confirm visually. Knowledge Engine accepts a person's request or source material in a natural form, organizes what it can responsibly infer, and exposes consequential interpretations for correction before execution. The system carries the structure; the user carries the intent.
+
+The contract is **natural capture → interpreted draft → visual confirmation → targeted clarification where necessary → existing rigorous execution**. Confirmation is draft state, not a mandatory wizard. Ask only about unresolved material uncertainty; preserve explicit direction and corrections; show consequential defaults; reveal complexity progressively and configure by exception. Backend rigor and frontend simplicity reinforce each other. The normal interface should express intent and useful results rather than internal schema terminology. Source knowledge expands choices; it does not override creator judgement. Never confuse precedent with prescription.
+
+See [Interface Strategy](interface_strategy.md) for the governing rules and the bounded Create slice. The full interaction redesign is not yet implemented.
+
 ## What the product is for
 
 People often read books, reports, articles, notes, and research but struggle to retrieve the right idea later and apply it to a real task. Knowledge Engine is designed to reduce that gap between consuming information and using it.
@@ -134,8 +142,12 @@ A live strict single-chunk control on chunk 007 returned five valid assets, matc
 
 This closes the real-source extraction/audit acceptance area, but it does not close the overall v1 beta. Real-output usefulness across multiple modes, a meaningful real two-source comparison, browser/mobile acceptance, and an external tester are still required.
 
-## Long-term direction
+## Long-term learning and application vision
 
-The product can expand from a private local workspace into a broader Knowledge Application Engine: richer library organization, stronger semantic retrieval and relationship modeling, more output types, and eventually multi-user/private-account infrastructure if that becomes a product requirement.
+**Read → understand → interrogate → compare → apply → specify → build/test → reflect**
 
-The central principle should remain the same: source material is converted into traceable reusable knowledge first, and outputs are assembled from that knowledge rather than treating every task as a fresh unstructured chat.
+This learning and application environment grows from the existing validated knowledge architecture: traceable knowledge assets, consolidated units, source evidence, retrieval, grounded application and saved work. It does not replace Knowledge Engine with generic chat or treat every task as a fresh unstructured conversation.
+
+The sequence preserves future space for deeper reading, interrogation, comparison, application, specification, practical verification and reflection. It is not an expansion of this MVP. The current implementation slice is Create: a natural request, an editable understanding, selective clarification, relevant knowledge preparation and a grounded saved output.
+
+Richer organization, retrieval and future account infrastructure remain possible when justified by product needs. Source-backed claims must remain distinct from generated choices, and creator judgement remains authoritative.

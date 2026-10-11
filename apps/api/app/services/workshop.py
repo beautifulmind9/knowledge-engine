@@ -386,12 +386,39 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
         "knowledge_units": groups,
         "knowledge_by_type": dict(sorted(by_type.items())),
         "synthesis_context": synthesis_context(groups),
+        "source_coverage": source_coverage(groups),
         "message": (
             "Workshop preparation complete. Relevant consolidated knowledge is ready "
             "for an output-generation step."
         ),
     }
 
+
+
+def source_coverage(groups):
+    """Preparation progress, distinct from lexical relevance or adequacy."""
+    from app.db.mock_data import sources
+    from app.services.source_interpretation import get_source_interpretation_summary
+    counts = defaultdict(int)
+    for group in groups:
+        for source_id in set(group["source_ids"]):
+            counts[source_id] += 1
+    coverage = []
+    for source in sources:
+        if source["id"] not in counts:
+            continue
+        item = {"source_id": source["id"], "title": source["title"],
+                "relevant_idea_count": counts[source["id"]],
+                "prepared_sections": None, "total_sections": None}
+        if source.get("chunks_path"):
+            try:
+                progress = get_source_interpretation_summary(source["id"])
+                item.update(prepared_sections=progress["completed_chunks"], total_sections=progress["total_chunks"])
+            except (ValueError, FileNotFoundError, OSError):
+                # Unknown coverage must never be presented as complete.
+                pass
+        coverage.append(item)
+    return coverage
 
 
 def synthesis_context(groups):

@@ -22,4 +22,6 @@ def read_workshop_capabilities():
 
 @router.post("/prepare")
 def prepare_workshop_knowledge(payload: WorkshopPrepareRequest):
-    return prepare_workshop(payload)
+    from app.services.prepared_evidence import remember_preparation
+    prepared = prepare_workshop(payload)
+    return remember_preparation(payload, prepared) if payload.interaction_revision is not None else prepared

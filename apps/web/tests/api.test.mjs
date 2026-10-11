@@ -82,25 +82,9 @@ test('unauthenticated fetch sends the browser to the login page', async () => {
   finally {globalThis.fetch=originalFetch;globalThis.location=originalLocation;}
 });
 
-test('centralized transport preserves both Workshop enrichment wrappers', async () => {
-  const calls=[];
-  const fields = {'#ke-output-format-host select[name="output_format"]':'Email', '[name="creative_intent"]':'Personal', '[name="creator_context"]':'Fixture', '[name="preserve"]':'Warmth', '[name="avoid"]':'Jargon'};
-  const context={URL,Headers,FormData,console,location:{origin},document:{cookie, querySelector:selector=>selector in fields?{value:fields[selector]}:null},
-    fetch:async(path,options)=>{calls.push([path,options]);return {ok:true,status:200,json:async()=>({ok:true})};}};
-  context.window=context;
-  vm.createContext(context);
-  const apiSource=readFileSync(new URL('../api.js',import.meta.url),'utf8').replaceAll('export ', '');
-  vm.runInContext(apiSource,context);
-  const enhancements=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
-  vm.runInContext(enhancements.slice(enhancements.indexOf('const nativeFetch'),enhancements.indexOf('function makeElement')),context);
-  const creator=readFileSync(new URL('../creator-direction.js',import.meta.url),'utf8').replaceAll('export ', '');
-  vm.runInContext(creator,context);
-  await context.api('/workshops/generate',{method:'POST',body:{situation:'Fixture',goal:'Fixture'}});
-  const body=JSON.parse(calls[0][1].body);
-  assert.equal(body.output_format,'Email');
-  assert.equal(body.creative_intent,'Personal');
-  assert.deepEqual(body.preserve,['Warmth']);
-  assert.equal(calls[0][1].headers.get('X-CSRF-Token'),'session-bound-token');
+test('transport does not reconstruct Workshop payloads from the DOM', async () => {
+  const sources=['enhancements.js','creator-direction.js'].map(name=>readFileSync(new URL('../'+name,import.meta.url),'utf8'));
+  for(const source of sources)assert.doesNotMatch(source,/window\.fetch\s*=/);
 });
 
 test('every application fetch entrypoint uses the shared CSRF transport', () => {

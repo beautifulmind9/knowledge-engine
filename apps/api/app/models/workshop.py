@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class WorkshopPrepareRequest(BaseModel):
+    interaction_revision: int | None = Field(default=None, ge=0)
     situation: str = Field(min_length=2)
     goal: str = Field(min_length=2)
     audience: str | None = None

@@ -63,7 +63,7 @@ const groups=Array.from({length:25},(_,i)=>({canonical_asset:{id:`a${i}`,title:`
 async function viewFixture(){
  const main=new Element('main'),requests=[];
  const el=(tag,text)=>new Element(tag,text);
- const ctx={PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
+ const ctx={beginView:()=>()=>true,createMaterials:null,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
  main,state:{source:null,library:'lib1',selected:new Set()},el,
  heading(){},sourceItems:async()=>[{id:'s1',title:'First source'}],message(){},navigate(){},
  document:{dispatchEvent(){}},
@@ -89,7 +89,7 @@ test('browse loads on demand, pages by ten, filters, preserves evidence and sele
  assert.equal(f.nodes().filter(n=>n.textContent==='Evidence & provenance').length,10);
  await f.nodes().find(n=>n.textContent==='Show more').click();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,20);
- const type=f.nodes().find(n=>n.textContent==='Knowledge type').children[0];type.value='principle';type.onchange();
+ const type=f.nodes().find(n=>n.textContent==='Idea type').children[0];type.value='principle';type.onchange();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,10);
  const checkbox=f.nodes().find(n=>n.type==='checkbox');checkbox.checked=true;checkbox.onchange();assert.ok(f.ctx.state.selected.has(checkbox.name));
  const chapter=f.nodes().find(n=>n.textContent==='Chapter / section').children[0];chapter.value='Chapter 1';chapter.onchange();

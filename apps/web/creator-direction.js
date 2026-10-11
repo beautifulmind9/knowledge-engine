@@ -1,3 +1,4 @@
+import {restoreCreateFields} from './create-draft.js';
 export function splitDirectionLines(value = "") {
   return value
     .split("\n")
@@ -62,7 +63,7 @@ export function decorateCreatorDirection(root = document) {
   const note = document.createElement("p");
   note.className = "muted";
   note.textContent =
-    "Use this when something about your intent, voice, visual language or existing work should shape the result. Leave it blank when it is not relevant; Workshop should not invent a style for you.";
+    "Use this when something about your intent, voice, visual language or existing work should shape the result. Leave it blank when it is not relevant; Create should not invent a style for you.";
 
   details.append(
     summary,
@@ -78,49 +79,18 @@ export function decorateCreatorDirection(root = document) {
       "e.g. this is a personal birthday memory, not branded content"
     ),
     makeField(
-      "What should Workshop preserve? — one per line",
+      "What should Create preserve? — one per line",
       "preserve",
       "e.g. handheld movement\nlong pause before the final line"
     ),
     makeField(
-      "What should Workshop avoid? — one per line",
+      "What should Create avoid? — one per line",
       "avoid",
       "e.g. overly polished language\ngeneric cinematic transitions"
     )
   );
 
   tone.closest("label")?.after(details);
+  restoreCreateFields(form, ["creative_intent", "creator_context", "preserve", "avoid"]);
   return true;
-}
-
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  const nativeFetch = window.fetch.bind(window);
-  window.fetch = async (input, init = {}) => {
-    const path = typeof input === "string" ? input : input?.url || "";
-    const isWorkshopRequest =
-      path === "/workshops/prepare" || path === "/workshops/generate";
-
-    if (isWorkshopRequest && typeof init.body === "string") {
-      try {
-        const payload = JSON.parse(init.body);
-        const direction = creatorDirectionFromRoot(document);
-        init = {
-          ...init,
-          body: JSON.stringify(mergeCreatorDirection(payload, direction)),
-        };
-      } catch {
-        // Keep the original request intact; normal request validation will
-        // surface malformed JSON or another underlying error.
-      }
-    }
-
-    return nativeFetch(input, init);
-  };
-
-  const decorate = () => queueMicrotask(() => decorateCreatorDirection(document));
-  const main = document.querySelector("#main");
-  if (main) {
-    new MutationObserver(decorate).observe(main, { childList: true, subtree: true });
-    decorate();
-  }
 }

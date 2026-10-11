@@ -93,6 +93,9 @@ def build_authorship_guidance(payload: WorkshopGenerateRequest) -> str:
 
 
 def generate_workshop_output(payload: WorkshopGenerateRequest, prepared=None, revision=None) -> dict:
+    if payload.interaction_revision is not None or payload.prepared_snapshot_id is not None:
+        from app.services.prepared_evidence import resolve_preparation
+        prepared = resolve_preparation(payload)
     prepared = prepared or prepare_workshop(payload)
     prepared["brief"].update(
         {

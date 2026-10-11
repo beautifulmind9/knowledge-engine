@@ -34,6 +34,16 @@ Saved Output
 Revision history / comparison / export
 ```
 
+## Interaction boundary
+
+Create uses a browser-owned `InteractionDraft` in `apps/web/interaction-draft.js`. It retains the original request, versioned interpreted values, provenance (`explicit`, `inferred`, `suggested`, `user-corrected`), resolution, clarification, confirmation snapshots and prepared-evidence identity. It does not replace Workshop, KnowledgeAsset or saved-output domain models.
+
+One `workshopRequest` adapter maps this presentation state into existing prepare/generate/manual-save contracts. It preserves the complete original request in the stored situation, carries reviewed corrections with explicit precedence, and resolves scope against application data. Creator direction and output format are no longer reconstructed by independent fetch decorators. Unknown IDs and unresolved material scope are blocked before execution, with backend validation remaining authoritative.
+
+Interpretation in this slice is deterministic and local. Request edits, navigation and corrections cause no provider attempts. Continue prepares knowledge without Gemini; explicit Create uses the exact server-owned prepared snapshot and the existing one-attempt generation pipeline. Revisions and request identities invalidate stale evidence and suppress late UI updates. Unsaved state is in memory within the current tab, not durable storage. Create supplies an opaque prepared-snapshot reference and InteractionDraft revision. The server binds that reference to the full preparation request, deep-copies the evidence, and rejects mismatched or missing references before provider IO; it never re-retrieves for an InteractionDraft generation. The bounded single-process cache expires after 30 minutes and is cleared on restart; expiry/eviction requires an explicit Update knowledge action. Existing API clients without an interaction revision retain their original retrieval behavior. Source preparation counts come from completed extraction jobs against actual source sections, separate from retrieval relevance. Committed local edits prepare automatically; keystrokes only invalidate evidence.
+
+The longer-term **read → understand → interrogate → compare → apply → specify → build/test → reflect** vision grows around this validated knowledge boundary. No agents, generic chat replacement, semantic graph or learning-environment expansion is introduced in this slice.
+
 ## Knowledge model
 
 A Source is broken into Chunks. Each chunk can produce zero or more Knowledge Assets. Every active Knowledge Asset retains provenance to its source and chunk plus evidence, keywords, confidence, and type-specific fields.

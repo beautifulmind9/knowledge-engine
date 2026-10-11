@@ -4,6 +4,7 @@ from app.models.workshop import WorkshopPrepareRequest
 
 
 class WorkshopGenerateRequest(WorkshopPrepareRequest):
+    prepared_snapshot_id: str | None = Field(default=None, min_length=20, max_length=100)
     tone_or_style: str | None = None
     save: bool = True
 

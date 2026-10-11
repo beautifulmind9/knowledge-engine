@@ -24,7 +24,11 @@ def list_outputs(output_type:str|None=None, source_id:str|None=None, created_aft
 
 @router.post("")
 def import_output(payload:ManualOutputRequest):
-    prepared=prepare_workshop(payload.brief)
+    if payload.brief.interaction_revision is not None or payload.brief.prepared_snapshot_id is not None:
+        from app.services.prepared_evidence import resolve_preparation
+        prepared = resolve_preparation(payload.brief)
+    else:
+        prepared=prepare_workshop(payload.brief)
     if payload.output.output_type != payload.brief.output_type:
         raise ValueError("Output type must match the brief.")
     return save_output({"output":payload.output.model_dump(mode="json"), "brief":prepared["brief"],

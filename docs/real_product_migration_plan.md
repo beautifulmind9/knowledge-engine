@@ -1,3 +1,5 @@
+> Historical migration plan: the active application now uses FastAPI and `apps/web`; Streamlit is archived. References below to the “current Streamlit app” describe the earlier planning baseline. Current interface decisions live in [Interface Strategy](interface_strategy.md).
+
 # Real Product Migration Plan
 
 ## Purpose

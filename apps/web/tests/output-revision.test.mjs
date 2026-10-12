@@ -70,13 +70,13 @@ test('actual output view submits title-only FormData through revisionPayload', a
   const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   const start = source.indexOf('async function outputView(');
   const end = source.indexOf('\nasync function settingsView(', start);
-  let submitRevision;
+  let submitRevision;const fields={};const buttons=[];
   const requests = [];
   const node = () => ({append() {}});
   const ctx = {
     beginView:()=>()=>true,navigate:async()=>{},revisionPayload, heading() {}, card: node, el: node, list: node,
-    actions: node, button: node, detail: node, submit: node,
-    main: node(), message() {}, field: () => [node(), node()],
+    actions: node, button: node, detail: node, submit: text => {const b={textContent:text};buttons.push(b);return b;},
+    main: node(), message() {}, field: (_label,name) => {const input={};fields[name]=input;return [node(),input];},
     form: callback => {submitRevision = callback; return node();},
     api: async (url, options) => {
       if (options) {requests.push({url, body: options.body}); return {...parent, id: 'v2', version: 2};}
@@ -88,7 +88,14 @@ test('actual output view submits title-only FormData through revisionPayload', a
   vm.createContext(ctx);
   vm.runInContext(source.slice(start, end), ctx);
   await ctx.outputView('v1');
+  assert.equal(buttons[0].textContent,'Save manual edits');
+  assert.match(source.slice(start,end),/No AI used/);
+  assert.match(source.slice(start,end),/This sends one explicit AI revision request/);
+  fields.manual.checked=false;fields.manual.onchange();assert.equal(buttons[0].textContent,'Revise with AI');
+  fields.manual.checked=true;fields.manual.onchange();assert.equal(buttons[0].textContent,'Save manual edits');
   await submitRevision(formData());
   assert.equal(requests[0].url, '/outputs/v1/revise');
   assert.deepEqual(requests[0].body, revisionPayload(formData(), parent));
+  await submitRevision(formData({manual:''}));
+  assert.equal(requests[1].url,'/outputs/v1/revise');assert.deepEqual(requests[1].body,{instruction:'Change title'});
 });

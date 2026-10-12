@@ -80,7 +80,7 @@ test('Source detail uses knowledge first, keeps evidence readable, and recovery 
 });
 test('My work opens stored work and Settings retains usage and backup controls',async()=>{
  const f=await fixture();await f.ctx.savedView();await f.click('Open work');assert.equal(f.browser.location.hash,'#/my-work/o1');
- await f.ctx.settingsView();assert.ok(f.nodes().some(n=>n.textContent==='AI usage'));assert.ok(f.nodes().some(n=>n.href==='/data/export'));assert.ok(f.requests.some(r=>r.path==='/data/integrity'));
+ await f.ctx.settingsView();const text=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');assert.ok(text.includes('Shared beta allowance'));assert.ok(text.includes('AI actions used today: 0 of 10'));assert.ok(text.includes('AI actions remaining today: 10'));assert.ok(text.includes('shared across the workspace'));assert.ok(text.includes('do not use AI actions'));assert.ok(text.includes('This workspace is configured to stay within the approved $0 beta policy.'));assert.ok(!/billing is verified|Gemini key|free-project confirmation/i.test(text));assert.ok(f.nodes().some(n=>n.href==='/data/export'));assert.ok(f.requests.some(r=>r.path==='/data/integrity'));
 });
 test('Create previews retrieved ideas and sends explicit selections; picker preserves the brief',async()=>{
  const f=await fixture();vm.runInContext("state.selected.add('idea1');state.source='s1';state.library='l1'",f.ctx);
@@ -92,9 +92,10 @@ test('Create previews retrieved ideas and sends explicit selections; picker pres
 });
 test('Stored work shows artifact first, expandable evidence, history, compare and revision',async()=>{
  const f=await fixture();const requests=[];
- f.ctx.api=async(path,options)=>{requests.push({path,options});if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[{id:'o1',version:1},{id:'o2',version:2}]};if(path.includes('/compare/'))return {changed_fields:['content'],content_diff:'An edit'};if(path.endsWith('/revise'))return {id:'o2',version:2};return {id:'o1',title:'My essay',content:'The artifact',output_type:'writing',version:1,provider:'manual',applied_knowledge:[],design_choices:[]};};
+ f.ctx.api=async(path,options)=>{requests.push({path,options});if(path==='/sources')return {items:[{id:'source-secret',title:'Facilitator notes'}]};if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[{id:'o1',version:1},{id:'o2',version:2}]};if(path.includes('/compare/'))return {changed_fields:['content'],content_diff:'An edit'};if(path.endsWith('/revise'))return {id:'o2',version:2};return {id:'o1',title:'My essay',content:'The artifact',output_type:'writing',version:1,provider:'manual',applied_knowledge:[{asset_id:'asset-secret',usage_note:'Used to guide the exercise.'},{asset_id:'asset-without-title',usage_note:'A second grounded reference.'}],knowledge_snapshot:[{canonical_asset:{id:'asset-secret',title:'Practice breaks'},evidence_trail:[{source_id:'source-secret',chunk_id:'chunk-secret',chapter_or_section:'Workshop 2',evidence:'Leave a pause after each exercise.'}]}],design_choices:[]};};
  f.ctx.revisionPayload=()=>({instruction:'Revise'});await f.ctx.outputView('o1');
  const article=f.nodes().find(n=>n.tag==='article');assert.equal(article.textContent,'The artifact');const evidence=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Ideas and evidence used');assert.ok(f.main.children.indexOf(article)<f.main.children.indexOf(evidence));assert.ok(!evidence.open);
+ const visibleText=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');assert.ok(visibleText.includes('Practice breaks'));assert.ok(visibleText.includes('Knowledge used'));assert.ok(visibleText.includes('Facilitator notes · Workshop 2'));assert.ok(visibleText.includes('Leave a pause after each exercise.'));assert.ok(!/asset-secret|asset-without-title|source-secret|chunk-secret/.test(visibleText));
  assert.ok(f.nodes().some(n=>n.href==='/outputs/o1/export'));await f.click('Compare v1 → v2');assert.ok(requests.some(r=>r.path==='/outputs/o1/compare/o2'));await f.click('Open version 2');assert.ok(requests.some(r=>r.path==='/outputs/o2'));
  const form=f.nodes().find(n=>n.tag==='form');await form.onsubmit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));assert.ok(requests.some(r=>r.path==='/outputs/o2/revise'&&r.options.method==='POST'));
 });
@@ -329,7 +330,8 @@ test('detailed Create confirms concise intent and evidence, hides optional schem
  assert.equal(input.value,text);assert.equal(visiblyShown(input),false);
  assert.equal(shown.filter(n=>n.textContent==='Write an essay.').length,1);
  assert.ok(shown.some(n=>n.textContent==='Search scope · Across your library'));
- assert.ok(shown.some(n=>n.textContent?.includes('A book · 1 of 3 sections ready · Partial coverage')));
+ assert.ok(shown.some(n=>n.textContent?.includes('A book · 1 of 3 parts ready · Partial coverage')));
+ assert.ok(!shown.some(n=>/sections ready|Section coverage unavailable/.test(n.textContent||'')));
  assert.ok(shown.some(n=>n.textContent==='1 relevant idea found'));
  assert.ok(!shown.some(n=>['Task','Goal','Audience','Tone / style','Context','Structured output result'].includes(n.textContent)));
  assert.ok(!shown.some(n=>/Gemini|JSON|manual import|Ctrl|Command|All materials/.test(n.textContent||'')));

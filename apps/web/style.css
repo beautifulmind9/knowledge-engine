@@ -22,3 +22,6 @@
 .explore-options{display:flex;flex-wrap:wrap;gap:0 24px;align-items:flex-start}.explore-options details{margin:0}.explore-options summary{font-size:13px;color:var(--muted);min-height:44px;padding:12px 0}.explore-options details[open]{flex-basis:100%}.prompt-options{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px}.prompt-options button{font-size:13px;padding:8px 12px;min-height:44px;font-weight:500}#explore-context label{margin:10px 0}
 #ke-knowledge-answer{margin-top:20px}#ke-search-results .card>button,#ke-browse .card>button{font-size:13px;min-height:44px;margin-top:8px}
 @media(max-width:600px){#explore-actions{display:grid;grid-template-columns:1fr 1fr}#explore-actions button{padding:10px 8px}.explore-options{gap:0 20px}}
+
+/* Material-first capture: compact confirmation without filename overflow. */
+#material-add{max-width:720px}#material-add>label{margin:12px 0 22px}#material-confirmation>label{margin:16px 0}#material-confirmation .file-facts{overflow-wrap:anywhere}#material-confirmation details{margin:8px 0}#material-confirmation details label{margin:12px 0}#material-add input{min-width:0;max-width:100%}#material-confirmation .actions button{min-height:44px}

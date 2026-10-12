@@ -27,7 +27,7 @@ from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 from app.services.source_structure import annotate_pdf_chunks_with_outline
 
 from app.models.source_summary import SourceSummary
-from app.services.source_summary import source_summaries
+from app.services.source_summary import source_summaries, source_file_replacement_allowed
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -271,7 +271,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
             detail="Source not found"
         )
 
-    if any(j["source_id"] == source_id for j in extraction_jobs):
+    if not source_file_replacement_allowed(source_id):
         raise HTTPException(409, "This source already has interpretation history. Add a new source for a replacement file.")
     file_extension = get_file_extension(file.filename or "")
 

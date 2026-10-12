@@ -31,6 +31,7 @@ def test_added_unattached_and_uploaded(client):
     s = client.post('/sources', json={'library_id':lib['id'], 'title':'Notes'}).json()
     facts = summary(client, s['id'])
     assert (facts['readiness'], facts['file_state'], facts['next_action']) == ('added','unattached','attach_file')
+    assert facts['file_replacement_allowed'] is True
     assert facts['total_parts']==0 and facts['completed_parts']==0 and facts['attention_category']=='missing_file'
     client.post(f"/sources/{s['id']}/upload", files={'file':('notes.txt',b'Practice')})
     facts = summary(client, s['id'])
@@ -64,6 +65,7 @@ def test_partial_failure_preserves_grounded_knowledge_and_retrieval(client, sour
     source_interpretation.interpret_source(s['id'],max_chunks=1)
     facts=summary(client,s['id'])
     assert facts['readiness']=='partly_ready' and facts['has_usable_knowledge']
+    assert facts['file_replacement_allowed'] is False
     assert facts['attention_category']=='build_stopped' and 'private' not in str(facts)
     assert db.knowledge_assets==before
     assert client.get(f"/sources/{s['id']}/knowledge-units").json()['items']

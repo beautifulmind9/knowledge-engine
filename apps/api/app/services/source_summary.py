@@ -10,13 +10,18 @@ from app.services.text_chunking import load_chunks
 
 MESSAGES = {
     "missing_file": "Attach a file to this material.",
-    "artifact_unavailable": "Source data is unavailable. Restore it before continuing preparation.",
+    "artifact_unavailable": "Source data is unavailable. Restore the source data to continue.",
     "unsupported_extraction": "This file cannot be read in its current format.",
     "read_failed": "This file could not be read. Try reading again or supply a readable file.",
     "ocr_required": "This PDF has no extractable text. OCR is not supported; supply a PDF with selectable text or another supported file.",
     "build_stopped": "The previous knowledge-building attempt stopped before completion.",
     "build_unconfirmed": "Previous build has not reported completion.",
 }
+
+
+def source_file_replacement_allowed(source_id: str) -> bool:
+    """A source file can be replaced only before interpretation history exists."""
+    return not any(job.get("source_id") == source_id for job in extraction_jobs)
 
 
 def source_summaries(library_id=None, source_id=None, now=None):
@@ -120,5 +125,6 @@ def _summarize(source, jobs, usable, now):
         coverage_text=f"{completed} of {total} parts ready" if total else None,
         has_usable_knowledge=usable, operation="build_unconfirmed" if running else "idle",
         attention_category=attention, attention_message=MESSAGES.get(attention), file_state=file_state,
+        file_replacement_allowed=source_file_replacement_allowed(source["id"]),
         read_state=read_state, next_action=action, recovery=recovery,
     )

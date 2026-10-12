@@ -79,8 +79,10 @@ def test_replacement_removes_prior_artifacts_before_interpretation(client, sourc
     previous = deepcopy(stored(record))
     old_paths = [Path(previous[key]) for key in ("file_path", "extracted_text_path", "chunks_path")]
     assert all(path.exists() for path in old_paths)
+    assert client.get(f"/sources/{record['id']}/summary").json()["file_replacement_allowed"] is True
     filename = "replacement.md" if same_extension else "replacement.txt"
     assert upload(client, record, b"replacement", filename).status_code == 200
+    assert client.get(f"/sources/{record['id']}/summary").json()["file_replacement_allowed"] is True
     current = stored(record)
     path = Path(current["file_path"])
     assert path.read_bytes() == b"replacement"
@@ -91,6 +93,9 @@ def test_replacement_removes_prior_artifacts_before_interpretation(client, sourc
 
 def test_interpretation_history_blocks_replacement(client, source, knowledge):
     record, _ = source
+    facts = client.get(f"/sources/{record['id']}/summary").json()
+    assert facts["has_usable_knowledge"] is True
+    assert facts["file_replacement_allowed"] is False
     before = deepcopy(stored(record))
     path = Path(before["file_path"])
     original = path.read_bytes()

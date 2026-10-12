@@ -58,23 +58,30 @@ test('Home actions route to Library, Create and My work; shell has task navigati
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.match(html,/data-view="home"/);assert.match(html,/>Library<.*>Create<.*>My work</s);assert.match(html,/>Settings</);assert.doesNotMatch(html,/Local personal beta|<aside|>Knowledge<|>Workshop<|Saved outputs|Data &amp; usage|>Source</);
 });
-test('Library opens material; preparation and recovery keep existing endpoints and partial state',async()=>{
- const f=await fixture();await f.ctx.libraryView();await f.click('Open material');await f.click('Read source');
- assert.ok(f.requests.some(r=>r.path==='/sources/s1/process'&&r.options.method==='POST'));
- assert.equal(f.main.querySelector('.kicker').textContent,'Partly ready');
- assert.ok(f.nodes().some(n=>n.textContent==='1 of 3 parts ready'));
- assert.ok(f.nodes().some(n=>n.textContent==='An idea: Useful insight'));
- const advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced details');assert.ok(advanced);assert.ok(!advanced.open);
- advanced.open=true;await advanced.ontoggle();assert.ok(all(advanced).some(n=>n.textContent==='Manual extraction or intentional reprocessing'));
- await f.click('Continue building');assert.ok(f.requests.some(r=>r.path==='/sources/s1/interpret?max_chunks=1'&&r.options.method==='POST'));
- const recoveryAdvanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced details');recoveryAdvanced.open=true;await recoveryAdvanced.ontoggle();await f.click('Recover job');assert.ok(f.requests.some(r=>r.path==='/knowledge-extractions/j1/recover'&&r.options.method==='POST'));
- f.audit.interpretation.completed_chunks=3;await f.ctx.sourceView('s1');assert.equal(f.main.querySelector('.kicker').textContent,'Ready');assert.ok(!f.nodes().some(n=>n.textContent==='Continue building'));
+test('Source detail uses knowledge first, keeps evidence readable, and recovery outside diagnostics',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+ f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({source_id:'s1',readiness:'partly_ready',completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:'build_stopped',attention_message:'The previous knowledge-building attempt stopped before completion.',file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'continue_building',recovery:[{job_id:'j1',category:'failed_build',allowed:true}]}):original(path,options);
+ await f.ctx.sourceView('s1');
+ assert.equal(f.main.querySelector('h1').textContent,'A book');
+ assert.ok(f.nodes().some(n=>n.textContent==='12 of 20 parts ready'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Needs attention: The previous knowledge-building attempt stopped before completion.'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Explore ideas'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));
+ const evidence=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Source & evidence');assert.ok(evidence&&!evidence.open);
+ let advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');assert.ok(advanced&&!advanced.open);
+ assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Resolve build issue'));
+ assert.ok(!f.requests.some(r=>r.path.endsWith('/audit')||r.path.endsWith('/chunks')));
+ const ordinaryText=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');
+ assert.ok(!/private-source-id|private-chunk-id|private-asset-id/.test(ordinaryText));
+ await f.click('Resolve build issue');assert.ok(f.requests.some(r=>r.path==='/knowledge-extractions/j1/recover'&&r.options.method==='POST'));
+ assert.ok(!f.requests.some(r=>r.path.includes('/interpret')));
+ advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');advanced.open=true;await advanced.ontoggle();assert.ok(all(advanced).some(n=>n.textContent==='Manual knowledge import'));
 });
 test('My work opens stored work and Settings retains usage and backup controls',async()=>{
  const f=await fixture();await f.ctx.savedView();await f.click('Open work');assert.equal(f.browser.location.hash,'#/my-work/o1');
  await f.ctx.settingsView();assert.ok(f.nodes().some(n=>n.textContent==='AI usage'));assert.ok(f.nodes().some(n=>n.href==='/data/export'));assert.ok(f.requests.some(r=>r.path==='/data/integrity'));
 });
-
 test('Create previews retrieved ideas and sends explicit selections; picker preserves the brief',async()=>{
  const f=await fixture();vm.runInContext("state.selected.add('idea1');state.source='s1';state.library='l1'",f.ctx);
  await f.ctx.workshopView();const situation=f.nodes().find(n=>n.name==='original_request');situation.value='Write a thoughtful essay';
@@ -236,7 +243,9 @@ test('scope changes invalidate pending Create preview results without erasing th
  assert.ok(!f.nodes().some(n=>n.textContent==='1 relevant idea found'));assert.equal(f.document.querySelector('[name="original_request"]').value,'Write an essay');
 });
 test('a completed preparation request cannot reopen material or report success after navigating away',async()=>{
- const f=await fixture();await f.ctx.navigate('material',{id:'s1'});const original=f.ctx.api;let release;
+ const f=await fixture();const original=f.ctx.api;let release;
+ f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',has_usable_knowledge:false,file_state:'available',file_replacement_allowed:true,read_state:'read_failed',next_action:'read_source',recovery:[]}):original(path,options);
+ await f.ctx.navigate('material',{id:'s1'});
  f.ctx.api=(path,options)=>path==='/sources/s1/process'?new Promise(resolve=>{release=async()=>resolve(await original(path,options));}):original(path,options);
  const pending=f.click('Read source');await f.ctx.navigate('home');await release();await pending;
  assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'What would you like to do?');assert.equal(f.document.querySelector('#feedback').textContent,'');
@@ -488,40 +497,111 @@ test('empty Add rejects locally before creating a source or reporting success',a
  assert.equal(f.requests.filter(r=>r.options).length,0);
  assert.equal(f.document.querySelector('#feedback').textContent,'The uploaded file is empty.');
 });
-test('ordinary source state renders without audit or chunks; Advanced failure is isolated',async()=>{
- const f=await fixture(),original=f.ctx.api;f.source.chunks_path='chunks';
- f.ctx.api=(path,options)=>{if(path.endsWith('/audit')||path.endsWith('/chunks')){f.requests.push({path,options});throw Error('Diagnostic failure');}return original(path,options);};
+test('source detail shows summary dimensions independently and keeps diagnostics lazy',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+ f.ctx.api=(path,options)=>{
+  if(path.endsWith('/summary'))return Promise.resolve({source_id:'s1',readiness:'partly_ready',completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:'build_stopped',attention_message:'The previous knowledge-building attempt stopped before completion.',file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'continue_building',recovery:[]});
+  if(path.endsWith('/audit')||path.endsWith('/chunks')){f.requests.push({path,options});throw Error('Diagnostic failure');}
+  return original(path,options);
+ };
  await f.ctx.navigate('material',{id:'s1'});
- assert.equal(f.main.querySelector('.kicker').textContent,'Partly ready');
- assert.ok(f.nodes().some(n=>n.textContent==='1 of 3 parts ready'));
+ assert.equal(f.main.querySelector('h1').textContent,'A book');
+ assert.ok(f.nodes().some(n=>n.textContent==='Partly ready'));
+ assert.ok(f.nodes().some(n=>n.textContent==='12 of 20 parts ready'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Needs attention: The previous knowledge-building attempt stopped before completion.'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Explore ideas'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Continue building'));
  assert.ok(!f.requests.some(r=>r.path.endsWith('/audit')||r.path.endsWith('/chunks')));
- const advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced details');advanced.open=true;await advanced.ontoggle();
- assert.equal(f.main.querySelector('.kicker').textContent,'Partly ready');
- assert.ok(f.nodes().some(n=>n.textContent==='An idea: Useful insight'));
- assert.ok(f.nodes().some(n=>n.textContent==='Create using this material'));
- assert.match(f.document.querySelector('#feedback').textContent,/Advanced details could not be loaded/);
+ const advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');assert.ok(advanced&&!advanced.open);
+ advanced.open=true;await advanced.ontoggle();
+ assert.match(f.document.querySelector('#feedback').textContent,/Advanced diagnostics could not be loaded/);
+ assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
 });
-test('Advanced recovery action obeys server eligibility without a provider call',async()=>{
- const f=await fixture(),original=f.ctx.api;f.source.chunks_path='chunks';
- f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'partly_ready',total_parts:3,completed_parts:1,coverage_text:'1 of 3 parts ready',next_action:'wait_or_reset',recovery:[{job_id:'j1',allowed:false}]}):original(path,options);
- await f.ctx.navigate('material',{id:'s1'});
- const advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced details');advanced.open=true;await advanced.ontoggle();
- assert.equal(f.nodes().find(n=>n.tag==='button'&&n.textContent==='Recover job').disabled,true);
- assert.ok(!f.nodes().some(n=>n.textContent==='Continue building'));
+
+test('source Ask, Explore and Create preserve source scope and draft protection without provider calls',async()=>{
+ const f=await fixture(),original=f.ctx.api;
+ f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'partly_ready',has_usable_knowledge:true,file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'continue_building',recovery:[]}):original(path,options);
+ await f.ctx.navigate('material',{id:'s1'});await f.click('Ask this source');
+ const route=parseRoute(f.browser.location.hash);assert.equal(route.view,'knowledge');assert.equal(route.source,'s1');assert.deepEqual(route.materials,['s1']);
+ assert.equal(f.nodes().find(n=>n.name==='q').value,'What does this material teach?');assert.equal(f.requests.filter(r=>r.options).length,0);
+ await f.ctx.navigate('material',{id:'s1'});await f.click('Explore ideas');
+ assert.equal(parseRoute(f.browser.location.hash).source,'s1');assert.equal(f.requests.filter(r=>r.options).length,0);
+ await f.ctx.navigate('material',{id:'s1'});vm.runInContext("interactionDraft.originalRequest='Keep my current essay'",f.ctx);await f.click('Use in Create');
+ assert.ok(f.nodes().some(n=>n.id==='create-handoff'));assert.ok(f.nodes().some(n=>n.textContent==='Keep current draft'));
+ await f.click('Keep current draft');assert.equal(parseRoute(f.browser.location.hash).view,'workshop');
+ assert.equal(f.nodes().find(n=>n.name==='original_request').value,'Keep my current essay');
  assert.equal(f.requests.filter(r=>r.options).length,0);
 });
 
-
-test('unknown source readiness and unconfirmed operation do not manufacture attention',async()=>{
- for(const unknown of [true,false]){
-  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='chunks';
-  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:unknown?'unknown':'ready_to_build',completed_parts:unknown?null:0,total_parts:unknown?null:3,coverage_text:unknown?null:'0 of 3 parts ready',operation:unknown?'idle':'build_unconfirmed',attention_category:unknown?'artifact_unavailable':null,attention_message:unknown?'Source data is unavailable. Restore it before continuing preparation.':null,next_action:unknown?'restore_source':'wait_or_reset',recovery:[]}):original(path,options);
+test('source action hierarchy follows usable knowledge independently of readiness and preview count',async()=>{
+ const cases=[
+  ['added',false,'read_source','Read source'],['ready_to_build',false,'build_knowledge','Build knowledge'],
+  ['partly_ready',false,'continue_building','Continue building'],['partly_ready',true,'continue_building','Ask this source'],
+  ['ready',true,'use_knowledge','Ask this source'],['ready',false,'use_knowledge','Open original file'],
+  ['unknown',true,'restore_source','Ask this source'],['unknown',false,'restore_source','Open original file'],
+ ];
+ for(const [readiness,usable,next_action,expected] of cases){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path=readiness==='added'?null:'parts';
+  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness,has_usable_knowledge:usable,completed_parts:readiness==='unknown'?null:readiness==='ready'?20:readiness==='partly_ready'?12:0,total_parts:readiness==='unknown'?null:20,coverage_text:readiness==='unknown'?null:readiness==='ready'?'20 of 20 parts ready':readiness==='partly_ready'?'12 of 20 parts ready':'0 of 20 parts ready',operation:'idle',attention_category:null,attention_message:null,file_state:'available',file_replacement_allowed:false,read_state:'read',next_action,recovery:[]}):original(path,options);
   await f.ctx.navigate('material',{id:'s1'});
-  assert.equal(f.main.querySelector('.kicker').textContent,unknown?'Readiness unknown':'Ready to build knowledge');
-  assert.ok(!f.nodes().some(n=>n.textContent==='Needs attention'));
-  if(!unknown)assert.ok(f.nodes().some(n=>n.textContent==='Previous build has not reported completion.'));
+  assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent===expected),`${readiness}/${usable}`);
+  assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Ask this source'),usable);
+  assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Explore ideas'),usable);
+  assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Use in Create'),usable);
+  if(readiness==='ready'&&!usable)assert.ok(f.nodes().some(n=>n.textContent==='No usable knowledge is available from this material yet.'));
+  if(readiness==='partly_ready'&&usable)assert.ok(f.nodes().some(n=>n.textContent==='Continue building'));
   assert.equal(f.requests.filter(r=>r.options).length,0);
  }
+});
+
+test('unknown source state keeps existing knowledge useful without preparation jargon',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='unavailable-source-data';
+ f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'unknown',completed_parts:null,total_parts:null,coverage_text:null,has_usable_knowledge:true,operation:'idle',attention_category:'artifact_unavailable',attention_message:'Source data is unavailable. Restore the source data to continue.',file_state:'unknown',file_replacement_allowed:false,read_state:'unavailable',next_action:'restore_source',recovery:[]}):original(path,options);
+ await f.ctx.navigate('material',{id:'s1'});const text=all(f.main).map(n=>n.textContent||'').join('\n');
+ assert.ok(text.includes('Status unavailable'));assert.ok(text.includes('Coverage unavailable'));
+ assert.ok(text.includes('Existing knowledge remains available. Restore the source data to continue building knowledge.'));
+ assert.ok(!text.toLowerCase().includes('preparation'));
+ for(const label of ['Ask this source','Explore ideas','Use in Create'])assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent===label));
+ assert.equal(f.requests.filter(r=>r.options).length,0);
+});
+
+test('source knowledge preview exposes collapsed Source & evidence without raw identifiers',async()=>{
+ const f=await fixture(),original=f.ctx.api;
+ f.ctx.api=(path,options)=>{
+  if(path.endsWith('/summary'))return Promise.resolve({readiness:'ready',has_usable_knowledge:true,file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'use_knowledge',recovery:[]});
+  if(path.endsWith('/knowledge-units'))return Promise.resolve({items:[{canonical_asset:{id:'asset-raw',source_id:'source-raw',chunk_id:'chunk-raw',title:'Make room for reflection',what_it_says:'A short explanation of the idea.'},evidence_trail:[{asset_id:'asset-raw',source_id:'source-raw',chunk_id:'chunk-raw',chapter_or_section:'Practice',evidence:'Leave a short pause after each exercise so people can name what changed.'}]}]});
+  return original(path,options);
+ };
+ await f.ctx.navigate('material',{id:'s1'});
+ assert.ok(f.nodes().some(n=>n.textContent==='Make room for reflection'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Source & evidence'));
+ const evidence=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Source & evidence');assert.ok(evidence&&!evidence.open);
+ evidence.open=true;assert.ok(all(evidence).some(n=>n.textContent==='A book · Practice'));
+ assert.ok(all(evidence).some(n=>n.textContent?.includes('Leave a short pause')));
+ assert.ok(!all(f.main).map(n=>n.textContent).join('\n').match(/asset-raw|source-raw|chunk-raw/));
+});
+
+test('source recovery is server-authoritative, explicit, and does not build after reset',async()=>{
+ for(const allowed of [false,true]){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'partly_ready',has_usable_knowledge:true,completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',operation:allowed?'build_unconfirmed':'build_unconfirmed',attention_category:allowed?'build_unconfirmed':null,attention_message:allowed?'Previous build has not reported completion.':null,file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'wait_or_reset',recovery:[{job_id:'job-internal',category:'unconfirmed_build',allowed}]}):original(path,options);
+  await f.ctx.navigate('material',{id:'s1'});
+  assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Resolve build issue'),allowed);
+  if(!allowed)assert.ok(f.nodes().some(n=>n.textContent==='Previous build has not reported completion.'));
+  else {await f.click('Resolve build issue');assert.ok(f.requests.some(r=>r.path==='/knowledge-extractions/job-internal/recover'&&r.options.method==='POST'));}
+  assert.ok(!f.requests.some(r=>r.path.includes('/interpret')));
+ }
+});
+
+test('OCR and unreadable-source recovery only offer supported replacement/read actions',async()=>{
+ const ocr=await fixture(),original=ocr.ctx.api;ocr.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',has_usable_knowledge:false,file_state:'available',file_replacement_allowed:true,read_state:'ocr_required',attention_category:'ocr_required',attention_message:'This PDF has no extractable text. OCR is not supported.',next_action:'supply_readable_file',recovery:[]}):original(path,options);
+ await ocr.ctx.navigate('material',{id:'s1'});assert.ok(ocr.nodes().some(n=>n.textContent==='Use replacement file'));assert.ok(!ocr.nodes().some(n=>n.textContent==='Read source'));
+ const blocked=await fixture(),blockedApi=blocked.ctx.api;blocked.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',has_usable_knowledge:false,file_state:'available',file_replacement_allowed:false,read_state:'ocr_required',attention_category:'ocr_required',attention_message:'OCR is not supported.',next_action:'supply_readable_file',recovery:[]}):blockedApi(path,options);
+ await blocked.ctx.navigate('material',{id:'s1'});assert.ok(!blocked.nodes().some(n=>n.name==='file'));assert.ok(blocked.nodes().some(n=>n.textContent?.includes('can’t be replaced after knowledge building has started')));
+ const failed=await fixture(),failedApi=failed.ctx.api;failed.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',has_usable_knowledge:false,file_state:'available',file_replacement_allowed:true,read_state:'read_failed',attention_category:'read_failed',attention_message:'This file could not be read.',next_action:'read_source',recovery:[]}):failedApi(path,options);
+ await failed.ctx.navigate('material',{id:'s1'});assert.ok(failed.nodes().some(n=>n.tag==='button'&&n.textContent==='Read source'));
 });
 
 test('material capture is file-first, local and cancellable; Create draft survives Add navigation',async()=>{
@@ -541,33 +621,4 @@ test('empty account file confirmation creates nothing, shows editable My Library
  const author=f.nodes().find(n=>n.name==='author');assert.ok(!author.required);assert.equal(author.parent.parent.children[0].textContent,'Optional details');
  assert.equal(f.requests.filter(r=>r.options).length,0);
  await f.browser.history.back();await f.browser.history.forward();assert.equal(f.nodes().find(n=>n.name==='title').value,'The Workshop Survival Guide');
-});
-
-test('source actions follow usable knowledge independently of readiness or later failure',async()=>{
- for(const [readiness,usable,completed,total,attention] of [
-  ['ready_to_build',false,0,3,null],['partly_ready',true,1,3,'build_stopped'],
-  ['partly_ready',false,1,3,null],['ready',true,3,3,null],['ready',false,3,3,null],['unknown',true,null,null,'artifact_unavailable']
- ]){
-  const f=await fixture(),original=f.ctx.api;f.source.author=null;f.source.chunks_path=readiness==='unknown'?null:'chunks';
-  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness,has_usable_knowledge:usable,read_state:'read',total_parts:total,completed_parts:completed,coverage_text:total?`${completed} of ${total} parts ready`:null,attention_category:attention,next_action:readiness==='ready_to_build'?'build_knowledge':readiness==='partly_ready'?'continue_building':'use_knowledge',recovery:[]}):original(path,options);
-  await f.ctx.navigate('material',{id:'s1'});
-  for(const name of ['Browse useful ideas','Create using this material'])assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent===name),usable,`${readiness}/${usable} ${name}`);
-  assert.equal(f.requests.some(r=>r.path.endsWith('/knowledge-units')),usable);
-  if(readiness==='ready_to_build'){
-   assert.ok(f.nodes().some(n=>n.textContent==='Build knowledge from this material to find ideas you can use.'));
-   assert.ok(f.nodes().some(n=>n.textContent==='Build knowledge'));
-   assert.ok(!f.nodes().some(n=>/Prepare this material|^Preparation$/.test(n.textContent||'')));
-  }
-  if(readiness==='partly_ready')assert.ok(f.nodes().some(n=>n.textContent==='Continue building'));
-  assert.equal(f.requests.filter(r=>r.options).length,0);
- }
-});
-test('OCR source recovery offers replacement instead of rereading unchanged artifact',async()=>{
- const f=await fixture(),original=f.ctx.api;
- f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',has_usable_knowledge:false,read_state:'ocr_required',attention_category:'ocr_required',next_action:'supply_readable_file',recovery:[]}):original(path,options);
- await f.ctx.navigate('material',{id:'s1'});
- assert.ok(!f.nodes().some(n=>n.textContent==='Read source'||n.textContent==='Retry reading'));
- assert.ok(f.nodes().some(n=>n.textContent==='Use replacement file'));
- assert.ok(f.nodes().some(n=>n.name==='file'));
- assert.equal(f.requests.filter(r=>r.options).length,0);
 });

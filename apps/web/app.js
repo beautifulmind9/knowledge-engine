@@ -35,6 +35,7 @@ function heading(kicker,title,description){main.captureExplore=null;main.explore
 function card(title,description){const c=el('section',undefined,'card');c.append(el('h3',title));if(description)c.append(el('p',description));return c;}
 function actions(...buttons){const d=el('div',undefined,'actions');d.append(...buttons);return d;}
 function detail(title,...nodes){const d=el('details');d.append(el('summary',title),...nodes);return d;}
+function requireValidFile(input,action){action.disabled=true;input.onchange=()=>{try{validateMaterial(input.files?.[0]);action.disabled=false;message('');}catch(error){action.disabled=true;message(error.message,true);}};}
 function list(items){const u=el('ul');for(const item of items)u.append(el('li',item));return u;}
 async function navigate(view,options={}){
  captureDraft();
@@ -149,17 +150,170 @@ async function libraryView(_id,route={}){const active=beginView();heading('LIBRA
  const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.file)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));main.append(detail('Create a library',create));
  const grid=el('div',undefined,'library-rows');for(const source of sources)grid.append(renderLibraryRow(source,summaryById.get(source.id),summaryUnavailable));main.append(grid);
 }
-async function sourceView(id){const active=beginView();state.source=id;heading('LIBRARY','Opening material…','');const [source,summary]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`)]);if(!active())return;if(materialAddDraft?.sourceId===id){materialAddDraft.uploaded=!!source.file_path;materialAddDraft.read=summary.read_state==='read';materialAddDraft.readFailure=summary.attention_category;}const readinessLabels={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Readiness unknown'};heading(readinessLabels[summary.readiness],source.title,source.author||(summary.readiness==='ready_to_build'?'Build knowledge from this material to find ideas you can use.':summary.has_usable_knowledge?'View knowledge coverage and available ideas from this material.':summary.readiness==='ready'?'All current parts are ready. No usable ideas are currently available.':'View this material’s reading and knowledge-building state.'));if(summary.attention_message)main.append(el('p',summary.attention_message,'muted'));else if(summary.operation==='build_unconfirmed')main.append(el('p','Previous build has not reported completion.','muted'));main.append(actions(button('← Library',()=>navigate('library')),...(!source.chunks_path&&source.file_path&&summary.attention_category!=='ocr_required'?[button('Read source',async()=>{message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});if(!active())return;if(!await navigate('material',{id,replace:true}))return;message('Source read. Build knowledge to find ideas you can use.');},'primary')]:[])));
- if(!source.file_path||summary.attention_category==='ocr_required'){const upload=form(async fd=>{const file=fd.get('file');validateMaterial(file);const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});if(materialAddDraft?.sourceId===id)materialAddDraft.uploaded=true;if(active())message('Reading source…');try{await api(`/sources/${id}/process`,{method:'POST'});}finally{if(active())await navigate('material',{id,replace:true});}});const [l,i]=field(summary.attention_category==='ocr_required'?'Choose a different file with selectable text':'Upload material file','file');i.type='file';i.accept=MATERIAL_EXTENSIONS.join(',');i.required=true;upload.append(l,submit(summary.attention_category==='ocr_required'?'Use replacement file':'Upload'));main.append(upload);}
- if(source.chunks_path){const c=card('Knowledge building',summary.coverage_text||'Coverage is unavailable.');const progress=el('progress');progress.max=summary.total_parts||1;progress.value=summary.completed_parts||0;progress.setAttribute('aria-label','Knowledge-building progress');progress.hidden=summary.total_parts===null;c.append(progress);const complete=summary.readiness==='ready';const interpretationActions=[];if(complete)c.append(el('p','All current parts are ready.','muted'));else if(summary.next_action==='build_knowledge'||summary.next_action==='continue_building')interpretationActions.push(button(summary.readiness==='ready_to_build'?'Build knowledge':'Continue building',async()=>{message('Building knowledge…');const r=await api(`/sources/${id}/interpret?max_chunks=1`,{method:'POST'});if(!active())return;if(!await navigate('material',{id,replace:true}))return;message(r.stopped_reason?'Knowledge building stopped. Check Advanced details for recovery options.':`${r.processed_this_run} part ready.`,!!r.stopped_reason);},'primary'));if(summary.has_usable_knowledge)interpretationActions.push(button('Browse useful ideas',()=>navigate('knowledge',{source:id,materials:[id],library:source.library_id||null})));c.append(actions(...interpretationActions));main.append(c);}
- if(summary.has_usable_knowledge){if(!source.chunks_path)main.append(actions(button('Browse useful ideas',()=>navigate('knowledge',{source:id,materials:[id],library:source.library_id||null}))));const ideas=await api(`/sources/${id}/knowledge-units`).catch(()=>({items:[],unavailable:true}));if(!active())return;if(ideas.unavailable)main.append(el('p','Available ideas could not be loaded. You can still open Browse useful ideas.','muted'));if(ideas.items.length)main.append(el('h2','Useful ideas found'),list(ideas.items.slice(0,5).map(g=>`${g.canonical_asset.title}: ${g.canonical_asset.what_it_says}`)));main.append(button('Create using this material',()=>{return openCreate({request:'',materials:[id],library:source.library_id||null,selectedIds:[]});},summary.readiness==='ready'?'primary':''));}
- if(source.chunks_path){const advanced=detail('Advanced details');main.append(advanced);let diagnosticsLoaded=false,diagnosticsLoading=false;
- advanced.ontoggle=()=>{if(!advanced.open||diagnosticsLoaded||diagnosticsLoading)return;diagnosticsLoading=true;return run(async()=>{try{const [audit,chunks]=await Promise.all([api(`/sources/${id}/audit`),api(`/sources/${id}/chunks`)]);if(!active())return;
- const auditCard=card('Quality & recovery',`Overlap: ${Math.round(audit.overlap_rate*100)}% · Superseded: ${audit.superseded_assets.length} · Old schema: ${audit.old_schema_assets.length}`);auditCard.append(list([`Active assets: ${audit.asset_count}`,`Consolidated units: ${audit.knowledge_unit_count}`,`Missing evidence: ${audit.missing_evidence.length}`,`Missing keywords: ${audit.missing_keywords.length}`,`Evidence needing human review: ${audit.evidence_needing_review.length}`,`Asset types: ${Object.entries(audit.asset_types).map(([k,v])=>`${k} ${v}`).join(', ')||'None yet'}`,`Confidence scores: ${Object.entries(audit.confidence_distribution).map(([k,v])=>`${k}/5: ${v}`).join(', ')||'None yet'}`]),el('p',audit.note,'muted'));const latestByChunk=new Map();for(const job of audit.jobs)latestByChunk.set(job.chunk_id,job);const recoverable=[...latestByChunk.values()].filter(j=>summary.recovery.some(r=>r.job_id===j.id));if(recoverable.length){for(const job of recoverable){const reset=button('Recover job',async()=>{await api(`/knowledge-extractions/${job.id}/recover`,{method:'POST'});if(!active())return;await navigate('material',{id,replace:true});});reset.disabled=!summary.recovery.find(r=>r.job_id===job.id).allowed;auditCard.append(el('p',`${job.chunk_id}: ${job.status} — ${job.error||'Processing'}`),reset);}}else auditCard.append(el('p','No current failed or stale-running extraction jobs. Earlier failed attempts remain in history but do not need recovery.','muted'));advanced.append(detail('Audit and recovery',auditCard));
- const manual=form(async fd=>{const chunkId=fd.get('Chunk');const job=(await api('/knowledge-extractions',{method:'POST',body:{source_id:id,chunk_id:chunkId,reprocess:fd.get('replace')==='on'}})).job;const raw=fd.get('result').trim();if(raw){let parsed;try{parsed=JSON.parse(raw);}catch{throw new Error('Paste valid extraction JSON with an assets array.');}await api(`/knowledge-extractions/${job.id}/results`,{method:'POST',body:parsed});if(!active())return;if(!await navigate('material',{id,replace:true}))return;message('Knowledge imported and validated.');}else{const req=await api(`/knowledge-extractions/${job.id}/request`);download(`${job.id}-prompt.json`,JSON.stringify(req,null,2),'application/json');message('Extraction prompt downloaded. Return here to import the structured result.');}});const [cl,cs]=select('Chunk',chunks.items.map(c=>[c.id,`Chunk ${c.chunk_index} · ${c.word_count} words${c.chapter_or_section?' · '+c.chapter_or_section:''}`]));manual.append(cl);const [rl,ri]=field('Structured extraction result (leave empty to download prompt)','result','textarea');manual.append(rl);const [pl,pi]=field('Intentionally replace this chunk’s active knowledge','replace');pi.type='checkbox';pl.className='check';manual.append(pl,submit('Download prompt / import result'));advanced.append(detail('Manual extraction or intentional reprocessing',el('p','Use your own structured response without an API call. Existing active knowledge is replaced only after validation succeeds.','muted'),manual));
- diagnosticsLoaded=true;}catch(error){if(active())message('Advanced details could not be loaded. Available knowledge and readiness are unchanged.',true);}finally{diagnosticsLoading=false;}});};
+async function sourceView(id){
+ const active=beginView(),previousSource=state.source;
+ state.source=id;
+ heading('LIBRARY · MATERIAL','Opening material…','');
+ const [source,summary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
+ if(!active())return;
+ if(materialAddDraft?.sourceId===id){materialAddDraft.uploaded=!!source.file_path;materialAddDraft.read=summary.read_state==='read';materialAddDraft.readFailure=summary.attention_category;}
+ const readinessLabels={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Status unavailable'};
+ heading('LIBRARY · MATERIAL',source.title,source.author||'');
+ const libraryName=libraryData.find(item=>item.id===source.library_id)?.name||null;
+ const back=button('← Library',()=>navigate('library'));
+ main.append(actions(back));
+
+ const status=card('Material status',readinessLabels[summary.readiness]||'Status unavailable');status.className='card material-status';
+ status.append(el('p',summary.coverage_text||(summary.readiness==='added'?'No parts ready yet':'Coverage unavailable'),'material-coverage'));
+ if(summary.operation==='build_unconfirmed'&&summary.attention_category!=='build_unconfirmed')status.append(el('p','Previous build has not reported completion.','material-operation'));
+ if(summary.attention_category){const attentionMessage=summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue building knowledge.':summary.attention_message||'This material needs attention.';status.append(el('p',`Needs attention: ${attentionMessage}`,'material-attention'));}
+ main.append(status);
+
+ const sameSourceContext=previousSource===id&&createMaterials?.includes(id);
+ const selectedForSource=sameSourceContext?[...state.selected]:[];
+ const openScopedKnowledge=(query='')=>navigate('knowledge',{
+  source:id,materials:[id],library:source.library_id||null,
+  exploreState:sameSourceContext&&exploreState?exploreState:freshExplore(query),
+  selectedIds:selectedForSource,
+ });
+ const build=async()=>{
+  message('Building knowledge…');
+  const result=await api(`/sources/${id}/interpret?max_chunks=1`,{method:'POST'});
+  if(!active()||!await navigate('material',{id,replace:true}))return;
+  message(result.stopped_reason?'Knowledge building stopped. Check the material status for details.':`${result.processed_this_run||1} part ready.`,!!result.stopped_reason);
+ };
+ const read=async()=>{
+  message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});
+  if(!active()||!await navigate('material',{id,replace:true}))return;
+  message('Source read. Choose Build knowledge when you are ready.');
+ };
+ const uploadFile=async file=>{
+  validateMaterial(file);
+  const data=new FormData();data.append('file',file);
+  await api(`/sources/${id}/upload`,{method:'POST',body:data});
+  if(materialAddDraft?.sourceId===id)materialAddDraft.uploaded=true;
+  message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});
+  if(!active()||!await navigate('material',{id,replace:true}))return;
+  message('Source read. Choose Build knowledge when you are ready.');
+ };
+ const uploadLabel=summary.attention_category==='ocr_required'?'Choose a different file with selectable text':summary.attention_category==='unsupported_extraction'?'Choose a supported file':'Choose a file';
+ const canRetryRead=summary.file_state==='available'&&!!source.file_path&&!source.chunks_path&&summary.read_state==='read_failed';
+ const noParts=summary.readiness==='ready_to_build'&&!summary.has_usable_knowledge;
+ const needsUpload=!source.file_path||summary.file_state==='unattached'||summary.file_state==='missing'||summary.attention_category==='ocr_required'||summary.attention_category==='unsupported_extraction';
+ const canOfferUpload=needsUpload&&summary.file_replacement_allowed;
+ let primary=null;
+ if(canOfferUpload){
+  const uploadForm=form(async fd=>uploadFile(fd.get('file')));
+  const [label,input]=field(uploadLabel,'file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
+  const action=submit(summary.attention_category==='ocr_required'||summary.file_state==='available'?'Use replacement file':'Upload file');requireValidFile(input,action);
+  uploadForm.append(label,action);
+  primary=el('section',undefined,'material-primary material-upload');primary.append(el('h2','What you can do now'),uploadForm);main.append(primary);
+ }else if(canRetryRead||summary.next_action==='read_source'&&summary.file_state==='available'){
+  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Read source',read,'primary'));main.append(primary);
+ }else if(noParts&&summary.next_action==='build_knowledge'){
+  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Build knowledge',build,'primary'));main.append(primary);
+ }else if(summary.readiness==='partly_ready'&&!summary.has_usable_knowledge&&summary.next_action==='continue_building'){
+  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Continue building',build,'primary'));main.append(primary);
+ }else if(summary.has_usable_knowledge){
+  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Ask this source',()=>openScopedKnowledge('What does this material teach?'),'primary'));main.append(primary);
+ }else if(summary.readiness==='ready'){
+  status.append(el('p','No usable knowledge is available from this material yet.','material-empty-knowledge'));
+  if(source.file_path){primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Open original file',()=>window.open(`/sources/${encodeURIComponent(id)}/file`,'_blank','noopener'),'primary'));main.append(primary);}
+ }else if(summary.readiness==='unknown'&&summary.file_state==='available'&&source.file_path){
+  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Open original file',()=>window.open(`/sources/${encodeURIComponent(id)}/file`,'_blank','noopener'),'primary'));main.append(primary);
  }
- main.append(detail('Advanced details — delete material',actions(button('Delete material and related work',async()=>{if(!confirm('Delete this material, its file, all its ideas, and every saved work history using those ideas? This cannot be undone.'))return;await api(`/sources/${id}?delete_outputs=true`,{method:'DELETE'});if(!active())return;state.selected.clear();state.source=null;if(!await navigate('library',{replace:true}))return;message('Material and related work deleted.');},'danger'))));}
+
+ if(needsUpload&&!summary.file_replacement_allowed)main.append(el('p','The original file can’t be replaced after knowledge building has started. Add another material to use a different file.','muted'));
+
+ if(summary.has_usable_knowledge){
+  const use=actions(
+   button('Explore ideas',()=>openScopedKnowledge()),
+   button('Use in Create',()=>openCreate({request:sameSourceContext&&exploreState?.query||interactionDraft.originalRequest||'',materials:[id],library:source.library_id||null,selectedIds:selectedForSource}))
+  );use.className='actions material-use-actions';main.append(use);
+  if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building')main.append(button('Continue building',build,'material-secondary-build'));
+  let result;
+  try{result=await api(`/sources/${id}/knowledge-units`);}catch{result={items:[],unavailable:true};}
+  if(!active())return;
+  const preview=el('section',undefined,'material-knowledge');preview.append(el('h2','Knowledge from this material'));
+  if(result.unavailable)preview.append(el('p','Available knowledge could not be loaded right now. You can still ask, explore, or use this material in Create.','muted'));
+  else if(!result.items?.length)preview.append(el('p','Usable knowledge is recorded for this material, but no ideas are available to preview right now. You can still ask a source-grounded question.','muted'));
+  else for(const group of result.items.slice(0,5)){
+   const asset=group.canonical_asset||{},idea=el('article',undefined,'material-idea');
+   idea.append(el('h3',asset.title||'Knowledge idea'));
+   if(asset.what_it_says)idea.append(el('p',asset.what_it_says,'material-idea-summary'));
+   const evidence=detail('Source & evidence');evidence.className='material-evidence';
+   const trail=group.evidence_trail?.length?group.evidence_trail:[{evidence:asset.evidence,chapter_or_section:asset.chapter_or_section}].filter(item=>item.evidence);
+   for(const item of trail){
+    const sourceLabel=source.title+(item.chapter_or_section?` · ${item.chapter_or_section}`:'');
+    evidence.append(el('p',sourceLabel,'muted'),el('blockquote',item.evidence,'evidence'));
+   }
+   if(!trail.length)evidence.append(el('p','Evidence is not available in this preview.','muted'));
+   idea.append(evidence);preview.append(idea);
+  }
+  main.append(preview);
+ }
+
+ if(summary.recovery?.some(item=>item.allowed)){
+  const eligible=summary.recovery.filter(item=>item.allowed);
+  const recovery=card('Resolve a build issue',summary.has_usable_knowledge?'Existing knowledge remains available while you resolve this issue.':'The previous build stopped before completion. Resolving it does not build knowledge; continue explicitly afterward.');
+  recovery.append(button(eligible.length>1?'Resolve build issues':'Resolve build issue',async()=>{
+   for(const item of eligible)await api(`/knowledge-extractions/${encodeURIComponent(item.job_id)}/recover`,{method:'POST'});
+   if(active())await navigate('material',{id,replace:true});
+  }));main.append(recovery);
+ }
+
+ const manage=detail('Manage material');manage.className='material-manage';
+ if(libraryName)manage.append(el('p',`In ${libraryName}`,'muted'));
+ if(source.file_name)manage.append(el('p',`Original file: ${source.file_name}${source.file_type?` · ${source.file_type.replace('.','').toUpperCase()}`:''}`,'muted'));
+ if(source.file_path){const original=el('a','Open original file');original.href=`/sources/${encodeURIComponent(id)}/file`;original.target='_blank';original.rel='noopener';manage.append(original);}
+ if(source.file_path&&summary.file_replacement_allowed){
+  const replacement=detail('Replace original file',el('p','Replacing the file keeps this material record and rereads the replacement.','muted'));
+  const replacementForm=form(async fd=>uploadFile(fd.get('file')));
+  const [label,input]=field('Choose a supported file','file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
+  const action=submit('Use replacement file');requireValidFile(input,action);
+  replacementForm.append(label,action);replacement.append(replacementForm);manage.append(replacement);
+ }else if(source.file_path&&!summary.file_replacement_allowed)manage.append(el('p','The original file can’t be replaced after knowledge building has started. Add another material to use a different file.','muted'));
+ manage.append(button('Delete material',async()=>{
+  if(!confirm('Delete this material, its original file, its knowledge, and saved work histories that use its knowledge? This cannot be undone.'))return;
+  await api(`/sources/${encodeURIComponent(id)}?delete_outputs=true`,{method:'DELETE'});
+  if(!active())return;state.selected.clear();state.source=null;
+  if(await navigate('library',{replace:true}))message('Material and related saved work were deleted.');
+ },'danger'));
+ main.append(manage);
+
+ const advanced=detail('Advanced / Developer');advanced.className='material-advanced';main.append(advanced);
+ let diagnosticsLoaded=false,diagnosticsLoading=false;
+ advanced.ontoggle=()=>{
+  if(!advanced.open||diagnosticsLoaded||diagnosticsLoading)return;
+  diagnosticsLoading=true;
+  return run(async()=>{
+   try{
+    const [audit,chunks]=await Promise.all([api(`/sources/${id}/audit`),source.chunks_path?api(`/sources/${id}/chunks`):Promise.resolve({items:[]})]);
+    if(!active())return;
+    const diagnostics=el('section',undefined,'developer-diagnostics');diagnostics.append(el('h2','Source diagnostics'));
+    diagnostics.append(list([`Internal source ID: ${source.id}`,`Read state: ${summary.read_state}`,`Operation: ${summary.operation}`,`Overlap: ${Math.round((audit.overlap_rate||0)*100)}%`,`Superseded knowledge records: ${audit.superseded_assets.length}`,`Older schema records: ${audit.old_schema_assets.length}`,`Missing evidence: ${audit.missing_evidence.length}`,`Evidence needing review: ${audit.evidence_needing_review.length}`,`Confidence distribution: ${JSON.stringify(audit.confidence_distribution)}`]));
+    diagnostics.append(el('p',audit.note||'Audit details are diagnostic and do not indicate source quality.','muted'));
+    if(audit.jobs?.length){diagnostics.append(el('h3','Build history'));diagnostics.append(list(audit.jobs.map(job=>`${job.id} · ${job.chunk_id} · ${job.status}${job.error?` · ${job.error}`:''}`)));}
+    if(chunks.items?.length){diagnostics.append(el('h3','Processing parts'));diagnostics.append(list(chunks.items.map(chunk=>`${chunk.id} · Part ${chunk.chunk_index} · ${chunk.word_count} words${chunk.chapter_or_section?` · ${chunk.chapter_or_section}`:''}`)));}
+    if(source.chunks_path){
+     const manual=form(async fd=>{
+      const chunkId=fd.get('Chunk');
+      const job=(await api('/knowledge-extractions',{method:'POST',body:{source_id:id,chunk_id:chunkId,reprocess:fd.get('replace')==='on'}})).job;
+      const raw=fd.get('result').trim();
+      if(raw){let parsed;try{parsed=JSON.parse(raw);}catch{throw new Error('Paste valid extraction JSON with an assets array.');}await api(`/knowledge-extractions/${job.id}/results`,{method:'POST',body:parsed});if(active()&&await navigate('material',{id,replace:true}))message('Knowledge imported and validated.');}
+      else{const request=await api(`/knowledge-extractions/${job.id}/request`);download(`${job.id}-prompt.json`,JSON.stringify(request,null,2),'application/json');message('Prompt downloaded for manual knowledge import.');}
+     });
+     const [chunkLabel,chunkSelect]=select('Processing part',chunks.items.map(chunk=>[chunk.id,`Part ${chunk.chunk_index} · ${chunk.word_count} words${chunk.chapter_or_section?` · ${chunk.chapter_or_section}`:''}`]));manual.append(chunkLabel);
+     const [resultLabel,resultInput]=field('Structured knowledge result (leave empty to download a prompt)','result','textarea');manual.append(resultLabel);
+     const [replaceLabel,replaceInput]=field('Intentionally replace this part’s active knowledge','replace');replaceInput.type='checkbox';replaceLabel.className='check';manual.append(replaceLabel,submit('Download prompt / import result'));
+     diagnostics.append(el('h3','Manual knowledge import'));diagnostics.append(manual);
+    }
+    advanced.append(diagnostics);diagnosticsLoaded=true;
+   }catch(error){if(active())message('Advanced diagnostics could not be loaded. Material knowledge and actions remain available.',true);}
+   finally{diagnosticsLoading=false;}
+  });
+ };
+}
 function download(name,text,type='text/plain'){const a=el('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function knowledgeView(){const active=beginView();
  heading('LIBRARY / ASK & EXPLORE','Ideas you can put to work.',explorePicker?'Choose ideas for your Create draft, or explore your materials.':'Find useful ideas or ask a grounded question about your materials.');

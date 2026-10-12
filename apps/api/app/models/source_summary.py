@@ -24,6 +24,7 @@ class SourceSummary(BaseModel):
     attention_category: Literal["missing_file", "artifact_unavailable", "unsupported_extraction", "read_failed", "ocr_required", "build_stopped", "build_unconfirmed"] | None
     attention_message: str | None
     file_state: Literal["unattached", "available", "missing", "unknown"]
+    file_replacement_allowed: bool
     read_state: Literal["not_read", "read", "unsupported_extraction", "read_failed", "ocr_required", "unavailable"]
     next_action: Literal["attach_file", "read_source", "build_knowledge", "continue_building", "wait_or_reset", "restore_source", "use_knowledge", "supply_readable_file"]
     recovery: list[RecoverySummary]

@@ -47,10 +47,10 @@ async function fixture(hash='',authenticated=false,enhance=false){
  const audit={interpretation:{completed_chunks:1,total_chunks:3},overlap_rate:0,superseded_assets:[],old_schema_assets:[],missing_evidence:[],missing_keywords:[],evidence_needing_review:[],asset_types:{},confidence_distribution:{},jobs:[{id:'j1',chunk_id:'c1',status:'failed'}]};
  const events=new Map();
  const document={addEventListener(type,fn){const callbacks=events.get(type)||[];callbacks.push(fn);events.set(type,callbacks);},dispatchEvent(event){for(const callback of events.get(event.type)||[])callback(event);},body,querySelector:s=>s==='main'?main:s==='#feedback'?feedback:body.querySelector(s),querySelectorAll:s=>s==='[data-view]'?nav:s==='nav button'?nav.filter(n=>n.tag==='button'):body.querySelectorAll(s),createElement:tag=>new Node(tag)};
- const ctx={...interaction,...materialAdd,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
+ const ctx={...interaction,...materialAdd,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path==='/sources/summaries')return [{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
  vm.createContext(ctx);vm.runInContext(readFileSync(new URL('../create-draft.js',import.meta.url),'utf8').replaceAll('export ',''),ctx);if(enhance){const extension={document,Event,scopeQuestion,apiFetch:async(path,options)=>({ok:true,json:async()=>ctx.api(path,{...options,body:JSON.parse(options.body)})})};vm.createContext(extension);vm.runInContext(readFileSync(new URL('../enhancements.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),extension);}
  vm.runInContext(app.replace(/^import .*;\n/gm,''),ctx);await new Promise(resolve=>setImmediate(resolve));
- return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>n.tag==='button'&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick();else if(n.listeners.click)await Promise.all(n.listeners.click.map(fn=>fn()));else await n.closest('form').onsubmit({preventDefault(){}});}};
+ return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>(n.tag==='button'||n.tag==='a')&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick({preventDefault(){}});else if(n.listeners.click)await Promise.all(n.listeners.click.map(fn=>fn()));else await n.closest('form').onsubmit({preventDefault(){}});}};
 }
 test('Home actions route to Library, Create and My work; shell has task navigation',async()=>{
  const f=await fixture();
@@ -109,6 +109,86 @@ test('Home Add action expands the existing form; actual back/forward restores vi
  await f.browser.history.forward();await f.browser.history.forward();assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'A book');
  for(const view of ['workshop','outputs','settings'])await f.ctx.navigate(view);
  await f.browser.history.back();assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'Work worth coming back to.');await f.browser.history.back();assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'What are you working on?');await f.browser.history.forward();await f.browser.history.forward();assert.equal(f.nodes().find(n=>n.tag==='h1').textContent,'Your data, in your hands.');
+});
+test('Library joins compact summary facts and never trusts legacy processing fields',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.processing_status='extraction_failed';f.source.stopped_reason='stale legacy failure';
+ const facts={source_id:'s1',readiness:'partly_ready',completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:'build_stopped',attention_message:'The previous knowledge-building attempt stopped before completion.',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]};
+ f.ctx.api=(path,options)=>{if(path==='/sources/summaries'){f.requests.push({path,options});return Promise.resolve([facts]);}return original(path,options);};
+ await f.ctx.navigate('library');
+ const text=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');
+ assert.ok(text.includes('Partly ready'));assert.ok(text.includes('12 of 20 parts ready'));
+ assert.ok(text.includes('Needs attention: The previous knowledge-building attempt stopped before completion.'));
+ assert.ok(!/Preparing|Not prepared|Ready to use|stale legacy failure/.test(text));
+ assert.ok(f.requests.some(r=>r.path==='/sources/summaries'));
+ assert.ok(!f.requests.some(r=>/\/audit|\/chunks|knowledge-units/.test(r.path)));
+ assert.equal(f.nodes().some(n=>n.textContent==='Writers'),false);
+ assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Explore knowledge'),true);
+});
+test('Library state mapping uses one contextual primary action and preserves source scope on Explore',async()=>{
+ const cases=[
+  ['added','unattached','attach_file',false,'Finish adding'],
+  ['added','available','read_source',false,'Read source'],
+  ['ready_to_build','available','build_knowledge',false,'Build knowledge'],
+  ['partly_ready','available','continue_building',false,'Continue building'],
+  ['partly_ready','available','continue_building',true,'Explore knowledge'],
+  ['ready','available','use_knowledge',true,'Explore knowledge'],
+  ['ready','available','use_knowledge',false,'Open material'],
+  ['unknown','unknown','restore_source',true,'Explore knowledge'],
+  ['unknown','unknown','restore_source',false,'Open material'],
+ ];
+ for(const [readiness,file_state,next_action,usable,label] of cases){
+  const f=await fixture(),original=f.ctx.api,summary={source_id:'s1',readiness,completed_parts:readiness==='unknown'?null:readiness==='ready'?3:readiness==='partly_ready'?1:0,total_parts:readiness==='unknown'?null:3,coverage_text:readiness==='unknown'?null:readiness==='ready'?'3 of 3 parts ready':readiness==='partly_ready'?'1 of 3 parts ready':readiness==='ready_to_build'?'0 of 3 parts ready':null,has_usable_knowledge:usable,operation:'idle',attention_category:null,attention_message:null,file_state,read_state:'read',next_action,recovery:[]};
+  f.ctx.api=(path,options)=>path==='/sources/summaries'?Promise.resolve([summary]):original(path,options);
+  await f.ctx.navigate('library');
+  const row=f.nodes().find(n=>n.tag==='article'&&n.className==='library-row');
+  const buttons=row.children.flatMap(n=>n.tag==='div'&&n.className==='actions'?n.children:[]).filter(n=>n.tag==='button');
+  assert.equal(buttons[0].textContent,label,`${readiness}/${usable}`);assert.equal(buttons[0].className,'primary');
+  assert.equal(buttons.filter(n=>n.className==='primary').length,1);
+  const openLinks=all(row).filter(n=>n.tag==='a'&&n.textContent==='Open material');
+  assert.equal(openLinks.length,label==='Open material'?0:1,`${readiness}/${usable} Open material route`);
+  if(readiness==='ready'&&!usable)assert.ok(all(row).some(n=>n.textContent==='No usable knowledge is available from this material yet.'));
+  if(label==='Explore knowledge'){
+   await f.click(label);const route=parseRoute(f.browser.location.hash);
+   assert.equal(route.view,'knowledge');assert.equal(route.source,'s1');assert.deepEqual(route.materials,['s1']);assert.equal(route.library,'l1');
+   assert.ok(!f.requests.some(r=>r.options));
+  }else if(label==='Build knowledge'||label==='Continue building'){
+   await f.click(label);assert.equal(f.requests.filter(r=>r.path==='/sources/s1/interpret?max_chunks=1'&&r.options?.method==='POST').length,1);
+  }else if(label==='Read source'){
+   await f.click(label);assert.equal(f.requests.filter(r=>r.path==='/sources/s1/process'&&r.options?.method==='POST').length,1);
+   assert.ok(!f.requests.some(r=>/interpret|generate/.test(r.path)));
+  }
+ }
+});
+test('Library does not invent coverage or author and falls back safely when summary loading fails',async()=>{
+ for(const mode of ['unknown','failure','no-author']){
+  const f=await fixture(),original=f.ctx.api;f.source.author=mode==='no-author'?'':null;
+  f.ctx.api=(path,options)=>{if(path==='/sources/summaries'){f.requests.push({path,options});return mode==='failure'?Promise.reject(Error('offline')):Promise.resolve([{source_id:'s1',readiness:'unknown',completed_parts:null,total_parts:null,coverage_text:null,has_usable_knowledge:false,operation:'idle',attention_category:mode==='unknown'?'artifact_unavailable':null,attention_message:mode==='unknown'?'Source data is unavailable.':null,file_state:'unknown',read_state:'unavailable',next_action:'restore_source',recovery:[]}]);}return original(path,options);};
+  if(mode==='failure')f.source.processing_status='knowledge_interpreted';
+  await f.ctx.navigate('library');const row=f.nodes().find(n=>n.tag==='article'&&n.className==='library-row'),text=all(row).map(n=>n.textContent).filter(Boolean).join('\n');
+  assert.ok(text.includes(mode==='failure'?'Readiness unavailable':'Status unavailable'));
+  assert.ok(text.includes('Coverage unavailable'));assert.ok(!text.includes('0 of 0'));
+  assert.ok(!text.includes('Your material'));assert.ok(!text.includes('A writer'));
+  if(mode==='failure')assert.ok(text.includes('Current status could not be loaded.'));
+  else if(mode==='unknown')assert.ok(text.includes('Needs attention: Source data is unavailable.'));
+  else assert.ok(!text.includes('Needs attention:'));
+  assert.ok(all(row).some(n=>n.textContent==='Open material'));
+ }
+});
+test('Empty Library puts Add material before secondary organization and exploration',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.ctx.api=(path,options)=>path==='/libraries'&&!options?Promise.resolve({items:[]}):original(path,options);
+ await f.ctx.navigate('library');
+ const add=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Add material');
+ assert.ok(add.open);assert.ok(f.main.children.indexOf(add)<f.main.children.findIndex(n=>n.tag==='p'&&n.id==='library-empty'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Choose a file to add material to your library. You can organize it into libraries later.'));
+ const organization=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Create a library');assert.ok(organization&&!organization.open);
+ assert.equal(f.nodes().some(n=>n.name==='Filter by library'),false);
+ assert.equal(f.requests.filter(r=>r.options).length,0);
+});
+test('Library only exposes a library filter when there are multiple destinations',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.ctx.api=(path,options)=>path==='/libraries'&&!options?Promise.resolve({items:[{id:'l1',name:'Reading'},{id:'l2',name:'Workshop'}]}):original(path,options);
+ await f.ctx.navigate('library');const filter=f.nodes().find(n=>n.name==='Filter by library');assert.ok(filter);
+ assert.deepEqual(filter.children.map(option=>option.value),['','l1','l2']);assert.equal(filter.children[0].textContent,'All libraries');
+ assert.ok(!f.nodes().some(n=>n.textContent==='Across your library'));
 });
 test('delayed view loads cannot append controls or headings after navigation to Home',async()=>{
  for(const [view,path] of [['library','/libraries'],['library','/sources'],['material','/sources/s1'],['material','/sources/s1/summary'],['material','/sources/s1/knowledge-units'],['workshop','/outputs/modes'],['outputs','/outputs'],['work','/outputs/o1'],['work','/outputs/o1/quality'],['work','/outputs/o1/history'],['settings','/usage']]){

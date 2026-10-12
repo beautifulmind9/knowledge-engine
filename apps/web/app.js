@@ -46,7 +46,50 @@ function replaceScope(view){router.go({view,library:state.library,materials:crea
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=e=>{e.preventDefault();return run(()=>navigate(b.dataset.view),b);});
 async function libraries(){const data=await api('/libraries');return data.items;}
 async function sourceItems(){return (await api('/sources'+(state.library?'?library_id='+encodeURIComponent(state.library):''))).items;}
-function readiness(source){if(source.stopped_reason||/failed|not_supported/.test(source.processing_status))return 'Needs attention';return source.processing_status==='knowledge_interpreted'?'Ready to use':source.chunks_path?'Preparing':'Not prepared';}
+const libraryReadiness={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Status unavailable'};
+function rowAction(summary){
+ if(!summary)return 'Open material';
+ if(summary.has_usable_knowledge)return 'Explore knowledge';
+ if(summary.attention_category==='build_stopped'||summary.attention_category==='build_unconfirmed'||summary.recovery?.some(item=>item.allowed))return 'Open material';
+ if(summary.readiness==='added'&&summary.next_action==='attach_file')return 'Finish adding';
+ if(summary.readiness==='added'&&summary.next_action==='read_source')return 'Read source';
+ if(summary.readiness==='ready_to_build'&&summary.next_action==='build_knowledge')return 'Build knowledge';
+ if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building')return 'Continue building';
+ return 'Open material';
+}
+function renderLibraryRow(source,summary,summaryUnavailable=false){
+ const row=el('article',undefined,'library-row');
+ const title=el('h2',source.title,'library-row-title');row.append(title);
+ if(source.author?.trim())row.append(el('p',source.author,'library-row-author'));
+ const action=rowAction(summary);
+ if(action!=='Open material'){const open=el('a','Open material','library-row-open');open.href='#/library/material/'+encodeURIComponent(source.id);open.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};row.append(open);}
+ if(summary){
+  row.append(el('p',libraryReadiness[summary.readiness]||'Status unavailable','library-row-readiness'));
+  const coverage=summary.coverage_text||(summary.readiness==='unknown'?'Coverage unavailable':summary.readiness==='added'&&summary.total_parts===0?'No parts ready yet':'Coverage unavailable');
+  row.append(el('p',coverage,'library-row-coverage'));
+  if(summary.readiness==='ready'&&!summary.has_usable_knowledge)row.append(el('p','No usable knowledge is available from this material yet.','library-row-operation'));
+  if(summary.attention_category)row.append(el('p',`Needs attention: ${summary.attention_message||'This material needs attention.'}`,'library-row-attention'));
+  if(summary.operation==='build_unconfirmed'&&summary.attention_category!=='build_unconfirmed')row.append(el('p','Previous build has not reported completion.','library-row-operation'));
+ }else{
+  row.append(el('p',summaryUnavailable?'Readiness unavailable':'Status unavailable','library-row-readiness'));
+  row.append(el('p','Coverage unavailable','library-row-coverage'));
+  if(summaryUnavailable)row.append(el('p','Current status could not be loaded. Open the material to check it.','library-row-operation'));
+ }
+ const controls=actions();
+ controls.append(button(action,async()=>{
+  if(action==='Explore knowledge')return navigate('knowledge',{library:source.library_id||state.library,materials:[source.id],source:source.id,exploreState:freshExplore(exploreState?.query||'')});
+  if(action==='Finish adding'||action==='Open material')return navigate('material',{id:source.id});
+  if(action==='Read source'){
+   await api(`/sources/${source.id}/process`,{method:'POST'});
+   if(!await navigate('library',{replace:true}))return;
+   message('Source read. Build knowledge to find ideas you can use.');return;
+  }
+  const result=await api(`/sources/${source.id}/interpret?max_chunks=1`,{method:'POST'});
+  if(!await navigate('library',{replace:true}))return;
+  message(result.stopped_reason?'Knowledge building stopped.':`${result.processed_this_run||1} part ready.`,!!result.stopped_reason);
+ },'primary'));
+ row.append(controls);return row;
+}
 async function homeView(){beginView();heading('HOME','What would you like to do?','What are you trying to learn, decide, make, plan or figure out?');
  const entry=el('section',undefined,'home-intent'),[label,input]=field('Your request','home_request','textarea',homeDraft.originalRequest);input.rows=3;input.placeholder='Start with what’s on your mind.';
  input.oninput=()=>{main.querySelector('#create-handoff')?.remove();homeDraft=captureRequest(homeDraft,input.value);};
@@ -94,12 +137,17 @@ function materialAddSurface(libs,active){
  main.refreshMaterialAdd=renderConfirmation;renderConfirmation();return surface;
 }
 async function libraryView(_id,route={}){const active=beginView();heading('LIBRARY','Your library','Add material, find useful ideas, and bring them into your work.');const libs=await libraries();if(!active())return;
- if(libs.length){const [l,s]=select('Current library',[['','All libraries'],...libs.map(l=>[l.id,l.name])],state.library||'');s.onchange=()=>{state.library=s.value||null;state.source=null;state.selected.clear();if(!materialAddDraft?.file)materialAddDraft=null;run(()=>navigate('library',{replace:true}));};main.append(l);}
- main.append(actions(button('Ask & Explore',()=>navigate('knowledge',{materials:[],source:null}),'primary')));
+ if(libs.length>1){const [l,s]=select('Filter by library',[['','All libraries'],...libs.map(l=>[l.id,l.name])],state.library||'');s.onchange=()=>{state.library=s.value||null;state.source=null;state.selected.clear();if(!materialAddDraft?.file)materialAddDraft=null;run(()=>navigate('library',{replace:true}));};main.append(l);}
  const sources=libs.length?await sourceItems():[];if(!active())return;
- const addDetails=detail('Add material',materialAddSurface(libs,active));addDetails.open=route.add||!sources.length||!!materialAddDraft?.file;main.append(addDetails);
+ let summaries=[],summaryUnavailable=false;
+ if(sources.length){try{summaries=await api('/sources/summaries'+(state.library?'?library_id='+encodeURIComponent(state.library):''));}catch{summaryUnavailable=true;}}
+ if(!active())return;
+ const summaryById=new Map(summaries.map(summary=>[summary.source_id,summary]));
+ const addDetails=detail('Add material',materialAddSurface(libs,active));addDetails.className='library-add';addDetails.open=route.add||!sources.length||!!materialAddDraft?.file;main.append(addDetails);
+ if(!sources.length){const empty=el('p','Choose a file to add material to your library. You can organize it into libraries later.','empty');empty.id='library-empty';main.append(empty);}
+ main.append(actions(button('Ask & Explore',()=>navigate('knowledge',{materials:[],source:null}),sources.length?'':'secondary')));
  const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.file)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));main.append(detail('Create a library',create));
- const grid=el('div',undefined,'grid');for(const s of sources){const c=card(s.title,s.author||'Your material');c.append(el('span',readiness(s),'badge'),actions(button('Open material',()=>navigate('material',{id:s.id}))));grid.append(c);}main.append(grid);if(!sources.length){const empty=el('p',materialAddDraft?.read?'Material is ready to build knowledge. Open it above.':materialAddDraft?.sourceId?'Material addition is incomplete. Resume above or open the saved material.':'No materials yet. Choose a file to begin.','empty');empty.id='library-empty';main.append(empty);}
+ const grid=el('div',undefined,'library-rows');for(const source of sources)grid.append(renderLibraryRow(source,summaryById.get(source.id),summaryUnavailable));main.append(grid);
 }
 async function sourceView(id){const active=beginView();state.source=id;heading('LIBRARY','Opening material…','');const [source,summary]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`)]);if(!active())return;if(materialAddDraft?.sourceId===id){materialAddDraft.uploaded=!!source.file_path;materialAddDraft.read=summary.read_state==='read';materialAddDraft.readFailure=summary.attention_category;}const readinessLabels={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Readiness unknown'};heading(readinessLabels[summary.readiness],source.title,source.author||(summary.readiness==='ready_to_build'?'Build knowledge from this material to find ideas you can use.':summary.has_usable_knowledge?'View knowledge coverage and available ideas from this material.':summary.readiness==='ready'?'All current parts are ready. No usable ideas are currently available.':'View this material’s reading and knowledge-building state.'));if(summary.attention_message)main.append(el('p',summary.attention_message,'muted'));else if(summary.operation==='build_unconfirmed')main.append(el('p','Previous build has not reported completion.','muted'));main.append(actions(button('← Library',()=>navigate('library')),...(!source.chunks_path&&source.file_path&&summary.attention_category!=='ocr_required'?[button('Read source',async()=>{message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});if(!active())return;if(!await navigate('material',{id,replace:true}))return;message('Source read. Build knowledge to find ideas you can use.');},'primary')]:[])));
  if(!source.file_path||summary.attention_category==='ocr_required'){const upload=form(async fd=>{const file=fd.get('file');validateMaterial(file);const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});if(materialAddDraft?.sourceId===id)materialAddDraft.uploaded=true;if(active())message('Reading source…');try{await api(`/sources/${id}/process`,{method:'POST'});}finally{if(active())await navigate('material',{id,replace:true});}});const [l,i]=field(summary.attention_category==='ocr_required'?'Choose a different file with selectable text':'Upload material file','file');i.type='file';i.accept=MATERIAL_EXTENSIONS.join(',');i.required=true;upload.append(l,submit(summary.attention_category==='ocr_required'?'Use replacement file':'Upload'));main.append(upload);}

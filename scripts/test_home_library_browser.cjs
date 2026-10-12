@@ -17,6 +17,7 @@ fs.mkdirSync(out,{recursive:true});
    let data;
    if(p==='/libraries')data={items:[{id:'l1',name:'Reading'}]};
    else if(p==='/sources')data={items:[source]};
+   else if(p==='/sources/summaries')data=[{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];
    else if(p==='/sources/s1')data=source;
    else if(p.endsWith('/knowledge-units'))data={items:units};
    else if(p==='/knowledge-assets/search')data={items:units.slice(0,3)};

@@ -3,14 +3,16 @@ import {availableAIAllowance, createKnowledgeBuild} from './knowledge-build.js';
 // One foreground Add/Continue authorization. Nothing here survives a refresh.
 export function createMaterialPreparation({sourceIds, api, onSource=async()=>{}, onProgress=()=>{}}) {
   const ids=[...new Set(sourceIds)], outcomes=new Map();
-  let current=null, stopped=false, left=false, promise, status='idle', currentId=null;
-  const snapshot=()=>({status,currentId,outcomes:new Map(outcomes),sourceIds:ids.slice()});
+  let current=null, stopped=false, left=false, callbackFailure=false, promise, status='idle', currentId=null,totalWork=0,initialWork=0;
+  const snapshot=()=>({status,currentId,outcomes:new Map(outcomes),sourceIds:ids.slice(),totalWork,
+    completedWork:initialWork+[...outcomes.values()].reduce((sum,outcome)=>sum+Number(outcome.completed||0),0)});
+  const emit=()=>{try{onProgress(snapshot());return true;}catch{callbackFailure=true;stopped=true;status='status_unavailable';current?.stop();return false;}};
   async function execute(){
     status='running';
     let usage;
     try {usage=await api('/usage');} catch {
       status='allowance_unavailable';for(const id of ids)outcomes.set(id,{category:status,summary:null});
-      onProgress(snapshot());return snapshot();
+      emit();return snapshot();
     }
     const plans=[];
     for(const id of ids){
@@ -18,7 +20,8 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
       try{
         const summary=await api(`/sources/${encodeURIComponent(id)}/summary`);
         const remaining=Number.isInteger(summary.total_parts)&&Number.isInteger(summary.completed_parts)?Math.max(0,summary.total_parts-summary.completed_parts):0;
-        outcomes.set(id,{category:'not_started',summary});
+        if(Number.isInteger(summary.total_parts)&&Number.isInteger(summary.completed_parts)){totalWork+=summary.total_parts;initialWork+=summary.completed_parts;}
+      outcomes.set(id,{category:'not_started',summary});
         if(remaining&&summary.operation!=='build_unconfirmed'&&['build_knowledge','continue_building'].includes(summary.next_action))plans.push({id,remaining});
       }catch{outcomes.set(id,{category:'status_unavailable',summary:null});}
     }
@@ -33,35 +36,51 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
       current=createKnowledgeBuild({sourceId:plan.id,remainingParts:plan.remaining,
         usage:{...usage,calls_today:Number(usage.calls_today)+started},authorizationLimit:budget,api,isActive:()=>!left,
         onProgress:progress=>{
-          outcomes.set(plan.id,{category:'running',...progress});
-          onProgress(snapshot());
+          outcomes.set(plan.id,{category:'running',completed:progress.completed||0,...progress});
+          emit();
         }});
       let result;
       try {result=await current.run();}
       catch {result={...current.snapshot(),status:'uncertain'};}
       finally {current=null;}
       started+=result.started;budget-=result.started;
-      outcomes.set(plan.id,{...result,category:result.status});
-      onProgress(snapshot());
-      if(result.status!=='completed'){status=result.status;break;}
+      outcomes.set(plan.id,{...result,summary:result.summary||outcomes.get(plan.id)?.summary,category:result.status});
+      emit();
+      // A material failure ends that material's attempt, never the independent
+      // materials already covered by this same explicit Add authorization.
+      // Only batch-wide conditions prevent dispatching a sibling.
+      if(['daily_allowance','allowance_unavailable','left','stopped'].includes(result.status)){
+        status=result.status;break;
+      }
+      status='running';
     }
     if(left)status='left';
     else if(stopped)status='stopped';
-    else if(status==='running')status=plans.length&&outcomes.size&&plans.every(p=>outcomes.get(p.id)?.summary?.readiness==='ready')?'completed':'incomplete';
+    else if(status==='running'){
+      const oneOutcome=ids.length===1?outcomes.get(ids[0]):null;
+      if(oneOutcome&&['provider_unavailable','uncertain','failed','status_unavailable'].includes(oneOutcome.category))status=oneOutcome.category;
+      else status=ids.length&&ids.every(id=>outcomes.get(id)?.summary?.readiness==='ready')?'completed':'incomplete';
+    }
     let finalUsage;
     try {finalUsage=await api('/usage');} catch {/* Never infer exhaustion from an unavailable usage response. */}
-    if(!left&&!stopped&&!['completed','uncertain','status_unavailable'].includes(status)){
+    if(!left&&!stopped&&!['completed','provider_unavailable','uncertain','failed','status_unavailable'].includes(status)){
       if(finalUsage?.daily_limit_reached)status='daily_allowance';
       else if(finalUsage&&(finalUsage.paused||!availableAIAllowance(finalUsage)))status='allowance_unavailable';
     }
     for(const id of ids){
       const outcome=outcomes.get(id);
       if(!outcome)outcomes.set(id,{category:status,summary:null});
-      else if(outcome.category==='not_started'||id===currentId&&outcome.summary?.readiness!=='ready')outcome.category=status;
+      else if(outcome.category==='not_started')outcome.category=status;
+      else if(status==='daily_allowance'&&outcome.category==='completed'&&outcome.summary?.readiness!=='ready')outcome.category='daily_allowance';
     }
-    onProgress(snapshot());return snapshot();
+    if(ids.length>1&&!['left','stopped','daily_allowance','allowance_unavailable'].includes(status)){
+      const failures=[...outcomes.values()].filter(outcome=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(outcome.category));
+      if(failures.length)status='incomplete';
+    }
+    if(callbackFailure)status='status_unavailable';
+    emit();return snapshot();
   }
   return {snapshot,run:()=>promise??=execute(),stop(reason='user'){
-    stopped=true;if(reason==='navigation')left=true;current?.stop();
+    stopped=true;if(reason==='navigation')left=true;if(reason==='callback_failure')callbackFailure=true;current?.stop();
   }};
 }

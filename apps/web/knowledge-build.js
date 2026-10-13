@@ -12,8 +12,8 @@ export function buildQuantity(remainingParts, usage) {
 export function createKnowledgeBuild({sourceId, remainingParts, usage, authorizationLimit = Infinity, api, isActive = () => true, onProgress = () => {}}) {
   const authorized = Math.max(0, Math.min(buildQuantity(remainingParts, usage), authorizationLimit));
   if (!Number.isInteger(authorized)) throw Error('Build authorization must be a whole number of parts.');
-  let completed = 0, started = 0, inFlight = false, stopRequested = false, status = 'idle', summary = null, summaryUnavailable = false, refreshNeeded = true, promise;
-  const snapshot = () => ({authorized, completed, started, notStarted: authorized - started, inFlight, stopRequested, status, summary, summaryUnavailable});
+  let completed = 0, started = 0, inFlight = false, stopRequested = false, status = 'idle', summary = null, summaryUnavailable = false, refreshNeeded = true, promise, interruptionCategory=null;
+  const snapshot = () => ({authorized, completed, started, notStarted: authorized - started, inFlight, stopRequested, status, summary, summaryUnavailable, interruptionCategory});
   const notify = () => onProgress(snapshot());
   async function refreshSummary() {
     refreshNeeded = false;
@@ -38,7 +38,10 @@ export function createKnowledgeBuild({sourceId, remainingParts, usage, authoriza
       inFlight = false;
       if (result?.processed_this_run === 1) completed++;
       if (!isActive()) status = 'left';
-      else if (result?.stopped_reason) status = 'failed';
+      else if (result?.stopped_reason) {
+        interruptionCategory=result?.interruption_category||null;
+        status=interruptionCategory==='provider_unavailable'?'provider_unavailable':interruptionCategory==='allowance_exhausted'?'daily_allowance':interruptionCategory==='transport_uncertain'?'uncertain':'failed';
+      }
       else if (result?.processed_this_run !== 1) status = 'uncertain';
       else if (stopRequested) status = 'stopped';
       else if (completed === authorized) status = 'completed';

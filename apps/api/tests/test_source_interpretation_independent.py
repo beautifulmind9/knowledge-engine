@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+
 from app.db import mock_data as db
 from app.services import source_interpretation
 from app.services.knowledge_extraction import complete_extraction_job, get_extraction_job, mark_extraction_job_failed, persist_state
@@ -61,7 +63,8 @@ def test_source_interpretation_stops_after_first_failed_independent_request(sour
 
     assert calls == [chunks[0]["id"], chunks[1]["id"]]
     assert result["processed_this_run"] == 1
-    assert "synthetic provider failure" in result["stopped_reason"]
+    assert result["stopped_reason"] == "Interpretation stopped after an unexpected preparation error."
+    assert result["interruption_category"] == "preparation_failed"
     pending = [job for job in db.extraction_jobs if job["chunk_id"] == chunks[2]["id"]]
     assert len(pending) == 1
     assert pending[0]["status"] == "pending_ai"
@@ -97,3 +100,22 @@ def test_explicit_build_retries_failed_part_without_reset_and_skips_completed_pa
     facts = client.get(f"/sources/{s['id']}/summary").json()
     assert facts['completed_parts'] == 2 and facts['attention_category'] is None
     assert not db.usage  # The test uses a synthetic runner, never the provider.
+def test_provider_503_is_returned_as_safe_known_interruption_without_retry(client, source, monkeypatch):
+    s, _ = _install_chunks(source, count=3)
+    calls = []
+
+    def fake_run(job_id):
+        calls.append(job_id)
+        raise HTTPException(502, "synthetic safe provider failure",
+                            headers={"X-KE-Interruption-Category":"provider_unavailable"})
+
+    monkeypatch.setattr(source_interpretation, "run_gemini_knowledge_extraction", fake_run)
+    result = client.post(f"/sources/{s['id']}/interpret?max_chunks=1")
+    assert result.status_code == 200
+    assert result.json()["processed_this_run"] == 0
+    assert result.json()["interruption_category"] == "provider_unavailable"
+    assert len(calls) == 1
+    assert "synthetic safe provider failure" not in result.text
+    summary = client.get(f"/sources/{s['id']}/summary").json()
+    assert summary["attention_category"] == "build_stopped"
+    assert summary["completed_parts"] == 0

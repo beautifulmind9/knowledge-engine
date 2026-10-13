@@ -12,7 +12,8 @@ fs.mkdirSync(screenshots,{recursive:true});
  const modes=[{id:'writing',label:'Writing / editing',formats:['Email','Essay']},{id:'workshop_plan',label:'Workshop / facilitation plan'},
  {id:'social_content',label:'Content / social media',formats:['LinkedIn post','Carousel']},{id:'knowledge_answer',label:'Knowledge answer / synthesis'}];
  async function fixture(options={}){
-  const page=await browser.newPage({viewport:options.mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:!!options.mobile,hasTouch:!!options.mobile}),requests=[],snapshots=new Map();let pending,saved;
+  const page=await browser.newPage({viewport:options.mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:!!options.mobile,hasTouch:!!options.mobile}),requests=[],snapshots=new Map();let pending,saved,signalGenerate,releaseGenerate;
+  const generateStarted=new Promise(resolve=>signalGenerate=resolve),generateGate=new Promise(resolve=>releaseGenerate=resolve);
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://ke.test/**',async route=>{
    const url=new URL(route.request().url()),p=url.pathname,method=route.request().method();
@@ -39,6 +40,7 @@ fs.mkdirSync(screenshots,{recursive:true});
     const snapshot=snapshots.get(payload.prepared_snapshot_id);assert.ok(snapshot,'Generation must name a reviewed snapshot');
     const {prepared_snapshot_id,...brief}=payload;assert.deepEqual(brief,snapshot.payload,'Exact reviewed request/revision');
     if(options.failGenerate)return route.fulfill({status:502,json:{detail:'Synthetic generation failure — no retry'}});
+    if(options.holdGenerate){signalGenerate();await generateGate;}
     saved={id:'o1',title:'Grounded draft',content:'A practical draft using practice breaks. The sequence is a drafting choice, not a claim from the source.',version:1,created_at:'2026-10-11',output_type:payload.output_type,provider:'mock',model:'deterministic',applied_knowledge:[{asset_id:'a1',usage_note:'Practice breaks shape the plan.'}],design_choices:['The sequence is a generated design choice.'],knowledge_snapshot:snapshot.evidence.knowledge_units};
     return route.fulfill({json:{saved_output:{id:'o1'}}});
    }
@@ -47,7 +49,7 @@ fs.mkdirSync(screenshots,{recursive:true});
    return route.fulfill({json:{items:[],count:0}});
   });
   await page.goto('http://ke.test/#/create');await page.getByLabel('What would you like').waitFor();
-  return {page,requests,release:async()=>{assert.ok(pending);await pending();},fill:async text=>{
+  return {page,requests,generateStarted,releaseGenerate,release:async()=>{assert.ok(pending);await pending();},fill:async text=>{
    const input=page.locator('[name=original_request]');if(!await input.isVisible())await page.getByText('Your original request · Edit',{exact:true}).click();await input.fill(text);
   },review:async()=>{await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('heading',{name:'Here’s what I understood'}).waitFor();},ready:async()=>page.getByRole('heading',{name:options.ideaCount?`${options.ideaCount} relevant ideas found`:'1 relevant idea found',exact:true}).waitFor(),shot:async name=>page.screenshot({path:path.join(screenshots,name+'.png'),fullPage:true})};
  }
@@ -109,6 +111,8 @@ fs.mkdirSync(screenshots,{recursive:true});
   f=await fixture({failPrepare:true});await f.fill('Write an essay. Preserve my voice.');await f.review();await f.page.getByText('Synthetic preparation failure',{exact:false}).waitFor();assert.equal(f.requests.length,1);assert.equal(await f.page.locator('.create-final button').isVisible(),false);await f.page.close();console.log('PASS preparation failure blocks Create, no automatic retry');
 
   f=await fixture({failGenerate:true});await f.fill('Write an essay. Preserve my voice.');await f.review();await f.ready();await f.page.getByRole('button',{name:/^Create /,exact:false}).click();await f.page.getByText('Synthetic generation failure',{exact:false}).waitFor();assert.equal(f.requests.filter(r=>r.path==='/workshops/generate').length,1);await f.shot('08-generation-failure');await f.page.close();console.log('PASS generation failure: no retry, repair or fallback');
+
+  f=await fixture({holdGenerate:true});await f.fill('Write a short essay.');await f.review();await f.ready();await f.page.getByRole('button',{name:/^Create /,exact:false}).click();await f.generateStarted;await f.page.getByText('Creating your draft',{exact:true}).waitFor();await f.shot('processing-create-generation');f.releaseGenerate();await f.page.getByRole('heading',{name:'Grounded draft',exact:true}).waitFor();await f.page.close();console.log('PASS Create generation has persistent activity feedback');
 
   f=await fixture({delayPrepare:true});await f.fill('Write an old essay.');await f.review();await f.fill('Write a newer essay without jargon.');await f.release();await f.page.waitForTimeout(100);
   assert.equal(await f.page.locator('[name=original_request]').inputValue(),'Write a newer essay without jargon.');assert.equal(await f.page.getByRole('heading',{name:'1 relevant idea found'}).count(),0);assert.equal(await f.page.locator('.create-final button').isVisible(),false);await f.shot('09-pending-request-edit');await f.page.close();console.log('PASS edits during pending preparation suppress old result');

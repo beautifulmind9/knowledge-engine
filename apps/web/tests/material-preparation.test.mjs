@@ -2,68 +2,81 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createMaterialPreparation} from '../material-preparation.js';
 
-function fixture({limit=450,failAt=0,throwAt=0,summaryFailAt=0,holdAt=0,onProgress=()=>{}}={}){
- const summaries=new Map(['one','two'].map(id=>[id,{readiness:'ready_to_build',completed_parts:0,total_parts:3,has_usable_knowledge:false,operation:'idle',next_action:'build_knowledge'}]));
- const calls=[],opened=[],usage={configured:true,free_tier_confirmed:true,daily_call_limit:limit,calls_today:0,daily_limit_reached:limit===0};let release,entered,posts=0,active=0,peak=0;
+function fixture({ids=['one','two'],parts=3,limit=450,failures={},throwAt=null,summaryFailAt=0,holdAt=0,onProgress=()=>{}}={}){
+ const summaries=new Map(ids.map(id=>[id,{readiness:'ready_to_build',completed_parts:0,total_parts:parts,has_usable_knowledge:false,operation:'idle',next_action:'build_knowledge'}]));
+ const calls=[],opened=[],attempts=new Map(),usage={configured:true,free_tier_confirmed:true,daily_call_limit:limit,calls_today:0,daily_limit_reached:limit===0};let release,entered,posts=0,active=0,peak=0;
  const held=new Promise(r=>release=r),started=new Promise(r=>entered=r);
  const api=async(path,options)=>{
   calls.push({path,options});if(path==='/usage')return {...usage};const id=path.split('/')[2],summary=summaries.get(id);
   if(!options){if(summaryFailAt&&posts===summaryFailAt)throw Error('Status unavailable');return {...summary};}
-  posts++;active++;peak=Math.max(peak,active);
+  posts++;usage.calls_today++;active++;peak=Math.max(peak,active);
   try{
    if(posts===holdAt){entered();await held;}
-   if(posts===throwAt)throw Error('Uncertain transport');
-   if(posts===failAt){summary.attention_category='build_stopped';return {processed_this_run:0,stopped_reason:'Private diagnostic'};}
-   usage.calls_today++;usage.daily_limit_reached=usage.calls_today>=usage.daily_call_limit;
-   summary.completed_parts++;summary.has_usable_knowledge=true;summary.readiness=summary.completed_parts===3?'ready':'partly_ready';summary.next_action=summary.readiness==='ready'?'use_knowledge':'continue_building';
+   const attempt=(attempts.get(id)||0)+1;attempts.set(id,attempt);
+   if(throwAt===posts)throw Error('Uncertain transport');
+   if((failures[id]||[]).includes(attempt)){
+    summary.attention_category='build_stopped';summary.readiness=summary.completed_parts?'partly_ready':'ready_to_build';summary.next_action=summary.completed_parts?'continue_building':'build_knowledge';
+    return {processed_this_run:0,stopped_reason:'Private diagnostic',interruption_category:failures.category||'provider_unavailable'};
+   }
+   summary.completed_parts++;summary.has_usable_knowledge=summary.completed_parts>0;summary.readiness=summary.completed_parts===parts?'ready':'partly_ready';summary.next_action=summary.readiness==='ready'?'use_knowledge':'continue_building';summary.attention_category=null;
+   usage.daily_limit_reached=usage.calls_today>=usage.daily_call_limit;
    return {processed_this_run:1};
   }finally{active--;}
  };
- const run=createMaterialPreparation({sourceIds:['one','two'],api,onSource:async id=>opened.push(id),onProgress});
+ const run=createMaterialPreparation({sourceIds:ids,api,onSource:async id=>opened.push(id),onProgress});
  return {run,summaries,usage,calls,opened,release,started,peak:()=>peak,posts:()=>calls.filter(c=>c.options)};
 }
-test('Add authorization prepares multiple materials sequentially with independent one-part requests',async()=>{
- const f=fixture();assert.equal(f.calls.length,0);const result=await f.run.run();
- assert.equal(result.status,'completed');assert.deepEqual(f.opened,['one','two']);assert.equal(f.posts().length,6);assert.equal(f.peak(),1);
+test('one Add authorization sequentially prepares all six selected materials',async()=>{
+ const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2});const result=await f.run.run();
+ assert.equal(result.status,'completed');assert.deepEqual(f.opened,ids);assert.equal(f.posts().length,12);assert.equal(f.peak(),1);
  assert.ok(f.posts().every(c=>c.path.endsWith('/interpret?max_chunks=1')));
- assert.deepEqual(f.posts().map(c=>c.path.split('/')[2]),['one','one','one','two','two','two']);
- await f.run.run();assert.equal(f.posts().length,6);
+ assert.deepEqual([...new Set(f.posts().map(c=>c.path.split('/')[2]))],ids);
 });
-test('shared allowance bounds the entire selected set and cannot grow mid-run',async()=>{
- const f=fixture({limit:2,holdAt:1}),pending=f.run.run();await f.started;
- f.usage.daily_call_limit=450;f.release();const result=await pending;
- assert.equal(f.posts().length,2);assert.equal(f.summaries.get('one').completed_parts,2);assert.equal(f.summaries.get('two').completed_parts,0);assert.equal(result.status,'incomplete');
+test('provider 503 on material two is not retried and does not strand materials three through six',async()=>{
+ const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,failures:{two:[1],category:'provider_unavailable'}});const result=await f.run.run();
+ assert.equal(result.status,'incomplete');assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,1);
+ assert.deepEqual(f.opened,ids);assert.equal(f.summaries.get('two').completed_parts,0);
+ assert.ok(['three','four','five','six'].every(id=>f.summaries.get(id).readiness==='ready'));
+ assert.equal(result.outcomes.get('two').category,'provider_unavailable');
 });
-test('allowance exhaustion pauses preparation without losing saved sibling state',async()=>{
- const f=fixture({limit:4});const result=await f.run.run();
- assert.equal(result.status,'daily_allowance');assert.equal(f.posts().length,4);assert.equal(result.outcomes.get('one').category,'completed');assert.equal(result.outcomes.get('two').category,'daily_allowance');
+test('Continue incomplete materials is a fresh explicit attempt for only the incomplete material',async()=>{
+ const summaries=new Map(['one','two','three'].map(id=>[id,{readiness:'ready_to_build',completed_parts:0,total_parts:1,has_usable_knowledge:false,operation:'idle',next_action:'build_knowledge'}]));let calls=0,fail=true;
+ const api=async(path,options)=>{if(path==='/usage')return {configured:true,free_tier_confirmed:true,daily_call_limit:450,calls_today:calls};const id=path.split('/')[2];if(!options)return {...summaries.get(id)};calls++;if(id==='two'&&fail)return {processed_this_run:0,stopped_reason:'stopped',interruption_category:'provider_unavailable'};const s=summaries.get(id);s.completed_parts=1;s.readiness='ready';s.next_action='use_knowledge';return {processed_this_run:1};};
+ const first=await createMaterialPreparation({sourceIds:['one','two','three'],api}).run();assert.equal(first.status,'incomplete');assert.equal(calls,3);
+ fail=false;const continued=await createMaterialPreparation({sourceIds:['two'],api}).run();assert.equal(continued.status,'completed');assert.equal(calls,4);assert.equal(summaries.get('one').completed_parts,1);assert.equal(summaries.get('three').completed_parts,1);assert.equal(summaries.get('two').readiness,'ready');
 });
-for(const [name,options,category] of [['backend failure',{failAt:2},'failed'],['transport uncertainty',{throwAt:2},'uncertain'],['status failure',{summaryFailAt:1},'status_unavailable']]){
- test(`${name} stops immediately without retries or another material dispatch`,async()=>{
-  const f=fixture(options);const result=await f.run.run();assert.equal(result.status,category);assert.deepEqual(f.opened,['one']);assert.equal(f.posts().length,name==='status failure'?1:2);assert.equal(f.summaries.get('one').completed_parts,1);assert.equal(f.summaries.get('two').completed_parts,0);
- });
-}
-test('Stop allows in-flight success and stops before another part or sibling',async()=>{
- const f=fixture({holdAt:2});const pending=f.run.run();await f.started;f.run.stop();assert.equal(f.posts().length,2);f.release();const result=await pending;
- assert.equal(result.status,'stopped');assert.equal(f.summaries.get('one').completed_parts,2);assert.equal(f.posts().length,2);
+test('two independent failures retain their progress while unaffected siblings complete',async()=>{
+ const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,failures:{two:[1],five:[2]}});const result=await f.run.run();
+ assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('two').category,'provider_unavailable');assert.equal(result.outcomes.get('five').category,'provider_unavailable');
+ assert.equal(f.summaries.get('two').completed_parts,0);assert.equal(f.summaries.get('five').completed_parts,1);
+ assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('three').readiness,'ready');assert.equal(f.summaries.get('six').readiness,'ready');
+ assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,1);assert.equal(f.posts().filter(c=>c.path.includes('/five/')).length,2);
 });
-test('navigation stops subsequent dispatch; creating a new coordinator never resumes',async()=>{
- const f=fixture({holdAt:2});const pending=f.run.run();await f.started;f.run.stop('navigation');f.release();const result=await pending;assert.equal(result.status,'left');assert.equal(f.posts().length,2);
- const refreshed=fixture();await Promise.resolve();assert.equal(refreshed.calls.length,0);
+test('shared allowance exhaustion stops dispatching new material while preserving earlier successes',async()=>{
+ const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,limit:5});const result=await f.run.run();
+ assert.equal(result.status,'daily_allowance');assert.equal(f.posts().length,5);assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('two').readiness,'ready');assert.equal(f.summaries.get('three').completed_parts,1);
+ assert.equal(result.outcomes.get('three').category,'daily_allowance');
 });
-test('zero allowance dispatches nothing',async()=>{
- const f=fixture({limit:0});const result=await f.run.run();assert.equal(result.status,'daily_allowance');assert.equal(f.posts().length,0);
+test('a failed attempt ends only that material and the next authorized material proceeds',async()=>{
+ const f=fixture({failures:{one:[2]}}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'provider_unavailable');assert.equal(result.outcomes.get('two').category,'completed');assert.equal(f.posts().length,5);assert.deepEqual(f.opened,['one','two']);
 });
-test('progress exposes newly usable server knowledge before the material is complete',async()=>{
- let usableBeforeReady=false;const f=fixture({onProgress:s=>{const o=s.outcomes.get('one');if(o?.summary?.has_usable_knowledge&&o.summary.readiness==='partly_ready')usableBeforeReady=true;}});
- await f.run.run();assert.equal(usableBeforeReady,true);
+test('a single material retains its exact safe interruption category for source detail',async()=>{
+ const f=fixture({ids:['one'],failures:{one:[2],category:'provider_unavailable'}}),result=await f.run.run();assert.equal(result.status,'provider_unavailable');assert.equal(result.outcomes.get('one').category,'provider_unavailable');assert.equal(f.posts().length,2);
 });
-test('navigation while opening the next material cannot dispatch that material',async()=>{
- let posts=0,run;const usage={configured:true,free_tier_confirmed:true,daily_call_limit:450,calls_today:0};
- run=createMaterialPreparation({sourceIds:['one','two'],api:async(_path,options)=>options?(posts++,{processed_this_run:1}):_path==='/usage'?usage:{readiness:'ready_to_build',completed_parts:0,total_parts:1,operation:'idle',next_action:'build_knowledge'},onSource:async id=>{if(id==='two')run.stop('navigation');}});
- const result=await run.run();assert.equal(posts,1);assert.equal(result.status,'left');
+test('transport uncertainty never retries the material and sibling dispatch is independent',async()=>{
+ const f=fixture({throwAt:2}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'uncertain');assert.equal(f.summaries.get('two').readiness,'ready');assert.equal(f.posts().filter(c=>c.path.includes('/one/')).length,2);assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,3);
 });
-test('unavailable initial allowance records an in-tab blocked outcome without dispatch',async()=>{
- let posts=0;const run=createMaterialPreparation({sourceIds:['one'],api:async(_path,options)=>{if(options)posts++;throw Error('Unavailable');}});
- const result=await run.run();assert.equal(posts,0);assert.equal(result.outcomes.get('one').category,'allowance_unavailable');
+test('Stop allows the current request to finish and prevents later siblings',async()=>{
+ const f=fixture({holdAt:2}),pending=f.run.run();await f.started;f.run.stop();f.release();const result=await pending;assert.equal(result.status,'stopped');assert.equal(f.summaries.get('one').completed_parts,2);assert.equal(f.summaries.get('two').completed_parts,0);assert.equal(f.posts().length,2);
 });
+test('navigation stops subsequent dispatch; a new page does not automatically resume',async()=>{
+ const f=fixture({holdAt:2}),pending=f.run.run();await f.started;f.run.stop('navigation');f.release();const result=await pending;assert.equal(result.status,'left');assert.equal(f.posts().length,2);
+});
+test('zero allowance dispatches no material request',async()=>{const f=fixture({limit:0});const result=await f.run.run();assert.equal(result.status,'daily_allowance');assert.equal(f.posts().length,0);});
+test('progress exposes newly usable knowledge before every selected material is complete',async()=>{
+ let usableWhilePreparing=false;const f=fixture({onProgress:s=>{usableWhilePreparing ||= [...s.outcomes.values()].some(o=>o.summary?.has_usable_knowledge&&o.summary.readiness==='partly_ready');}});await f.run.run();assert.equal(usableWhilePreparing,true);
+});
+test('status refresh failure is isolated to its material and later material still completes',async()=>{
+ const f=fixture({summaryFailAt:1}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'status_unavailable');assert.equal(f.summaries.get('two').readiness,'ready');assert.equal(f.posts().length,4);
+});
+test('callback failure remains a batch-wide stop',async()=>{const f=fixture({onProgress(){throw Error('synthetic render failure');}});const result=await f.run.run();assert.equal(result.status,'status_unavailable');assert.equal(f.posts().length,0);});

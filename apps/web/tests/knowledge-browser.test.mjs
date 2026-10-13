@@ -123,9 +123,9 @@ test('chapter and example questions require their relevant context',()=>{
 test('late grounded answer cannot render after scope changes',async()=>{
  const text=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
  let resolve;const rendered=[],requests=[];
- const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],
+ const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],beginProcessingStatus:()=>1,endProcessingStatus:()=>{},
  document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,
- detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){}}),makeElement:()=>({}),
+ detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){},setAttribute(){},removeAttribute(){}}),makeElement:()=>({}),
  apiFetch:(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(r=>{resolve=r;});},
  renderKnowledgeAnswer:(...args)=>rendered.push(args)};
  vm.createContext(ctx);vm.runInContext(text.slice(text.indexOf('async function generateKnowledgeAnswer('),text.indexOf('function decorateKnowledgeView(')),ctx);

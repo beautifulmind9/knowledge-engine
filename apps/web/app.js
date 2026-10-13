@@ -7,11 +7,14 @@ import {api, apiFetch, csrfToken} from './api.js';
 import {createNavigation} from './navigation.js';
 import {newInteractionDraft, captureRequest, correctDraft, interpretDraft, draftNeedsInterpretation, workshopRequest, evidenceIdentity, confirmDraft, preparedGenerationRequest} from './interaction-draft.js';
 import { PAGE_SIZE, filterUnits, createSearchController } from './knowledge-browser.js';
+import {beginProcessingStatus,updateProcessingStatus,endProcessingStatus,getProcessingStatus,subscribeProcessingStatus,renderProcessingStatus,attachProcessingAnnouncer,announceProcessingStatus} from './processing-status.js';
 const main=document.querySelector('main'), feedback=document.querySelector('#feedback');
-let interactionDraft=newInteractionDraft(),createMaterials=null,viewRevision=0,foregroundBuild=null;
-let preparationTransition=false;
+const processingRegion=document.querySelector('#processing-status');
+attachProcessingAnnouncer(document.querySelector('#processing-announcer'));
+subscribeProcessingStatus(status=>renderProcessingStatus(processingRegion,status));
+let interactionDraft=newInteractionDraft(),createMaterials=null,viewRevision=0,foregroundBuild=null,libraryCollectionRefresh=null,preparationBatch=null;
 const preparationOutcomes=new Map();
-function beginView(){if(!preparationTransition)foregroundBuild?.stop('navigation');const revision=++viewRevision;return ()=>revision===viewRevision;}
+function beginView(){const revision=++viewRevision;return ()=>revision===viewRevision;}
 let homeDraft=newInteractionDraft(),exploreState=null,explorePicker=false,materialAddDraft=null;
 function captureDraft(){main.querySelector('#create-brief')?.captureInteraction();main.captureExplore?.();}
 function freshExplore(query=''){return {query,chapter:'',idea:'',contextOpen:false,contextMode:'both',promptMode:null,type:'',section:'',visible:PAGE_SIZE,browseOpen:false,results:null,answer:null};}
@@ -31,12 +34,12 @@ const state={library:null,source:null,selected:new Set(),view:'home'};
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
 function message(text,error=false){feedback.textContent=text;feedback.className=error?'error':'';}
 function button(text,action,cls=''){const b=el('button',text,cls);b.type='button';b.onclick=()=>run(action,b);return b;}
-async function run(fn,b){if(b)b.disabled=true;main.setAttribute('aria-busy','true');message('Working…');let revision=viewRevision;try{const pending=fn();revision=viewRevision;await pending;if(revision!==viewRevision)return;if(feedback.textContent==='Working…')message('');}catch(e){if(revision===viewRevision)message(e.message,true);}finally{if(b)b.disabled=false;if(revision===viewRevision)main.removeAttribute('aria-busy');}}
+async function run(fn,b){if(b)b.disabled=true;main.setAttribute('aria-busy','true');message('Working…');let revision=viewRevision;try{const pending=fn();revision=viewRevision;if(getProcessingStatus())message('');await pending;if(revision!==viewRevision)return;if(feedback.textContent==='Working…')message('');}catch(e){if(revision===viewRevision)message(e.message,true);}finally{if(b)b.disabled=false;if(revision===viewRevision)main.removeAttribute('aria-busy');}}
 function field(label,name,kind='input',value=''){const l=el('label',label),i=el(kind);i.name=name;if(kind==='textarea')i.rows=4;i.value=value;l.append(i);return [l,i];}
 function select(label,values,current='',multiple=false){const [l,s]=field(label,label,'select');s.multiple=multiple;for(const [id,name] of values){const o=el('option',name);o.value=id;o.selected=Array.isArray(current)?current.includes(id):id===current;s.append(o);}return [l,s];}
 function form(onSubmit){const f=el('form');f.onsubmit=e=>{e.preventDefault();return run(()=>onSubmit(new FormData(f)),f.querySelector('[type=submit]'));};return f;}
 function submit(text){const b=el('button',text,'primary');b.type='submit';return b;}
-function heading(kicker,title,description){main.className='';main.updateMaterialPreparation=null;main.materialId=null;main.captureExplore=null;main.exploreContext=null;main.refreshMaterialAdd=null;const signout=main.querySelector('#beta-logout');if(signout){signout.hidden=true;document.body.append(signout);}main.replaceChildren(el('div',kicker,'kicker'),el('h1',title),el('p',description,'intro'));}
+function heading(kicker,title,description){main.className='';main.updateMaterialPreparation=null;main.refreshMaterialStatus=null;main.materialId=null;main.captureExplore=null;main.exploreContext=null;main.refreshMaterialAdd=null;libraryCollectionRefresh=null;const signout=main.querySelector('#beta-logout');if(signout){signout.hidden=true;document.body.append(signout);}main.replaceChildren(el('div',kicker,'kicker'),el('h1',title),el('p',description,'intro'));}
 function card(title,description){const c=el('section',undefined,'card');c.append(el('h3',title));if(description)c.append(el('p',description));return c;}
 function actions(...buttons){const d=el('div',undefined,'actions');d.append(...buttons);return d;}
 function detail(title,...nodes){const d=el('details');d.append(el('summary',title),...nodes);return d;}
@@ -64,23 +67,31 @@ function rowAction(summary){
  if(summary.attention_category==='build_stopped'||summary.attention_category==='build_unconfirmed'||summary.recovery?.some(item=>item.allowed))return 'Open material';
  if(summary.readiness==='added'&&summary.next_action==='attach_file')return 'Finish adding';
  if(summary.readiness==='added'&&summary.next_action==='read_source')return 'Read source';
- if(summary.readiness==='ready_to_build'&&summary.next_action==='build_knowledge')return 'Continue preparing';
- if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building')return 'Continue preparing';
  return 'Open material';
 }
-function renderLibraryRow(source,summary,summaryUnavailable=false){
+function renderLibraryRow(source,summary,summaryUnavailable=false,batchOutcome=null){
  const row=el('article',undefined,'library-row');
  const title=el('h2',source.title,'library-row-title');row.append(title);
+ const action=rowAction(summary);
+ if(action==='Explore knowledge'){
+  const materialLink=el('a','Open material','library-row-material-link');materialLink.href='#/library/material/'+encodeURIComponent(source.id);materialLink.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};title.append(materialLink);
+ }
  if(source.title_origin==='filename')row.append(el('p','Temporary name from filename','library-row-author'));
  if(source.author?.trim())row.append(el('p',source.author,'library-row-author'));
- const action=rowAction(summary);
- if(action!=='Open material'){const open=el('a','Open material','library-row-open');open.href='#/library/material/'+encodeURIComponent(source.id);open.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};row.append(open);}
  if(summary){
-  row.append(el('p',libraryReadiness[summary.readiness]||'Status unavailable','library-row-readiness'));
-  const coverage=preparationLabel(summary.completed_parts,summary.total_parts);
-  row.append(el('p',coverage,'library-row-coverage'));
+  const queuedForBatch=batchOutcome?.category==='not_started'&&!preparationBatch?.finished;
+  const activelyPreparing=batchOutcome?.category==='running';
+  const interrupted=['provider_unavailable','failed','uncertain','status_unavailable'].includes(batchOutcome?.category)||(!activelyPreparing&&!queuedForBatch&&['build_stopped','build_unconfirmed'].includes(summary.attention_category));
+  row.append(el('p',activelyPreparing||queuedForBatch?'Preparing':libraryReadiness[summary.readiness]||'Status unavailable','library-row-readiness'));
+  if(activelyPreparing&&Number.isInteger(summary.completed_parts)&&summary.total_parts>0){
+   const progress=el('progress');progress.max=summary.total_parts;progress.value=summary.completed_parts;progress.setAttribute('aria-label',`Preparation progress for ${source.title}`);row.append(progress,el('p',`${Math.round(100*summary.completed_parts/summary.total_parts)}% prepared`,'library-row-coverage'));
+  } else if(interrupted)row.append(el('p','Needs attention · Progress saved','library-row-attention'));
+  else if(queuedForBatch)row.append(el('p','Included in this preparation','library-row-coverage'));
+  if(!activelyPreparing&&!queuedForBatch&&summary.has_usable_knowledge)row.append(el('p','Knowledge available','library-row-coverage'));
+  if(!activelyPreparing&&!queuedForBatch&&summary.readiness==='partly_ready')row.append(el('p','Partly prepared','library-row-coverage'));
+  if(summary.readiness==='unknown')row.append(el('p','Preparation progress unavailable','library-row-coverage'));
   if(summary.readiness==='ready'&&!summary.has_usable_knowledge)row.append(el('p','No usable knowledge is available from this material yet.','library-row-operation'));
-  if(summary.attention_category)row.append(el('p',`Needs attention: ${summary.attention_message||'This material needs attention.'}`,'library-row-attention'));
+  if(summary.attention_category&&!interrupted)row.append(el('p',`Needs attention: ${summary.attention_message||'This material needs attention.'}`,'library-row-attention'));
   if(summary.operation==='build_unconfirmed'&&summary.attention_category!=='build_unconfirmed')row.append(el('p','Previous build has not reported completion.','library-row-operation'));
  }else{
   row.append(el('p',summaryUnavailable?'Readiness unavailable':'Status unavailable','library-row-readiness'));
@@ -88,11 +99,13 @@ function renderLibraryRow(source,summary,summaryUnavailable=false){
   if(summaryUnavailable)row.append(el('p','Current status could not be loaded. Open the material to check it.','library-row-operation'));
  }
  const controls=actions();
- controls.append(button(action,async()=>{
+ const buttonLabel=action==='Explore knowledge'?'Explore':action;
+ controls.append(button(buttonLabel,async()=>{
   if(action==='Explore knowledge')return navigate('knowledge',{library:source.library_id||state.library,materials:[source.id],source:source.id,exploreState:freshExplore(exploreState?.query||'')});
   if(action==='Finish adding'||action==='Open material')return navigate('material',{id:source.id});
   if(action==='Read source'){
-   await api(`/sources/${source.id}/process`,{method:'POST'});
+   const task=beginProcessingStatus({label:'Reading your material',detail:'Your original file stays safely attached to this material.'});
+   try{await api(`/sources/${source.id}/process`,{method:'POST'});}finally{endProcessingStatus(task);}
    if(!await navigate('library',{replace:true}))return;
    await navigate('material',{id:source.id});await startPreparation([source.id]);return;
   }
@@ -146,9 +159,15 @@ function materialAddSurface(libs,active){
    if(onlyItem?.uploaded&&onlyItem.readFailure==='ocr_required'&&!onlyItem.replacementSelected){confirmation.querySelector('[name="replacement_file-0"]')?.click();return;}
    if(onlyItem?.read)return navigate('material',{id:onlyItem.sourceId,library:onlyItem.libraryId});
    if(pendingItems.some(item=>!item.title.trim())){confirmation.querySelector('[name="title-'+batch.items.findIndex(item=>!item.title.trim())+'"]')?.reportValidity();return;}
-   const pending=addMaterials(batch,api,file=>{const data=new FormData();data.append('file',file);return data;},text=>{if(active())message(text);});
+   let addActivity=null;
+   const pending=addMaterials(batch,api,file=>{const data=new FormData();data.append('file',file);return data;},text=>{
+    if(!active())return;
+    const label=text.startsWith('Reading')?'Reading your material':'Adding your material';
+    if(!addActivity)addActivity=beginProcessingStatus({label,detail:'Each material is added and read separately.'});
+    else updateProcessingStatus(addActivity,{label,detail:'Each material is added and read separately.'});
+   });
    renderConfirmation();
-   const result=await pending;
+   let result;try{result=await pending;}finally{if(addActivity)endProcessingStatus(addActivity);}
    if(!active())return;
    const readable=result.results.filter(item=>item.ok).map(item=>item.draft.sourceId);
    if(readable.length){
@@ -166,37 +185,79 @@ function materialAddSurface(libs,active){
  fileInput.onchange=()=>{const selected=Array.from(fileInput.files||[]);selectMaterialFiles(batch,selected);renderConfirmation();if(batch.invalidFiles.length)message(selected.length===1&&!batch.items.length?batch.invalidFiles[0].message:'Unsupported or empty files were left out. The valid files can still be added.',true);else message('');};
  main.refreshMaterialAdd=renderConfirmation;renderConfirmation();return surface;
 }
-async function libraryView(_id,route={}){const active=beginView();heading('LIBRARY','Your library','Add material, find useful ideas, and bring them into your work.');const libs=await libraries();if(!active())return;
+async function libraryView(_id,route={}){const active=beginView();heading('LIBRARY','Your library','Material, ideas and work in one place.');const libs=await libraries();if(!active())return;
  if(libs.length>1){const [l,s]=select('Filter by library',[['','All libraries'],...libs.map(l=>[l.id,l.name])],state.library||'');s.onchange=()=>{state.library=s.value||null;state.source=null;state.selected.clear();if(!materialAddDraft?.items?.length)materialAddDraft=null;run(()=>navigate('library',{replace:true}));};main.append(l);}
  const sources=libs.length?await sourceItems():[];if(!active())return;
  let summaries=[],summaryUnavailable=false;
  if(sources.length){try{summaries=await api('/sources/summaries'+(state.library?'?library_id='+encodeURIComponent(state.library):''));}catch{summaryUnavailable=true;}}
  if(!active())return;
  const summaryById=new Map(summaries.map(summary=>[summary.source_id,summary]));
- const addDetails=detail('Add material',materialAddSurface(libs,active));addDetails.className='library-add';addDetails.open=route.add||!sources.length||!!materialAddDraft?.items?.length;main.append(addDetails);
- if(!sources.length){const empty=el('p','Choose a file to add material to your library. You can organize it into libraries later.','empty');empty.id='library-empty';main.append(empty);}
- main.append(actions(button('Ask & Explore',()=>navigate('knowledge',{materials:[],source:null}),sources.length?'':'secondary')));
- const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.items?.length)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));main.append(detail('Create a library',create));
- const grid=el('div',undefined,'library-rows');for(const source of sources)grid.append(renderLibraryRow(source,summaryById.get(source.id),summaryUnavailable));main.append(grid);
+ const collection=el('section',undefined,'library-collection');
+ const summaryLine=el('div',undefined,'library-summary-line');
+ const collectionHeader=el('div',undefined,'library-collection-header');collectionHeader.append(el('div','YOUR COLLECTION','kicker'),summaryLine,actions(button('Add material',()=>{const add=main.querySelector('.library-add');if(add){add.open=true;add.scrollIntoView({behavior:'smooth',block:'start'});add.querySelector('input[type=file]')?.focus();}},'primary'),button('Ask & Explore',()=>navigate('knowledge',{materials:[],source:null}))));
+ collection.append(collectionHeader);
+ const addDetails=detail('Add material',materialAddSurface(libs,active));addDetails.className='library-add';addDetails.open=route.add||!sources.length||!!materialAddDraft?.items?.length;collection.append(addDetails);
+ if(!sources.length){const empty=el('p','Choose a file to add material to your library. You can organize it into libraries later.','empty');empty.id='library-empty';collection.append(empty);}
+ const batchSummary=el('section',undefined,'library-batch-summary');collection.append(batchSummary);
+ const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.items?.length)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));collection.append(detail('Create a library',create));
+ const grid=el('div',undefined,'library-rows');grid.setAttribute('aria-label','Materials');collection.append(grid);
+ const renderCards=()=>{
+  const effective=source=>preparationBatch?.outcomes.get(source.id)?.summary||summaryById.get(source.id);
+  const currentReady=sources.filter(source=>effective(source)?.readiness==='ready').length;
+  const currentPreparing=sources.filter(source=>['running','not_started'].includes(preparationBatch?.outcomes.get(source.id)?.category)&&!preparationBatch?.finished).length;
+  const currentAttention=sources.filter(source=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(preparationBatch?.outcomes.get(source.id)?.category)||(effective(source)?.attention_category&&!['completed','running'].includes(preparationBatch?.outcomes.get(source.id)?.category))).length;
+  summaryLine.replaceChildren(el('span',`${sources.length} ${sources.length===1?'material':'materials'}`),el('span',`${currentReady} ready`));if(currentPreparing)summaryLine.append(el('span',`${currentPreparing} preparing`));if(currentAttention)summaryLine.append(el('span',`${currentAttention} need attention`));
+  batchSummary.replaceChildren();
+  if(preparationBatch?.finished){
+   const failed=sources.filter(source=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(preparationBatch.outcomes.get(source.id)?.category));
+   const incomplete=sources.filter(source=>{const s=effective(source);return s&&s.readiness!=='ready'&&['build_knowledge','continue_building'].includes(s.next_action)&&s.operation!=='build_unconfirmed';});
+   if(failed.length||preparationBatch.status==='daily_allowance'||preparationBatch.status==='allowance_unavailable'){
+    const affected=failed.length===1?'1 material needs another attempt.':`${failed.length} materials need another attempt.`;
+    const copy=preparationBatch.status==='daily_allowance'?`${currentReady} ${currentReady===1?'material is':'materials are'} ready. Preparation is paused for today.`:preparationBatch.status==='allowance_unavailable'?`${currentReady} ${currentReady===1?'material is':'materials are'} ready. Preparation could not check the shared allowance.`:`${currentReady} ${currentReady===1?'material is':'materials are'} ready. ${affected}`;
+    batchSummary.append(el('p',copy));if(incomplete.length&&preparationBatch.status!=='daily_allowance')batchSummary.append(button('Continue incomplete materials',()=>startPreparation(incomplete.map(source=>source.id)),'primary'));
+   }
+  }
+  grid.replaceChildren();for(const source of sources)grid.append(renderLibraryRow(source,effective(source),summaryUnavailable,preparationBatch?.outcomes.get(source.id)));
+ };
+ renderCards();libraryCollectionRefresh=renderCards;main.append(collection);
 }
 async function startPreparation(sourceIds){
  if(foregroundBuild)return;
  if(feedback.textContent==='Working…')message('');
- const session=createMaterialPreparation({sourceIds,api,onSource:async id=>{
-  if(main.materialId===id)return;
-  preparationTransition=true;
-  let pending;
-  try{pending=navigate('material',{id,replace:true});}finally{preparationTransition=false;}
-  await pending;
- },onProgress:snapshot=>{
+ preparationBatch={sourceIds:[...new Set(sourceIds)],outcomes:new Map(),finished:false,status:'running'};
+ const batchSize=preparationBatch.sourceIds.length;
+ const activityId=beginProcessingStatus({label:batchSize>1?'Preparing your library':'Preparing your material',detail:batchSize>1?`0 of ${batchSize} materials ready. New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.`:'New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.',onStop:()=>{foregroundBuild?.stop();updateProcessingStatus(activityId,{stopRequested:true,onStop:null,detail:'Finishing the current step before stopping.'});}});
+ let session;
+ session=createMaterialPreparation({sourceIds:preparationBatch.sourceIds,api,onSource:async()=>{},onProgress:snapshot=>{
   for(const [id,outcome] of snapshot.outcomes)preparationOutcomes.set(id,outcome);
-  main.updateMaterialPreparation?.();
+  preparationBatch.outcomes=new Map(snapshot.outcomes);preparationBatch.status=snapshot.status;
+  const readyCount=[...snapshot.outcomes.values()].filter(outcome=>outcome.summary?.readiness==='ready').length;
+  updateProcessingStatus(activityId,{completed:snapshot.completedWork,total:snapshot.totalWork||null,detail:batchSize>1?`${readyCount} of ${batchSize} materials ready. New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.`:'New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.'});
+  libraryCollectionRefresh?.();
+  try{main.updateMaterialPreparation?.();}catch{session?.stop('callback_failure');}
  }});
  foregroundBuild=session;
- try{await session.run();}finally{
+ let result;
+ try{result=await session.run();}catch{result={...session.snapshot(),status:'status_unavailable'};}finally{
   if(foregroundBuild===session)foregroundBuild=null;
   for(const [id,outcome] of session.snapshot().outcomes)preparationOutcomes.set(id,outcome);
-  main.updateMaterialPreparation?.();
+  try{await main.refreshMaterialStatus?.();}catch{/* Status remains explicitly unavailable until it can be checked. */}
+  try{main.updateMaterialPreparation?.();}catch{/* The server summary remains authoritative. */}
+  const final=result||session.snapshot();
+  preparationBatch.outcomes=new Map(session.snapshot().outcomes);preparationBatch.status=final.status;preparationBatch.finished=true;
+  libraryCollectionRefresh?.();
+  if(final.status==='completed'){announceProcessingStatus('Your material is ready.');endProcessingStatus(activityId);}
+  else if(final.status==='provider_unavailable')updateProcessingStatus(activityId,{label:'Preparation paused',detail:'The AI service was temporarily unavailable. Your progress is saved.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='daily_allowance')updateProcessingStatus(activityId,{label:'Preparation paused for today',detail:'Today’s shared allowance is used. Your progress is saved.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='uncertain')updateProcessingStatus(activityId,{label:'Preparation needs confirmation',detail:'The last step could not be confirmed. No further work has started.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='status_unavailable')updateProcessingStatus(activityId,{label:'Preparation status unavailable',detail:'Your confirmed progress is saved. Check the material status before continuing.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='stopped'||final.status==='left')updateProcessingStatus(activityId,{label:'Preparation stopped',detail:final.status==='left'?'You can return to the material to continue.':'You can continue from the material page.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='failed')updateProcessingStatus(activityId,{label:'Preparation stopped',detail:'Your progress is saved. Continue preparing when you are ready.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='incomplete'){
+   updateProcessingStatus(activityId,{label:'Batch attempt complete',detail:'Completed progress is saved. See your Library for each material’s current status.',completed:final.completedWork,total:final.totalWork||null});
+  }
+  else endProcessingStatus(activityId);
+  if(final.status!=='completed'&&final.status!=='idle')updateProcessingStatus(activityId,{onStop:null,stopRequested:false});
  }
 }
 async function sourceView(id){
@@ -259,21 +320,28 @@ async function sourceView(id){
   if(!active())return;
   const outcome=preparationOutcomes.get(id),session=foregroundBuild?.snapshot();
   // A reopened page's fresh server summary wins over a previous in-tab run snapshot.
-  if(outcome?.summary&&session?.status==='running'&&session.currentId===id)summary=outcome.summary;
+  if(outcome?.summary&&session?.currentId===id)summary=outcome.summary;
   const running=!!session&&session.status==='running'&&session.currentId===id;
   const category=running?'running':outcome?.category;
-  statusTitle.textContent=['uncertain','status_unavailable'].includes(category)?'Preparation status unavailable.':summary.readiness==='ready'?'Ready':running?'Preparing your material':category==='daily_allowance'?'Preparation paused for today.':category==='allowance_unavailable'?'Preparation is unavailable right now.':category==='stopped'||category==='left'||category==='failed'||summary.attention_category==='build_stopped'?'Preparation stopped. Your progress is saved.':summary.readiness==='partly_ready'?'Partly ready':summary.readiness==='unknown'?'Status unavailable':summary.readiness==='added'?'Added':'Preparation not complete';
+  statusTitle.textContent=running?'Preparing':['status_unavailable','callback_failure'].includes(category)||summary.readiness==='unknown'?'Status unavailable':summary.readiness==='ready'?'Ready':summary.readiness==='partly_ready'?'Partly ready':summary.readiness==='added'?'Added':summary.readiness==='ready_to_build'?'Ready to prepare':'Preparation not complete';
   coverage.textContent=category==='status_unavailable'?'Preparation progress unavailable':preparationLabel(summary.completed_parts,summary.total_parts);
-  progress.hidden=!running;progress.max=100;progress.value=summary.total_parts?100*(summary.completed_parts||0)/summary.total_parts:0;progress.setAttribute('aria-valuetext',running?'Preparation in progress':preparationLabel(summary.completed_parts,summary.total_parts));
-  statusNote.textContent=running?'Keep this tab open while your material is being prepared. Progress is saved as it becomes available.':summary.has_usable_knowledge?'Existing knowledge remains available.':'';
-  if(category==='uncertain')statusNote.textContent='The last request could not be confirmed. It has not been retried. Check the material status before continuing.';
-  if(category==='status_unavailable')statusNote.textContent='Current preparation status could not be loaded. Your confirmed progress is kept.';
+  progress.hidden=true;progress.max=100;progress.value=summary.total_parts?100*(summary.completed_parts||0)/summary.total_parts:0;progress.setAttribute('aria-valuetext',summary.total_parts?`${Math.round(100*(summary.completed_parts||0)/summary.total_parts)}% prepared`:'Preparation progress unavailable');
+  statusNote.textContent=running?(summary.has_usable_knowledge?'Existing knowledge remains available.':''):summary.has_usable_knowledge?'Existing knowledge remains available.':'';
+  if(category==='provider_unavailable')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
+  if(outcome?.interruptionCategory==='provider_rejected')statusNote.textContent='The AI service could not accept this request. Your material and saved work are unchanged.';
+  if(outcome?.interruptionCategory==='validation_failed')statusNote.textContent='The response could not be safely checked. Your existing knowledge remains available.';
+  if(category==='uncertain')statusNote.textContent='Check the current material status before continuing.';
+  if(category==='stopped'||category==='left')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your progress is saved.';
+  if(category==='failed')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
+  if(category==='daily_allowance')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
+  if(category==='allowance_unavailable')statusNote.textContent='Preparation is unavailable right now. Your material remains saved.';
+  if(category==='status_unavailable'||category==='callback_failure')statusNote.textContent='Your confirmed progress is saved. Check the material status before continuing.';
   if(!running&&canPrepare()&&!availableAIAllowance(usage)&&!category){statusTitle.textContent=usage?.daily_limit_reached?'Preparation paused for today.':'Preparation is unavailable right now.';statusNote.textContent='Your material is saved. '+(summary.has_usable_knowledge?'Existing knowledge remains available.':'Preparation can continue when AI is available.');}
   if(summary.operation==='build_unconfirmed'&&!running)statusNote.textContent='The previous preparation request has not reported completion. Check again before continuing.';
-  attention.textContent=summary.attention_category?summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue preparing.':summary.attention_category==='build_stopped'?'The previous preparation attempt stopped before completion.':summary.attention_category==='build_unconfirmed'?'The previous preparation request has not reported completion.':summary.attention_message||'This material needs attention.':'';
+  attention.textContent=['provider_unavailable','failed','daily_allowance','allowance_unavailable'].includes(category)?'':summary.attention_category?summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue preparing.':summary.attention_category==='build_stopped'?'The previous preparation attempt stopped before completion.':summary.attention_category==='build_unconfirmed'?'The previous preparation request has not reported completion.':summary.attention_message||'This material needs attention.':'';
   attention.hidden=!attention.textContent;preparationActions.replaceChildren();
-  if(running){const stop=button('Stop preparing',()=>foregroundBuild?.stop());stop.disabled=!!outcome?.stopRequested;if(stop.disabled)stop.textContent='Stopping safely…';preparationActions.append(stop);}
-  else if(['uncertain','status_unavailable'].includes(category))preparationActions.append(button('Check material status',()=>{preparationOutcomes.delete(id);return navigate('material',{id,replace:true});}));
+  if(running)statusNote.textContent=summary.has_usable_knowledge?'New knowledge is available as preparation continues.':'New knowledge will appear here as preparation continues.';
+  else if(['uncertain','status_unavailable','callback_failure'].includes(category))preparationActions.append(button('Check material status',()=>{preparationOutcomes.delete(id);return navigate('material',{id,replace:true});}));
   else if(canPrepare()){
    const action=button('Continue preparing',()=>startPreparation([id]));action.disabled=!!foregroundBuild||!availableAIAllowance(usage)||['daily_allowance','allowance_unavailable'].includes(category);preparationActions.append(action);
   }
@@ -281,8 +349,9 @@ async function sourceView(id){
   if(lastPreviewCount!==summary.completed_parts){lastPreviewCount=summary.completed_parts;loadKnowledge();}
  }
  main.updateMaterialPreparation=renderPreparation;
- const read=async()=>{await api(`/sources/${id}/process`,{method:'POST'});if(active()&&await navigate('material',{id,replace:true}))await startPreparation([id]);};
- const uploadFile=async file=>{validateMaterial(file);const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});await read();};
+ main.refreshMaterialStatus=async()=>{if(!active())return;const [freshSummary,freshUsage]=await Promise.all([api(`/sources/${encodeURIComponent(id)}/summary`),api('/usage').catch(()=>null)]);if(!active())return;summary=freshSummary;usage=freshUsage;renderPreparation();};
+ const read=async()=>{const task=beginProcessingStatus({label:'Reading your material',detail:'Your original file stays safely attached to this material.'});try{await api(`/sources/${id}/process`,{method:'POST'});announceProcessingStatus('Reading your material is complete.');if(active()&&await navigate('material',{id,replace:true}))await startPreparation([id]);}finally{endProcessingStatus(task);}};
+ const uploadFile=async file=>{validateMaterial(file);const task=beginProcessingStatus({label:'Adding your material',detail:'The file is saved before reading begins.'});try{const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});await read();}finally{endProcessingStatus(task);}};
  const needsUpload=!source.file_path||['unattached','missing'].includes(summary.file_state)||['ocr_required','unsupported_extraction'].includes(summary.attention_category);
  if(needsUpload&&summary.file_replacement_allowed){
   const upload=form(async fd=>uploadFile(fd.get('file'))),[label,input]=field(summary.attention_category==='ocr_required'?'Choose a different file with selectable text':'Choose a supported file','file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
@@ -427,13 +496,15 @@ async function workshopView(){
    const brief=workshopRequest(interactionDraft,catalog());
    interactionDraft=confirmDraft(interactionDraft,brief);
    const identity=evidenceIdentity(interactionDraft,brief),ticket=++actionRevision;
+   const processing=beginProcessingStatus({label:'Creating your draft',detail:'Your confirmed request and selected knowledge are being used.'});
    let r;try{r=await api('/workshops/generate',{method:'POST',body:payload});}catch(error){
      if(!active()||ticket!==actionRevision)return;
      interactionDraft={...interactionDraft,prepared:null,confirmation:{state:'unconfirmed',snapshot:null}};
      showStale('Knowledge needs an update before another Create attempt.');throw error;
-   }
+   }finally{endProcessingStatus(processing);}
    if(!active()||ticket!==actionRevision||identity!==evidenceIdentity(interactionDraft,workshopRequest(interactionDraft,catalog())))return;
    if(!await navigate('work',{id:r.saved_output.id}))return;
+   announceProcessingStatus('Your draft was created and saved.');
    message(r.quality_report?.validation_status==='failed'?'Saved as a draft with timing errors. Review before use.':r.quality_report?.validation_status==='needs_review'?'Saved as a draft. Some checks need review.':'Generated and saved as version 1. Human review is still required.');
  },'primary');
  const providerNote=el('p','Uses the knowledge shown above.','muted');
@@ -578,13 +649,14 @@ async function workshopView(){
  async function prepare(){
    sync();const payload=workshopRequest(interactionDraft,catalog()),identity=evidenceIdentity(interactionDraft,payload),ticket=++actionRevision;
    interactionDraft={...interactionDraft,prepared:null};finalAction.hidden=true;update.hidden=true;
-   preview.replaceChildren(el('p','Finding relevant knowledge…','muted'));
+   preview.replaceChildren(el('p','Your knowledge preview will appear here.','muted'));
+   const processing=beginProcessingStatus({label:'Searching your knowledge',detail:'Finding material that fits your request.'});
    try{
      const r=await api('/workshops/prepare',{method:'POST',body:payload});
      if(!active()||ticket!==actionRevision||identity!==evidenceIdentity(interactionDraft,payload))return;
      if(!r.prepared_snapshot_id||r.interaction_revision!==interactionDraft.revision)throw Error('Knowledge preview could not be confirmed. Update knowledge before creating.');
-     interactionDraft={...interactionDraft,prepared:{identity,revision:interactionDraft.revision,evidence:r}};renderPreview(r);
-   }catch(error){if(!active()||ticket!==actionRevision)return;showStale('Knowledge could not be updated. Your request and corrections are kept.');throw error;}
+     interactionDraft={...interactionDraft,prepared:{identity,revision:interactionDraft.revision,evidence:r}};renderPreview(r);announceProcessingStatus('Relevant knowledge is ready to review.');
+   }catch(error){if(!active()||ticket!==actionRevision)return;showStale('Knowledge could not be updated. Your request and corrections are kept.');throw error;}finally{endProcessingStatus(processing);}
  }
  understanding.hidden=true;
  f.append(original,next,understanding,preview,update,finalAction);container.append(f);main.append(container);
@@ -606,7 +678,7 @@ async function outputView(id){
  const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;const reading=renderGroundedAnswer(o.content,{document,snapshot:o.knowledge_snapshot||[],sourceInfo});reading.className=`${reading.className||''} reading`.trim();main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),reading);const answerTableObserver=observeAnswerTableOverflow(reading);main._answerTableObserver?.disconnect();main._answerTableObserver=answerTableObserver;
  const evidence=detail('Ideas and evidence used');main.append(evidence);for(const ref of o.applied_knowledge||[]){const g=(o.knowledge_snapshot||[]).find(item=>item.canonical_asset?.id===ref.asset_id);const c=card(g?.canonical_asset?.title||'Knowledge used',ref.usage_note);const evidenceItems=(g?.evidence_trail||[]).map(item=>{const sourceTitle=sourceTitles.get(item.source_id);const context=[sourceTitle,item.chapter_or_section].filter(Boolean).join(' · ');return el('p',(context?context+'\n':'')+item.evidence,'evidence');});if(evidenceItems.length)c.append(detail('Source & evidence',...evidenceItems));evidence.append(c);}
  main.append(detail('Review and design choices',review,list(o.design_choices.length?o.design_choices:['No additional design choices recorded.'])));
- const revise=form(async fd=>{const body=revisionPayload(fd,o);const n=await api(`/outputs/${id}/revise`,{method:'POST',body});if(!active())return;if(!await navigate('work',{id:n.id}))return;message(`Saved version ${n.version}; the original is unchanged.`);});
+ const revise=form(async fd=>{const body=revisionPayload(fd,o),processing=beginProcessingStatus({label:body.manual?'Saving changes':'Revising your work',detail:body.manual?'Your manual edits will be saved as a new version.':'The requested AI revision is being prepared.'});let n;try{n=await api(`/outputs/${id}/revise`,{method:'POST',body});}finally{endProcessingStatus(processing);}if(!active())return;if(!await navigate('work',{id:n.id}))return;announceProcessingStatus(body.manual?'Your manual edits were saved as a new version.':'Your revised work was saved as a new version.');message(`Saved version ${n.version}; the original is unchanged.`);});
  const [il,ii]=field('Revision instruction','instruction');ii.required=true;ii.minLength=2;const [ml,mi]=field('Save my manual edits','manual');mi.type='checkbox';mi.checked=true;ml.className='check';
  const revisionMode=el('p','No AI used. Your edits will be saved as a new version.','muted');const [tl,ti]=field('Title','title','input',o.title),[cl,ci]=field('Edited content','content','textarea',o.content),[dl,di]=field('Design choices — one per line','choices','textarea',o.design_choices.join('\n'));ci.rows=12;
  const revisionSubmit=submit('Save manual edits');mi.onchange=()=>{revisionSubmit.textContent=mi.checked?'Save manual edits':'Revise with AI';revisionMode.textContent=mi.checked?'No AI used. Your edits will be saved as a new version.':'This sends one explicit AI revision request.';};
@@ -630,7 +702,7 @@ if (logoutButton && csrfToken()) {
   };
 }
 
-const router=createNavigation(window,route=>run(async()=>{
+ const router=createNavigation(window,route=>run(async()=>{
  captureDraft();
  if(route.newDraft){interactionDraft=route.newDraft;delete route.newDraft;}
  const previousLibrary=state.library;state.view=route.view;state.library=route.library||null;

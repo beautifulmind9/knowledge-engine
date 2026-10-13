@@ -18,6 +18,10 @@ from app.services.knowledge_extraction import (
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 
+class ExtractionValidationError(RuntimeError):
+    """A provider response was received but failed strict local validation."""
+
+
 def generate_structured_interaction(client, model: str, request: dict, payload: dict):
     from app.services.ai_gateway import generate
     return generate(model, payload, request["expected_output_schema"])
@@ -53,7 +57,7 @@ def validate_extraction_result(client, model: str, request: dict, interaction):
         return result, interaction
     except ValidationError as validation_error:
         validation_summary = _validation_summary(validation_error)
-        raise RuntimeError(
+        raise ExtractionValidationError(
             "AI output failed validation: "
             f"{validation_summary}. No assets saved. "
             "Automatic repair is disabled; retry explicitly."

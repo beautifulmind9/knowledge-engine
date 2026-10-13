@@ -197,13 +197,13 @@ def generate(model, payload, schema):
     with _attempt_admission_lock:
         current = status()
         if not current["configured"]:
-            raise HTTPException(503, "Add GEMINI_API_KEY to enable AI generation. Manual import remains available.")
+            raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
         if not current["free_tier_confirmed"]:
-            raise HTTPException(503, "Confirm billing is disabled for your Gemini project, then set GEMINI_FREE_TIER_CONFIRMED=true.")
+            raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
         if current["paused"]:
-            raise HTTPException(429, current["reason"] or "AI calls paused. Resume explicitly when quota is available.")
+            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
         if current["calls_today"] >= current["daily_call_limit"]:
-            raise HTTPException(429, "Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used.")
+            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
         usage.update(day=_quota_day(), calls=current["calls_today"]+1,
                      last_attempt_at=datetime.now(timezone.utc).isoformat())
         persist_state()
@@ -224,10 +224,19 @@ def generate(model, payload, schema):
         if quota:
             usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")
             persist_state()
-            raise HTTPException(429, usage["reason"]) from error
+            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"}) from error
         if diagnostic.get("status_code") == 400 and diagnostic.get("message_category") == "invalid_request_generic":
             raise HTTPException(
                 502,
                 "The AI service could not accept this request. Your materials and saved work are unchanged.",
+                headers={"X-KE-Interruption-Category":"provider_rejected"},
             ) from error
-        raise HTTPException(502, "AI provider request failed. Progress is saved; retry manually later.") from error
+        if diagnostic.get("status_code")==400:
+            category="provider_rejected"
+        elif isinstance(diagnostic.get("status_code"), int) and diagnostic["status_code"] >= 500:
+            category="provider_unavailable"
+        elif diagnostic.get("message_category")=="transport_timeout" or "Connection" in diagnostic.get("exception_type",""):
+            category="transport_uncertain"
+        else:
+            category="transport_uncertain"
+        raise HTTPException(502, "The AI request could not be confirmed. Your materials and saved work are unchanged.", headers={"X-KE-Interruption-Category":category}) from error

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {availableAIAllowance, buildQuantity, createKnowledgeBuild} from '../knowledge-build.js';
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
-function fixture({remaining=6,allowance=450,existing=0,failureAt=0,throwAt=0,holdAt=0,summaryFails=false,onProgress=()=>{}}={}){
+function fixture({remaining=6,allowance=450,existing=0,failureAt=0,interruptionCategory=null,throwAt=0,holdAt=0,summaryFails=false,onProgress=()=>{}}={}){
  const usage={configured:true,free_tier_confirmed:true,daily_call_limit:450,calls_today:450-allowance,paused:false};
  const calls=[],progress=[],held=deferred(),entered=deferred();let inFlight=0,peak=0,stored=existing,active=true;
  const api=async(path,options)=>{
@@ -15,7 +15,7 @@ function fixture({remaining=6,allowance=450,existing=0,failureAt=0,throwAt=0,hol
    if(number===holdAt){entered.resolve();await held.promise;}
    await Promise.resolve();
    if(number===throwAt)throw Error('Synthetic uncertain transport');
-   if(number===failureAt)return {processed_this_run:0,stopped_reason:'Synthetic provider/validation/quota stop'};
+   if(number===failureAt)return {processed_this_run:0,stopped_reason:'Synthetic provider/validation/quota stop',interruption_category:interruptionCategory};
    usage.calls_today++;stored++;return {processed_this_run:1};
   }finally{inFlight--;}
  };
@@ -50,6 +50,11 @@ test('server provider, validation or quota stop preserves confirmed parts and di
  const f=fixture({existing:12,failureAt:3});const result=await f.run.run();
  assert.equal(result.status,'failed');assert.equal(result.completed,2);assert.equal(f.posts().length,3);assert.equal(result.summary.completed_parts,14);assert.equal(result.summary.has_usable_knowledge,true);
  assert.equal(result.summary.attention_category,'build_stopped');
+});
+test('provider 503 is a known interruption, preserves prior work, and is never retried',async()=>{
+ const f=fixture({remaining:6,existing:4,failureAt:3,interruptionCategory:'provider_unavailable'});const result=await f.run.run();
+ assert.equal(result.status,'provider_unavailable');assert.equal(result.interruptionCategory,'provider_unavailable');
+ assert.equal(result.completed,2);assert.equal(result.summary.completed_parts,6);assert.equal(result.summary.has_usable_knowledge,true);assert.equal(f.posts().length,3);
 });
 test('uncertain transport is not retried and confirmed prior progress remains known',async()=>{
  const f=fixture({throwAt:3});const result=await f.run.run();

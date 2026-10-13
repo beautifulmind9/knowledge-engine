@@ -15,8 +15,8 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
 
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']}),errors=[];
- async function fixture({items=[],libraries=[{id:'l1',name:'Reading'}],mobile=false,summaryFailure=false}={}){
-  const page=await browser.newPage({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:mobile,hasTouch:mobile});
+ async function fixture({items=[],libraries=[{id:'l1',name:'Reading'}],mobile=false,summaryFailure=false,viewport=null}={}){
+  const page=await browser.newPage({viewport:viewport|| (mobile?{width:390,height:844}:{width:1280,height:1000}),isMobile:mobile,hasTouch:mobile});
   page.on('pageerror',e=>errors.push(e.message));const requests=[];
   await page.route('http://ke.test/**',async route=>{
    const request=route.request(),url=new URL(request.url()),p=url.pathname,method=request.method();
@@ -59,15 +59,19 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
   for(const [filename,expectedAction,facts,record] of states){
    f=await fixture({items:[{source:record,summary:facts}]});await f.shot(`${String(states.indexOf(states.find(s=>s[0]===filename))+2).padStart(2,'0')}-${filename}`);
    const row=f.page.locator('.library-row');await row.getByText(facts.readiness==='unknown'?'Status unavailable':facts.readiness==='ready_to_build'?'Preparation not complete':facts.readiness==='partly_ready'?'Partly ready':'Ready',{exact:true}).waitFor();
-   assert.equal(await row.getByRole('button',{name:'Explore knowledge',exact:true}).count(),facts.has_usable_knowledge?1:0);
-   assert.equal(await row.getByRole('button',{name:expectedAction,exact:true}).count(),1);
-   assert.equal(await row.getByRole('link',{name:'Open material',exact:true}).count(),expectedAction==='Open material'?0:1);
+   assert.equal(await row.getByRole('button',{name:'Explore',exact:true}).count(),facts.has_usable_knowledge?1:0);
+   assert.equal(await row.getByRole('button',{name:expectedAction==='Explore knowledge'?'Explore':'Open material',exact:true}).count(),1);
+   assert.equal(await row.getByRole('link',{name:'Open material',exact:true}).count(),facts.has_usable_knowledge?1:0);
    if(filename==='ready-zero-ideas')assert.ok((await row.textContent()).includes('No usable knowledge is available from this material yet.'));
    assert.ok(!await row.getByText(record.author||'Your material',{exact:true}).count()||!!record.author);
    assert.ok(!(await row.textContent()).includes(record.id));
-   if(facts.attention_category)assert.ok((await row.textContent()).includes('Needs attention:'));
+   if(facts.attention_category)assert.ok((await row.textContent()).includes('Needs attention'));
    await f.page.close();
   }
+ const desktopRecords=Array.from({length:7},(_,i)=>({source:source(`wide${i}`,['Marketing Made Simple','The Choice Factory','Triggers','Hooked','Made to Stick','Influence','The Mom Test'][i],['Donald Miller','Richard Shotton','Marshall Goldsmith','Nir Eyal'][i%4]),summary:summary(`wide${i}`,i<4?'ready':i===4?'partly_ready':'ready',i!==6,i<4?20:i===4?13:20,20,{attention:i===5?'build_stopped':null})}));
+ f=await fixture({items:desktopRecords,viewport:{width:1680,height:1100}});await f.shot('11-wide-library-collection');
+ assert.equal(await f.page.locator('.library-rows').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),3);assert.ok(await f.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await f.page.close();
+ f=await fixture({items:desktopRecords.slice(0,6),viewport:{width:1180,height:1000}});await f.shot('12-desktop-two-column-library');assert.equal(await f.page.locator('.library-rows').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),2);await f.page.close();
   f=await fixture({mobile:true,items:states.slice(0,6).map(([, ,facts,record])=>({source:record,summary:facts})).concat([{source:source('long','ExtremelyLongUnbrokenFilenameForMobileLibraryWrappingWithoutHorizontalOverflow-'.repeat(2)),summary:summary('long','unknown',false,null,null,{attention:'artifact_unavailable'})}])});
   await f.shot('09-mobile-mixed-library');
   assert.ok(await f.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -81,7 +85,7 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
   await f.shot('10-multiple-libraries');assert.equal(await f.page.getByLabel('Filter by library').count(),1);await f.page.close();
 
   f=await fixture({items:[states[2]&&{source:states[2][3],summary:states[2][2]}]});
-  const before=f.requests.filter(r=>r.method==='POST').length;await f.page.getByRole('button',{name:'Explore knowledge',exact:true}).click();
+  const before=f.requests.filter(r=>r.method==='POST').length;await f.page.getByRole('button',{name:'Explore',exact:true}).click();
   await f.page.locator('#ke-search-form').waitFor();assert.equal(await f.page.locator('#ke-source-scope').inputValue(),'r3');
   assert.equal(f.requests.filter(r=>r.method==='POST').length,before);assert.deepEqual(f.requests.filter(r=>r.method==='POST'),[]);
   await f.page.goBack();await f.page.locator('.library-row').waitFor();assert.equal(f.requests.filter(r=>r.method==='POST').length,0);await f.page.close();

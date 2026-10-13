@@ -75,7 +75,7 @@ test('actual output view submits title-only FormData through revisionPayload', a
   const requests = [];
   const node = () => ({append() {}});
   const ctx = {
-    beginView:()=>()=>true,navigate:async()=>{},revisionPayload,renderGroundedAnswer,observeAnswerTableOverflow:()=>null,document:{createElement:tag=>({tag,children:[],append(...nodes){this.children.push(...nodes);}}),createTextNode:text=>({textContent:text})}, heading() {}, card: node, el: node, list: node,
+    attachProcessingAnnouncer:()=>{},announceProcessingStatus:()=>{},beginView:()=>()=>true,beginProcessingStatus:()=>1,endProcessingStatus:()=>{},navigate:async()=>{},revisionPayload,renderGroundedAnswer,observeAnswerTableOverflow:()=>null,document:{createElement:tag=>({tag,children:[],append(...nodes){this.children.push(...nodes);}}),createTextNode:text=>({textContent:text})}, heading() {}, card: node, el: node, list: node,
     actions: node, button: node, detail: node, submit: text => {const b={textContent:text};buttons.push(b);return b;},
     main: node(), message() {}, field: (_label,name) => {const input={};fields[name]=input;return [node(),input];},
     form: callback => {submitRevision = callback; return node();},

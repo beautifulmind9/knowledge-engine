@@ -1,6 +1,7 @@
 import {apiFetch} from './api.js';
 import { scopeQuestion } from './knowledge-browser.js';
 import {renderGroundedAnswer, renderGroundedInline, createAnswerEvidenceIndex, observeAnswerTableOverflow} from './answer-renderer.js';
+import {beginProcessingStatus,endProcessingStatus,announceProcessingStatus} from './processing-status.js';
 
 const QUICK_KNOWLEDGE_QUESTIONS = [
   "What does this source teach?",
@@ -244,13 +245,11 @@ async function generateKnowledgeAnswer(question, trigger) {
   const ticket = ++answerRevision;
   const card = knowledgeAnswerCard();
 
-  card.replaceChildren(
-    makeElement("h3", "Generating grounded answer…"),
-    makeElement("p", "Using knowledge from your selected scope.", "muted"),
-    makeElement("p", "This answer uses AI and the materials in your selected scope.", "muted")
-  );
+  card.setAttribute('aria-busy','true');
+  card.replaceChildren(makeElement("p", "Your grounded answer will appear here.", "muted"));
 
   if (trigger) trigger.disabled = true;
+  const processing=beginProcessingStatus({label:'Thinking with your materials',detail:'Your question is being considered against the selected knowledge.'});
 
   try {
     const response = await apiFetch("/workshops/generate", {
@@ -289,15 +288,20 @@ async function generateKnowledgeAnswer(question, trigger) {
 
     const data = await response.json();
     if (ticket !== answerRevision || !card.isConnected) return;
+    card.removeAttribute('aria-busy');
     if(viewState)viewState.answer={data,question,context:{question:scopedQuestion,sourceIds}};
     renderKnowledgeAnswer(data, question, {question: scopedQuestion, sourceIds});
+    announceProcessingStatus('Your grounded answer is ready.');
   } catch (error) {
     if (ticket !== answerRevision || !card.isConnected) return;
+    card.removeAttribute('aria-busy');
+    announceProcessingStatus('Your grounded answer could not be generated.');
     card.replaceChildren(
       makeElement("h3", "Answer could not be generated"),
       makeElement("p", error.message || String(error), "error")
     );
   } finally {
+    endProcessingStatus(processing);
     if (trigger) trigger.disabled = false;
   }
 }

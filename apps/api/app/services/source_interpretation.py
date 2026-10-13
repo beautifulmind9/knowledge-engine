@@ -1,6 +1,8 @@
+from fastapi import HTTPException
+
 from app.db.mock_data import extraction_jobs, knowledge_assets
 from app.models.knowledge_extraction import KnowledgeExtractionStatus
-from app.services.gemini_knowledge_extraction import run_gemini_knowledge_extraction
+from app.services.gemini_knowledge_extraction import ExtractionValidationError, run_gemini_knowledge_extraction
 from app.services.knowledge_extraction import (
     create_extraction_job,
     find_source,
@@ -155,6 +157,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
     completed_chunk_ids = _completed_chunk_ids(source_id)
     processed_results = []
     stopped_reason = None
+    interruption_category = None
 
     selected_jobs = []
     for chunk in chunks:
@@ -183,8 +186,21 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         try:
             processed_results.append(run_gemini_knowledge_extraction(job_id))
         except Exception as error:
-            message = str(getattr(error, "detail", error))
-            stopped_reason = f"Interpretation stopped after an extraction error: {message}"
+            if isinstance(error, HTTPException):
+                stopped_reason="Interpretation stopped after an AI service interruption."
+                interruption_category=(getattr(error,"headers",None) or {}).get("X-KE-Interruption-Category")
+                if error.status_code==429:
+                    interruption_category="allowance_exhausted"
+                elif error.status_code==503 and not interruption_category:
+                    interruption_category="ai_unavailable"
+                elif error.status_code==502 and not interruption_category:
+                    interruption_category="provider_unavailable"
+            elif isinstance(error, ExtractionValidationError):
+                stopped_reason="Interpretation stopped because the response could not be validated."
+                interruption_category="validation_failed"
+            else:
+                stopped_reason = "Interpretation stopped after an unexpected preparation error."
+                interruption_category="preparation_failed"
             break
 
     source["stopped_reason"] = stopped_reason
@@ -202,6 +218,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         "title": source.get("title"),
         "processed_this_run": len(processed_results),
         "stopped_reason": stopped_reason,
+        "interruption_category": interruption_category,
         "progress": summary,
         "results": processed_results,
     }

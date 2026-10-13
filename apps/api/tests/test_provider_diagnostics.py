@@ -51,10 +51,17 @@ def test_real_sdk_failure_diagnostic_is_safe_and_single_attempt(monkeypatch, cap
         assert diagnostic['exception_type'] == 'APITimeoutError'
         assert diagnostic['message_category'] == 'transport_timeout'
     if status == 429:
+        assert failure.value.headers['X-KE-Interruption-Category']=='allowance_exhausted'
         assert ai_gateway.status()['paused']
         with pytest.raises(HTTPException):
             ai_gateway.generate('fixture-model', {}, {})
         assert len(attempts) == 1 and ai_gateway.status()['calls_today'] == 1
+    elif status == 503:
+        assert failure.value.headers['X-KE-Interruption-Category']=='provider_unavailable'
+    elif status == 0:
+        assert failure.value.headers['X-KE-Interruption-Category']=='transport_uncertain'
+    elif status == 400:
+        assert failure.value.headers['X-KE-Interruption-Category']=='provider_rejected'
 
 
 def test_metadata_and_message_cannot_echo_source_or_key():

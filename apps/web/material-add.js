@@ -20,6 +20,24 @@ export function newMaterialAdd(libraries, currentLibrary) {
     libraryName:'My Library',sourceId:null,uploaded:false,read:false,busy:false,error:null,readFailure:null,replacementSelected:false};
 }
 
+export function newMaterialAddBatch(libraries, currentLibrary) {
+  const destination = newMaterialAdd(libraries, currentLibrary);
+  return {libraryId:destination.libraryId,libraryName:destination.libraryName,items:[],invalidFiles:[],busy:false};
+}
+
+export function selectMaterialFiles(batch, files) {
+  batch.items=[];batch.invalidFiles=[];
+  for (const file of Array.from(files||[])) {
+    try {
+      validateMaterial(file);
+      batch.items.push({...newMaterialAdd([],null),file,title:suggestedMaterialTitle(file.name),libraryId:batch.libraryId,libraryName:batch.libraryName});
+    } catch(error) {
+      batch.invalidFiles.push({name:file?.name||'Selected file',message:error.message});
+    }
+  }
+  return batch;
+}
+
 // Each acknowledged durable identity is retained before the next operation.
 // No provider endpoint is used; a failed step requires another explicit action.
 export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
@@ -65,4 +83,32 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
     draft.error={stage,message:`${prefix} ${error.message}`};
     throw Error(draft.error.message);
   } finally { draft.busy=false; }
+}
+
+// Process the selected files independently. A failed file keeps its own
+// durable identity and does not prevent its siblings from being added.
+export async function addMaterials(batch, api, makeUpload, progress=()=>{}) {
+  if(batch.busy)return {added:0,failed:0,results:[]};
+  batch.busy=true;
+  const results=[];
+  let destinationUnavailable=false;
+  try {
+    for(const draft of batch.items.filter(item=>!item.read)){
+      draft.libraryId=batch.libraryId;draft.libraryName=batch.libraryName;
+      if(destinationUnavailable){
+        draft.error={stage:'destination',message:'The destination could not be created. This material was not added.'};
+        results.push({draft,ok:false,error:new Error(draft.error.message)});continue;
+      }
+      try{
+        await addMaterial(draft,api,makeUpload,progress);
+        batch.libraryId=draft.libraryId;
+        results.push({draft,ok:true});
+      }catch(error){
+        if(draft.libraryId)batch.libraryId=draft.libraryId;
+        else if(draft.error?.stage==='destination')destinationUnavailable=true;
+        results.push({draft,ok:false,error});
+      }
+    }
+    return {added:results.filter(result=>result.ok).length,failed:results.filter(result=>!result.ok).length,results};
+  }finally{batch.busy=false;}
 }

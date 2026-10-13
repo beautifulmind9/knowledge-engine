@@ -7,6 +7,7 @@ import {scopeQuestion, PAGE_SIZE, filterUnits, createSearchController} from '../
 import {revisionPayload} from '../output-revision.js';
 import * as interaction from '../interaction-draft.js';
 import * as materialAdd from '../material-add.js';
+import * as knowledgeBuild from '../knowledge-build.js';
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 class Node {
  constructor(tag){this.tag=tag;this.children=[];this._value='';this.attributes={};this.listeners={};}
@@ -47,7 +48,7 @@ async function fixture(hash='',authenticated=false,enhance=false){
  const audit={interpretation:{completed_chunks:1,total_chunks:3},overlap_rate:0,superseded_assets:[],old_schema_assets:[],missing_evidence:[],missing_keywords:[],evidence_needing_review:[],asset_types:{},confidence_distribution:{},jobs:[{id:'j1',chunk_id:'c1',status:'failed'}]};
  const events=new Map();
  const document={addEventListener(type,fn){const callbacks=events.get(type)||[];callbacks.push(fn);events.set(type,callbacks);},dispatchEvent(event){for(const callback of events.get(event.type)||[])callback(event);},body,querySelector:s=>s==='main'?main:s==='#feedback'?feedback:body.querySelector(s),querySelectorAll:s=>s==='[data-view]'?nav:s==='nav button'?nav.filter(n=>n.tag==='button'):body.querySelectorAll(s),createElement:tag=>new Node(tag)};
- const ctx={...interaction,...materialAdd,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path==='/sources/summaries')return [{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
+ const ctx={...interaction,...materialAdd,...knowledgeBuild,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path==='/sources/summaries')return [{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
  vm.createContext(ctx);vm.runInContext(readFileSync(new URL('../create-draft.js',import.meta.url),'utf8').replaceAll('export ',''),ctx);if(enhance){const extension={document,Event,scopeQuestion,apiFetch:async(path,options)=>({ok:true,json:async()=>ctx.api(path,{...options,body:JSON.parse(options.body)})})};vm.createContext(extension);vm.runInContext(readFileSync(new URL('../enhancements.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),extension);}
  vm.runInContext(app.replace(/^import .*;\n/gm,''),ctx);await new Promise(resolve=>setImmediate(resolve));
  return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>(n.tag==='button'||n.tag==='a')&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick({preventDefault(){}});else if(n.listeners.click)await Promise.all(n.listeners.click.map(fn=>fn()));else await n.closest('form').onsubmit({preventDefault(){}});}};
@@ -58,7 +59,7 @@ test('Home actions route to Library, Create and My work; shell has task navigati
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.match(html,/data-view="home"/);assert.match(html,/>Library<.*>Create<.*>My work</s);assert.match(html,/>Settings</);assert.doesNotMatch(html,/Local personal beta|<aside|>Knowledge<|>Workshop<|Saved outputs|Data &amp; usage|>Source</);
 });
-test('Source detail uses knowledge first, keeps evidence readable, and recovery outside diagnostics',async()=>{
+test('Source detail keeps failed-build retry explicit, knowledge first, and evidence readable',async()=>{
  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({source_id:'s1',readiness:'partly_ready',completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:'build_stopped',attention_message:'The previous knowledge-building attempt stopped before completion.',file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:'continue_building',recovery:[{job_id:'j1',category:'failed_build',allowed:true}]}):original(path,options);
  await f.ctx.sourceView('s1');
@@ -70,11 +71,12 @@ test('Source detail uses knowledge first, keeps evidence readable, and recovery 
  assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));
  const evidence=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Source & evidence');assert.ok(evidence&&!evidence.open);
  let advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');assert.ok(advanced&&!advanced.open);
- assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Resolve build issue'));
+ assert.ok(!f.nodes().some(n=>n.tag==='button'&&n.textContent==='Resolve build issue'));
+ assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Build remaining 8 parts'));
  assert.ok(!f.requests.some(r=>r.path.endsWith('/audit')||r.path.endsWith('/chunks')));
  const ordinaryText=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');
  assert.ok(!/private-source-id|private-chunk-id|private-asset-id/.test(ordinaryText));
- await f.click('Resolve build issue');assert.ok(f.requests.some(r=>r.path==='/knowledge-extractions/j1/recover'&&r.options.method==='POST'));
+ assert.ok(!f.requests.some(r=>r.path.endsWith('/recover')));
  assert.ok(!f.requests.some(r=>r.path.includes('/interpret')));
  advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');advanced.open=true;await advanced.ontoggle();assert.ok(all(advanced).some(n=>n.textContent==='Manual knowledge import'));
 });
@@ -514,12 +516,52 @@ test('source detail shows summary dimensions independently and keeps diagnostics
  assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
  assert.ok(f.nodes().some(n=>n.textContent==='Explore ideas'));
  assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));
- assert.ok(f.nodes().some(n=>n.textContent==='Continue building'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Build remaining 8 parts'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Uses up to 8 AI actions.'));
  assert.ok(!f.requests.some(r=>r.path.endsWith('/audit')||r.path.endsWith('/chunks')));
  const advanced=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');assert.ok(advanced&&!advanced.open);
  advanced.open=true;await advanced.ontoggle();
  assert.match(f.document.querySelector('#feedback').textContent,/Advanced diagnostics could not be loaded/);
+ assert.ok(all(advanced).some(n=>n.textContent==='No developer details are available for this material right now.'));
  assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
+});
+
+test('Advanced / Developer is omitted without prepared parts and remains lazy when available',async()=>{
+ const empty=await fixture(),original=empty.ctx.api;empty.source.chunks_path=null;
+ empty.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'added',completed_parts:0,total_parts:0,has_usable_knowledge:false,operation:'idle',file_state:'available',read_state:'not_read',next_action:'read_source',recovery:[]}):original(path,options);
+ await empty.ctx.navigate('material',{id:'s1'});
+ assert.equal(empty.nodes().some(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer'),false);
+ assert.equal(empty.requests.some(request=>/\/audit|\/chunks$/.test(request.path)),false);
+ const prepared=await fixture(),preparedApi=prepared.ctx.api;prepared.source.chunks_path='parts';
+ prepared.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'ready_to_build',completed_parts:0,total_parts:3,has_usable_knowledge:false,operation:'idle',file_state:'available',read_state:'read',next_action:'build_knowledge',recovery:[]}):preparedApi(path,options);
+ await prepared.ctx.navigate('material',{id:'s1'});
+ const advanced=prepared.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Advanced / Developer');assert.ok(advanced&&!advanced.open);
+ assert.equal(prepared.requests.some(request=>/\/audit|\/chunks$/.test(request.path)),false);
+});
+
+test('build authorization previews parts and allowance, is bounded, and rechecks before dispatch',async()=>{
+ for(const scenario of [
+  {completed:2,total:3,allowance:8,expected:'Continue building',max:1},
+  {completed:12,total:20,allowance:3,expected:'Build next 3 parts',max:3},
+  {completed:0,total:63,allowance:450,expected:'Build remaining 63 parts',max:63},
+ ]){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+  const summary={readiness:scenario.completed?'partly_ready':'ready_to_build',completed_parts:scenario.completed,total_parts:scenario.total,coverage_text:`${scenario.completed} of ${scenario.total} parts ready`,has_usable_knowledge:scenario.completed>0,operation:'idle',attention_category:null,file_state:'available',file_replacement_allowed:false,read_state:'read',next_action:scenario.completed?'continue_building':'build_knowledge',recovery:[]};
+  const usage={configured:true,free_tier_confirmed:true,calls_today:450-scenario.allowance,daily_call_limit:450,paused:false,daily_limit_reached:false};
+  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve(summary):path==='/usage'?Promise.resolve(usage):original(path,options);
+  await f.ctx.navigate('material',{id:'s1'});
+  const action=f.nodes().find(n=>n.tag==='button'&&n.textContent===scenario.expected);assert.ok(action);
+  const remain=Math.min(scenario.total-scenario.completed,scenario.allowance);
+  assert.ok(f.nodes().some(n=>n.textContent===`Uses up to ${remain} AI ${remain===1?'action':'actions'}.${scenario.total-scenario.completed>remain?` ${scenario.total-scenario.completed-remain} parts will remain.`:''}`));
+  await f.click(scenario.expected);
+  assert.equal(f.requests.filter(request=>request.path==='/sources/s1/interpret?max_chunks=1'&&request.options?.method==='POST').length,scenario.max);
+ }
+ const exhausted=await fixture(),original=exhausted.ctx.api;exhausted.source.chunks_path='parts';
+ exhausted.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'partly_ready',completed_parts:2,total_parts:3,has_usable_knowledge:false,operation:'idle',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}):path==='/usage'?Promise.resolve({configured:true,free_tier_confirmed:true,calls_today:10,daily_call_limit:10,paused:true,daily_limit_reached:true}):original(path,options);
+ await exhausted.ctx.navigate('material',{id:'s1'});
+ assert.ok(exhausted.nodes().some(n=>n.textContent==='The shared AI allowance is exhausted for today. Existing knowledge remains available.'));
+ assert.equal(exhausted.nodes().find(n=>n.tag==='button'&&n.textContent==='Continue building').disabled,true);
+ assert.equal(exhausted.requests.some(request=>request.options?.method==='POST'&&request.path.includes('/interpret')),false);
 });
 
 test('source Ask, Explore and Create preserve source scope and draft protection without provider calls',async()=>{
@@ -539,8 +581,8 @@ test('source Ask, Explore and Create preserve source scope and draft protection 
 
 test('source action hierarchy follows usable knowledge independently of readiness and preview count',async()=>{
  const cases=[
-  ['added',false,'read_source','Read source'],['ready_to_build',false,'build_knowledge','Build knowledge'],
-  ['partly_ready',false,'continue_building','Continue building'],['partly_ready',true,'continue_building','Ask this source'],
+  ['added',false,'read_source','Read source'],['ready_to_build',false,'build_knowledge','Build next 10 parts'],
+  ['partly_ready',false,'continue_building','Build remaining 8 parts'],['partly_ready',true,'continue_building','Ask this source'],
   ['ready',true,'use_knowledge','Ask this source'],['ready',false,'use_knowledge','Open original file'],
   ['unknown',true,'restore_source','Ask this source'],['unknown',false,'restore_source','Open original file'],
  ];
@@ -553,7 +595,7 @@ test('source action hierarchy follows usable knowledge independently of readines
   assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Explore ideas'),usable);
   assert.equal(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Use in Create'),usable);
   if(readiness==='ready'&&!usable)assert.ok(f.nodes().some(n=>n.textContent==='No usable knowledge is available from this material yet.'));
-  if(readiness==='partly_ready'&&usable)assert.ok(f.nodes().some(n=>n.textContent==='Continue building'));
+  if(readiness==='partly_ready'&&usable)assert.ok(f.nodes().some(n=>n.textContent==='Build remaining 8 parts'));
   assert.equal(f.requests.filter(r=>r.options).length,0);
  }
 });
@@ -583,6 +625,51 @@ test('source knowledge preview exposes collapsed Source & evidence without raw i
  evidence.open=true;assert.ok(all(evidence).some(n=>n.textContent==='A book · Practice'));
  assert.ok(all(evidence).some(n=>n.textContent?.includes('Leave a short pause')));
  assert.ok(!all(f.main).map(n=>n.textContent).join('\n').match(/asset-raw|source-raw|chunk-raw/));
+});
+
+test('failed parts offer explicit building without a competing reset, even when allowance is depleted',async()=>{
+ for(const usable of [false,true])for(const depleted of [false,true]){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+  f.ctx.api=(path,options)=>path.endsWith('/summary')?Promise.resolve({readiness:'partly_ready',has_usable_knowledge:usable,completed_parts:12,total_parts:20,coverage_text:'12 of 20 parts ready',operation:'idle',attention_category:'build_stopped',attention_message:'The previous knowledge-building attempt stopped before completion.',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[{job_id:'failed-part',category:'failed_build',allowed:true}]}):path==='/usage'?Promise.resolve({configured:true,free_tier_confirmed:true,calls_today:depleted?450:0,daily_call_limit:450,daily_limit_reached:depleted,paused:depleted}):original(path,options);
+  await f.ctx.navigate('material',{id:'s1'});
+  const build=f.nodes().find(n=>n.tag==='button'&&n.textContent===(depleted?'Continue building':'Build remaining 8 parts'));
+  assert.ok(build);assert.equal(!!build.disabled,depleted);
+  assert.ok(!f.nodes().some(n=>n.textContent==='Resolve build issue'));
+  assert.equal(f.nodes().some(n=>n.textContent==='Ask this source'),usable);
+  assert.ok(!f.requests.some(r=>r.path.endsWith('/recover')||r.path.includes('/interpret')));
+ }
+});
+
+test('build outcomes distinguish a finished material, exhausted allowance and saved partial progress',async()=>{
+ for(const scenario of ['ready','allowance','failure']){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+  const facts={readiness:'partly_ready',has_usable_knowledge:true,completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',operation:'idle',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]};
+  const usage={configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:scenario==='allowance'?1:450,daily_limit_reached:false};
+  let attempts=0;
+  f.ctx.api=async(path,options)=>{
+   if(path.endsWith('/summary'))return {...facts};
+   if(path==='/usage')return {...usage};
+   if(path.includes('/interpret')){
+    assert.ok(path.endsWith('max_chunks=1'));attempts++;usage.calls_today++;usage.daily_limit_reached=usage.calls_today>=usage.daily_call_limit;
+    if(scenario==='failure'&&attempts===2){facts.attention_category='build_stopped';facts.attention_message='The previous knowledge-building attempt stopped before completion.';facts.recovery=[{job_id:'failed-part',category:'failed_build',allowed:true}];return {processed_this_run:0,stopped_reason:'Private provider diagnostics'};}
+    facts.completed_parts++;facts.coverage_text=`${facts.completed_parts} of 3 parts ready`;
+    if(facts.completed_parts===3){facts.readiness='ready';facts.next_action='use_knowledge';}
+    return {processed_this_run:1};
+   }
+   return original(path,options);
+  };
+  await f.ctx.navigate('material',{id:'s1'});await f.click(scenario==='allowance'?'Continue building':'Build remaining 2 parts');
+  const outcome=f.main.querySelector('#knowledge-build-result');assert.ok(outcome);
+  assert.equal(outcome.querySelector('h3').textContent,scenario==='ready'?'Knowledge building finished':scenario==='allowance'?'Build paused for today':'Knowledge building stopped');
+  const text=all(outcome).map(n=>n.textContent).filter(Boolean).join('\n');
+  assert.ok(text.includes('Existing progress has been saved.'));
+  assert.equal(text.includes('Today’s shared AI allowance has been used.'),scenario==='allowance');
+  assert.ok(!/authoriz|Private provider diagnostics/.test(text));
+  assert.equal(attempts,scenario==='allowance'?1:2);
+  assert.ok(f.nodes().some(n=>n.textContent===facts.coverage_text));
+  assert.ok(!f.nodes().some(n=>n.textContent==='Resolve build issue'));
+  if(scenario==='failure')assert.equal(f.nodes().filter(n=>n.textContent==='Needs attention: The previous knowledge-building attempt stopped before completion.').length,1);
+ }
 });
 
 test('source recovery is server-authoritative, explicit, and does not build after reset',async()=>{

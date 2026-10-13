@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {MATERIAL_EXTENSIONS,MAX_MATERIAL_BYTES,validateMaterial,suggestedMaterialTitle,newMaterialAdd,addMaterial} from '../material-add.js';
+import {MATERIAL_EXTENSIONS,MAX_MATERIAL_BYTES,validateMaterial,suggestedMaterialTitle,newMaterialAdd,newMaterialAddBatch,selectMaterialFiles,addMaterial,addMaterials} from '../material-add.js';
 
 const file={name:'my_workshop_notes.pdf',size:1024};
 function fixture(libraries=[],current=null){
@@ -66,4 +66,42 @@ test('structured OCR classification blocks unchanged reread; replacement reuses 
  f.draft.file={name:'readable.txt',size:50};f.draft.uploaded=false;f.draft.replacementSelected=true;failRead=false;
  await run();assert.equal(calls.filter(c=>c.path==='/sources').length,1);assert.equal(f.draft.sourceId,'source');assert.equal(f.draft.read,true);
  assert.ok(!calls.some(c=>/generate|interpret/.test(c.path)));
+});
+
+test('multi-file selection validates locally and suggests each title without writes',()=>{
+ const batch=newMaterialAddBatch([{id:'library-1',name:'Reading'}],'library-1');
+ selectMaterialFiles(batch,[{name:'Everyday_Design.pdf',size:400},{name:'bad.exe',size:400},{name:'empty.txt',size:0},{name:'Practice.md',size:100}]);
+ assert.deepEqual(batch.items.map(item=>item.title),['Everyday Design','Practice']);
+ assert.equal(batch.items.every(item=>item.libraryId==='library-1'),true);
+ assert.deepEqual(batch.invalidFiles.map(item=>item.name),['bad.exe','empty.txt']);
+});
+
+test('multi-file Add keeps successful siblings and retries a failed upload using its source identity',async()=>{
+ const batch=newMaterialAddBatch([],null);
+ selectMaterialFiles(batch,[{name:'one.pdf',size:100},{name:'two.txt',size:100},{name:'three.md',size:100}]);
+ const calls=[],sources=[];let failOnce=true,nextSource=0;
+ const api=async(path,options={})=>{
+  calls.push({path,options});
+  if(path==='/libraries')return {id:'created-library'};
+  if(path==='/sources'){const source={id:`source-${++nextSource}`};sources.push(source);return source;}
+  if(path.endsWith('/upload')&&path.startsWith('/sources/source-2')&&failOnce){failOnce=false;throw Error('Synthetic upload failure');}
+  if(path.endsWith('/upload'))return {};
+  if(path.endsWith('/process'))return {processed_this_run:1};
+  throw Error(path);
+ };
+ const makeUpload=file=>({file});
+ const first=await addMaterials(batch,api,makeUpload);
+ assert.deepEqual([first.added,first.failed],[2,1]);
+ assert.deepEqual(batch.items.map(item=>item.read),[true,false,true]);
+ const failedIdentity=batch.items[1].sourceId;assert.equal(failedIdentity,'source-2');
+ assert.equal(calls.filter(call=>call.path==='/libraries').length,1);
+ assert.equal(calls.filter(call=>call.path==='/sources').length,3);
+ const second=await addMaterials(batch,api,makeUpload);
+ assert.deepEqual([second.added,second.failed],[1,0]);
+ assert.equal(batch.items.every(item=>item.read),true);
+ assert.equal(batch.items[1].sourceId,failedIdentity);
+ assert.equal(calls.filter(call=>call.path==='/sources').length,3);
+ assert.equal(calls.filter(call=>call.path.endsWith('/upload')).length,4);
+ assert.equal(calls.filter(call=>call.path.endsWith('/process')).length,3);
+ assert.equal(calls.some(call=>/interpret|generate/.test(call.path)),false);
 });

@@ -57,8 +57,12 @@ async def local_requests(request:Request,call_next):
         gate = request.app.state.beta_access
         response = gate.enforce(request) if gate is not None else None
         if response is None:
-            async with request_lock:
+            if request.method == "GET" and request.url.path == "/health":
+                # Pure process liveness must remain responsive during provider work.
                 response=await call_next(request)
+            else:
+                async with request_lock:
+                    response=await call_next(request)
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["Cache-Control"]="no-store"
     response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"

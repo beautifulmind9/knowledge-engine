@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from threading import Lock
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
@@ -11,6 +12,7 @@ from app.db.mock_data import usage
 
 logger = logging.getLogger(__name__)
 PROVIDER_QUOTA_TIMEZONE = ZoneInfo("America/Los_Angeles")
+_attempt_admission_lock = Lock()
 
 
 def _quota_day(now=None):
@@ -192,18 +194,19 @@ def status():
 
 def generate(model, payload, schema):
     from app.services.knowledge_extraction import persist_state
-    current = status()
-    if not current["configured"]:
-        raise HTTPException(503, "Add GEMINI_API_KEY to enable AI generation. Manual import remains available.")
-    if not current["free_tier_confirmed"]:
-        raise HTTPException(503, "Confirm billing is disabled for your Gemini project, then set GEMINI_FREE_TIER_CONFIRMED=true.")
-    if current["paused"]:
-        raise HTTPException(429, current["reason"] or "AI calls paused. Resume explicitly when quota is available.")
-    if current["calls_today"] >= current["daily_call_limit"]:
-        raise HTTPException(429, "Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used.")
-    usage.update(day=_quota_day(), calls=current["calls_today"]+1,
-                 last_attempt_at=datetime.now(timezone.utc).isoformat())
-    persist_state()
+    with _attempt_admission_lock:
+        current = status()
+        if not current["configured"]:
+            raise HTTPException(503, "Add GEMINI_API_KEY to enable AI generation. Manual import remains available.")
+        if not current["free_tier_confirmed"]:
+            raise HTTPException(503, "Confirm billing is disabled for your Gemini project, then set GEMINI_FREE_TIER_CONFIRMED=true.")
+        if current["paused"]:
+            raise HTTPException(429, current["reason"] or "AI calls paused. Resume explicitly when quota is available.")
+        if current["calls_today"] >= current["daily_call_limit"]:
+            raise HTTPException(429, "Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used.")
+        usage.update(day=_quota_day(), calls=current["calls_today"]+1,
+                     last_attempt_at=datetime.now(timezone.utc).isoformat())
+        persist_state()
     try:
         with genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={"timeout": 60000, "retry_options": {"attempts": 1}}) as client:
             interactions = client.interactions

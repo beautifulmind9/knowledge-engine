@@ -1,6 +1,6 @@
 from app.db import mock_data as db
 from app.services import source_interpretation
-from app.services.knowledge_extraction import persist_state
+from app.services.knowledge_extraction import complete_extraction_job, get_extraction_job, mark_extraction_job_failed, persist_state
 from app.services.text_chunking import save_chunks
 
 
@@ -65,3 +65,35 @@ def test_source_interpretation_stops_after_first_failed_independent_request(sour
     pending = [job for job in db.extraction_jobs if job["chunk_id"] == chunks[2]["id"]]
     assert len(pending) == 1
     assert pending[0]["status"] == "pending_ai"
+
+
+def test_explicit_build_retries_failed_part_without_reset_and_skips_completed_parts(client, source, monkeypatch):
+    s, chunks = _install_chunks(source, count=3)
+    calls = []
+
+    def fake_run(job_id):
+        job = get_extraction_job(job_id)
+        calls.append((job_id, job['chunk_id']))
+        if len(calls) == 2:
+            mark_extraction_job_failed(job_id, 'Synthetic provider failure')
+            raise RuntimeError('Synthetic provider failure')
+        return complete_extraction_job(job_id, [])
+
+    monkeypatch.setattr(source_interpretation, 'run_gemini_knowledge_extraction', fake_run)
+    path = f"/sources/{s['id']}/interpret?max_chunks=1"
+    assert client.post(path).json()['processed_this_run'] == 1
+    assert client.post(path).json()['stopped_reason']
+    failed_id = calls[-1][0]
+    facts = client.get(f"/sources/{s['id']}/summary").json()
+    assert facts['attention_category'] == 'build_stopped'
+    assert facts['next_action'] == 'continue_building'
+    assert facts['recovery'][0]['allowed']  # Permitted reset does not mean required reset.
+
+    assert client.post(path).json()['processed_this_run'] == 1
+    assert [part for _, part in calls] == [chunks[0]['id'], chunks[1]['id'], chunks[1]['id']]
+    assert calls[-1][0] != failed_id
+    assert get_extraction_job(failed_id)['status'] == 'failed'
+    assert get_extraction_job(calls[-1][0])['extraction_version'] == 2
+    facts = client.get(f"/sources/{s['id']}/summary").json()
+    assert facts['completed_parts'] == 2 and facts['attention_category'] is None
+    assert not db.usage  # The test uses a synthetic runner, never the provider.

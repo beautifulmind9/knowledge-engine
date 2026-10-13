@@ -1,5 +1,6 @@
 import {apiFetch} from './api.js';
 import { scopeQuestion } from './knowledge-browser.js';
+import {renderGroundedAnswer, renderGroundedInline, createAnswerEvidenceIndex, observeAnswerTableOverflow} from './answer-renderer.js';
 
 const QUICK_KNOWLEDGE_QUESTIONS = [
   "What does this source teach?",
@@ -31,12 +32,6 @@ function makeElement(tag, text, className) {
 function detail(title, ...nodes) {
   const node = document.createElement("details");
   node.append(makeElement("summary", title), ...nodes);
-  return node;
-}
-
-function list(items) {
-  const node = document.createElement("ul");
-  for (const item of items) node.append(makeElement("li", item));
   return node;
 }
 
@@ -75,22 +70,10 @@ function openKnowledgeQuestionInWorkshop(question, context = null) {
   return document.querySelector('#main')?.exploreContext?.handoff(scope.question,scope.sourceIds);
 }
 
-function findKnowledgeUnitTitle(snapshot, assetId) {
-  for (const group of snapshot || []) {
-    if (
-      group?.canonical_asset?.id === assetId ||
-      (group?.asset_ids || []).includes(assetId)
-    ) {
-      return group.canonical_asset?.title || "Referenced idea";
-    }
-  }
-  return "Referenced idea";
-}
-
 function knowledgeAnswerCard() {
   let card = document.querySelector("#ke-knowledge-answer");
   if (!card) {
-    card = makeElement("section", undefined, "card");
+    card = makeElement("section", undefined, "card grounded-answer");
     card.id = "ke-knowledge-answer";
     document.querySelector("#ke-search-form")?.after(card);
   }
@@ -140,35 +123,45 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
   card.replaceChildren();
 
   const output = data.output || {};
+  const snapshot = data.knowledge_snapshot || [];
+  const sourceInfo = document.querySelector('#main')?.exploreContext?.sourceInfo?.() || [];
+  const evidenceIndex = createAnswerEvidenceIndex(snapshot, sourceInfo);
+  const count = Number.isInteger(data.knowledge_unit_count) ? data.knowledge_unit_count : snapshot.length;
+  const scopeLabel = document.querySelector('#main')?.exploreContext?.scopeLabel?.() || 'your selected materials';
+  const answerTitle = makeElement("h2", undefined, "answer-title");
   card.append(
-    makeElement("h3", output.title || "Answer from your library"),
-    makeElement(
-      "p",
-      `Grounded answer · ${data.knowledge_unit_count || 0} useful ideas · not saved automatically`,
-      "muted"
-    )
+    answerTitle,
+    makeElement("p", `Grounded in ${count} ${count === 1 ? 'idea' : 'ideas'} from ${scopeLabel}`, "answer-grounding"),
+    makeElement("p", "Not saved automatically", "answer-save-note")
   );
+  answerTitle.append(renderGroundedInline(output.title || "Answer from your library", {document, snapshot, sourceInfo}));
 
-  const content = makeElement("div", output.content || "No answer returned.");
-  content.style.whiteSpace = "pre-wrap";
+  const content = renderGroundedAnswer(output.content || "No answer returned.", {document, snapshot, sourceInfo});
   card.append(content);
 
   const applied = output.applied_knowledge || [];
   if (applied.length) {
     const appliedList = document.createElement("ul");
     for (const reference of applied) {
-      appliedList.append(
-        makeElement(
-          "li",
-          `${findKnowledgeUnitTitle(data.knowledge_snapshot, reference.asset_id)} — ${reference.usage_note}`
-        )
-      );
+      const item = document.createElement('li');
+      const title = makeElement('strong', evidenceIndex.assetTitle(reference.asset_id));
+      item.append(title);
+      if (reference.usage_note) { const note = makeElement('p', undefined, 'answer-usage-note'); note.append(renderGroundedInline(reference.usage_note, {document, snapshot, sourceInfo})); item.append(note); }
+      const evidence = evidenceIndex.asset(reference.asset_id);
+      if (evidence.evidence.length) appendEvidence(item, evidence, 'Source & evidence', evidenceIndex);
+      appliedList.append(item);
     }
     card.append(detail(`Ideas and evidence used (${applied.length})`, appliedList));
   }
 
   if ((output.design_choices || []).length) {
-    card.append(detail("Design choices / synthesis", list(output.design_choices)));
+    const choices = document.createElement('ul');
+    for (const choice of output.design_choices) {
+      const item = document.createElement('li');
+      item.append(...Array.from(renderGroundedAnswer(choice, {document, snapshot, sourceInfo}).childNodes));
+      choices.append(item);
+    }
+    card.append(detail("Design choices / synthesis", choices));
   }
 
   card.append(
@@ -176,8 +169,24 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
       button("Open in Create", () => openKnowledgeQuestionInWorkshop(originalQuestion, context))
     )
   );
+  card._answerTableObserver?.disconnect();
+  card._answerTableObserver = observeAnswerTableOverflow(card);
 
   card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function appendEvidence(parent, evidence, label, identityIndex) {
+  const node = document.createElement('details'); node.className = 'answer-evidence';
+  node.append(makeElement('summary', label));
+  for (const entry of evidence.evidence) {
+    const block = document.createElement('blockquote');
+    const sourceLabel = entry.source_id ? identityIndex.source(entry.source_id).label : '';
+    const context = [sourceLabel === 'Source & evidence' ? '' : sourceLabel, entry.chapter_or_section].filter(Boolean).join(' · ');
+    if (context) block.append(makeElement('span', context, 'answer-evidence-context'));
+    const quote = makeElement('p'); quote.append(renderGroundedInline(entry.evidence || '')); block.append(quote);
+    node.append(block);
+  }
+  parent.append(node);
 }
 
 async function generateKnowledgeAnswer(question, trigger) {

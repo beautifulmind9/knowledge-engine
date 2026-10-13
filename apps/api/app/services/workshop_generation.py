@@ -1,10 +1,17 @@
 import json
 import os
+from typing import get_args
+from pydantic import ValidationError
 
 from google import genai
 
+from app.models.grounded_answer_provider import (
+    GroundedAnswerProviderResponse,
+    grounded_answer_provider_schema,
+)
 from app.models.workshop_generation import (
     GroundedAnswerDocument,
+    GroundedAnswerSection,
     WorkshopGenerateRequest,
     WorkshopGeneratedOutput,
 )
@@ -12,6 +19,52 @@ from app.services.workshop import prepare_workshop
 
 
 DEFAULT_MODEL = "gemini-3.1-flash-lite"
+
+
+class GroundedAnswerValidationError(RuntimeError):
+    """A provider response failed local grounded-answer validation."""
+
+
+def _adapt_grounded_answer_provider_json(
+    output_text: str,
+    available_asset_ids: set[str],
+    available_canonical_ids: set[str],
+) -> GroundedAnswerDocument:
+    """Validate the provider DTO, resolve references, then validate the domain document."""
+    try:
+        provider_answer = GroundedAnswerProviderResponse.model_validate_json(output_text)
+    except (ValidationError, ValueError, TypeError) as error:
+        raise GroundedAnswerValidationError("The AI response could not be validated. No answer was accepted.") from error
+
+    allowed_kinds = set(get_args(GroundedAnswerSection.model_fields["kind"].annotation))
+    sections = []
+    for section in provider_answer.sections:
+        if section.kind not in allowed_kinds:
+            raise GroundedAnswerValidationError("The AI response used an unsupported answer section. No answer was accepted.")
+        invalid = set(section.evidence_refs) - available_asset_ids
+        if invalid:
+            raise GroundedAnswerValidationError("The grounded answer referenced knowledge that was not supplied. No answer was accepted.")
+        sections.append({
+            "kind": section.kind,
+            "heading": section.heading,
+            "content": section.content,
+            "supporting_asset_ids": section.evidence_refs,
+        })
+
+    applied = [item.model_dump(mode="json") for item in provider_answer.applied_knowledge]
+    if any(item["asset_id"] not in available_canonical_ids for item in applied):
+        raise GroundedAnswerValidationError("The generated output referenced a knowledge asset that was not supplied to the Workshop.")
+
+    try:
+        return GroundedAnswerDocument.model_validate({
+            "title": provider_answer.title,
+            "introduction": provider_answer.introduction.strip() or None,
+            "reasoning_sections": sections,
+            "applied_knowledge": applied,
+            "design_choices": provider_answer.design_choices,
+        })
+    except (ValidationError, ValueError, TypeError) as error:
+        raise GroundedAnswerValidationError("The AI response could not be validated. No answer was accepted.") from error
 
 
 def _compact_knowledge_unit(group: dict) -> dict:
@@ -181,14 +234,15 @@ Grounded reasoning requirements for this answer:
 - Check any proposed adaptation against the user's stated objective, intended audience and operating context. If fit is uncertain, state the uncertainty rather than prescribing it.
 - Preserve source agreement, disagreement and scope differences. Use agreement/disagreement only when the supplied sources support it; cite the relevant assets. Do not manufacture consensus or choose a winner unless asked.
 - Treat source precedent as evidence to reason with, not a universal prescription. The answer reflects only knowledge currently available in the selected scope.
-- Keep each section's supporting_asset_ids limited to supplied asset IDs that actually support that section. Do not output source IDs, chunk IDs, asset IDs, or provider identifiers in prose.
+- Return the provider response using title, introduction (use an empty string when absent), sections, applied_knowledge and design_choices. Each section has kind, heading, content and evidence_refs.
+- Use only the established section kinds: source_principle, source_tactic, mechanism, interpretation, assumption, experiment, challenge, agreement, disagreement, applicability, open_question, analysis.
+- Keep each section's evidence_refs limited to supplied asset IDs that actually support that section. Do not output source IDs, chunk IDs, asset IDs, or provider identifiers in prose.
 """
-    interaction = generate(model, model_input, schema_model.model_json_schema())
+    provider_schema = grounded_answer_provider_schema() if knowledge_answer else schema_model.model_json_schema()
+    interaction = generate(model, model_input, provider_schema)
 
     if not interaction.output_text:
         raise RuntimeError("The AI returned no Workshop output.")
-
-    generated = schema_model.model_validate_json(interaction.output_text)
 
     available_asset_ids = {
         asset_id
@@ -197,10 +251,19 @@ Grounded reasoning requirements for this answer:
         if asset_id
     }
     available_canonical_ids = {unit.get("asset_id") for unit in knowledge_units if unit.get("asset_id")}
+    if knowledge_answer:
+        generated = _adapt_grounded_answer_provider_json(
+            interaction.output_text,
+            available_asset_ids,
+            available_canonical_ids,
+        )
+    else:
+        generated = schema_model.model_validate_json(interaction.output_text)
+
     if not knowledge_answer and generated.output_type != payload.output_type:
         raise RuntimeError("The AI changed the requested output type. No output saved.")
     for applied in generated.applied_knowledge:
-        if applied.asset_id not in available_canonical_ids:
+        if not knowledge_answer and applied.asset_id not in available_canonical_ids:
             raise RuntimeError(
                 "The generated output referenced a knowledge asset that was not supplied to the Workshop."
             )
@@ -213,15 +276,12 @@ Grounded reasoning requirements for this answer:
                 if asset_id:
                     source_ids_by_asset[asset_id] = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
         for section in generated.reasoning_sections:
-            invalid = set(section.supporting_asset_ids) - available_asset_ids
-            if invalid:
-                raise RuntimeError("The grounded answer referenced knowledge that was not supplied. No answer was accepted.")
             if section.kind in {"source_principle", "source_tactic", "mechanism", "interpretation", "challenge", "agreement", "disagreement"} and not section.supporting_asset_ids:
-                raise RuntimeError("A source-related answer section lacked supporting knowledge. No answer was accepted.")
+                raise GroundedAnswerValidationError("A source-related answer section lacked supporting knowledge. No answer was accepted.")
             if section.kind in {"agreement", "disagreement"}:
                 cited_sources = set().union(*(source_ids_by_asset.get(asset_id, set()) for asset_id in section.supporting_asset_ids))
                 if len(cited_sources) < 2:
-                    raise RuntimeError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.")
+                    raise GroundedAnswerValidationError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.")
         content_parts = []
         if generated.introduction:
             content_parts.append(generated.introduction.strip())

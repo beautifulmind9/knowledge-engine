@@ -1,14 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.models.workshop_generation import WorkshopGenerateRequest
-from app.services.workshop_generation import generate_workshop_output
+from app.services.workshop_generation import GroundedAnswerValidationError, generate_workshop_output
 
 router = APIRouter(prefix="/workshops", tags=["workshops"])
 
 
 @router.post("/generate")
 def generate_workshop(payload: WorkshopGenerateRequest):
-    result = generate_workshop_output(payload)
+    try:
+        result = generate_workshop_output(payload)
+    except GroundedAnswerValidationError as error:
+        raise HTTPException(502, "The AI response could not be validated. No answer was saved.") from error
     if payload.save:
         from app.services.outputs import save_output
         result["saved_output"] = save_output(result)

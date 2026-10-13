@@ -3,9 +3,11 @@ from types import SimpleNamespace
 
 from app.models.workshop_generation import (
     GroundedAnswerDocument,
+    GroundedAnswerSection,
     WorkshopGenerateRequest,
     WorkshopGeneratedOutput,
 )
+from app.models.grounded_answer_provider import grounded_answer_provider_schema
 from app.services import knowledge_extraction
 from app.services import ai_gateway, workshop, workshop_generation
 
@@ -89,11 +91,12 @@ def test_service_keeps_ordinary_and_grounded_provider_contracts_distinct(monkeyp
         if payload["brief"]["output_type"] == "knowledge_answer":
             response = {
                 "title": "Synthetic grounded answer",
-                "reasoning_sections": [{
+                "introduction": "",
+                "sections": [{
                     "kind": "source_principle",
                     "heading": "Synthetic principle",
                     "content": "A synthetic claim supported by the fixture.",
-                    "supporting_asset_ids": ["asset_synthetic"],
+                    "evidence_refs": ["asset_synthetic"],
                 }],
                 "applied_knowledge": [{"asset_id": "asset_synthetic", "usage_note": "Supports the synthetic claim."}],
                 "design_choices": [],
@@ -118,27 +121,33 @@ def test_service_keeps_ordinary_and_grounded_provider_contracts_distinct(monkeyp
 
     assert len(captured) == 2
     assert captured[0][2] == WorkshopGeneratedOutput.model_json_schema()
-    assert captured[1][2] == GroundedAnswerDocument.model_json_schema()
+    assert captured[1][2] == grounded_answer_provider_schema()
     assert "Grounded reasoning requirements" not in captured[0][1]["instructions"]
     assert "Grounded reasoning requirements" in captured[1][1]["instructions"]
     assert captured[0][1]["knowledge_units"] == captured[1][1]["knowledge_units"]
 
 
-def test_normalized_grounded_schema_contains_only_supported_keywords_and_internal_model_stays_strict():
-    schema = ai_gateway._gemini_response_schema(GroundedAnswerDocument.model_json_schema())
+def test_compatibility_schema_is_shallow_and_internal_model_stays_strict():
+    schema = ai_gateway._gemini_response_schema(grounded_answer_provider_schema())
+    legacy_grounded = ai_gateway._gemini_response_schema(GroundedAnswerDocument.model_json_schema())
+    legacy_workshop = ai_gateway._gemini_response_schema(WorkshopGeneratedOutput.model_json_schema())
 
     assert _schema_keywords(schema) <= {
-        "$defs", "$ref", "additionalProperties", "anyOf", "description", "enum",
-        "items", "maxItems", "minItems", "properties", "required", "title", "type",
+        "items", "properties", "required", "title", "type",
     }
     serialized = json.dumps(schema)
-    assert '"$defs"' in serialized and '"$ref"' in serialized
-    assert '"anyOf"' in serialized and '"null"' in serialized
-    assert '"enum"' in serialized and '"maxItems"' in serialized
+    assert '"$defs"' not in serialized and '"$ref"' not in serialized
+    assert '"anyOf"' not in serialized and '"null"' not in serialized
+    assert '"enum"' not in serialized and '"maxItems"' not in serialized
+    assert '"additionalProperties"' not in serialized
+    assert schema["properties"]["title"] == {"type": "string"}
     assert "minLength" not in serialized and "maxLength" not in serialized
-    assert "default" not in serialized and "discriminator" not in serialized
+    assert set(schema["required"]) == set(schema["properties"])
+    assert len(serialized) < len(json.dumps(legacy_grounded, separators=(",", ":")))
+    assert len(serialized) < len(json.dumps(legacy_workshop, separators=(",", ":")))
 
     assert GroundedAnswerDocument.model_config["extra"] == "forbid"
+    assert GroundedAnswerSection.model_config["extra"] == "forbid"
     try:
         GroundedAnswerDocument.model_validate({
             "title": "Synthetic",
@@ -180,8 +189,9 @@ def test_gateway_builds_documented_interactions_response_format_without_network(
     monkeypatch.setenv("GEMINI_DAILY_CALL_LIMIT", "450")
 
     synthetic_input = {"instructions": "Synthetic only", "brief": {"question": "placeholder"}}
-    normalized = ai_gateway._gemini_response_schema(GroundedAnswerDocument.model_json_schema())
-    ai_gateway.generate("synthetic-model", synthetic_input, GroundedAnswerDocument.model_json_schema())
+    provider_schema = grounded_answer_provider_schema()
+    normalized = ai_gateway._gemini_response_schema(provider_schema)
+    ai_gateway.generate("synthetic-model", synthetic_input, provider_schema)
 
     assert calls == [{
         "model": "synthetic-model",

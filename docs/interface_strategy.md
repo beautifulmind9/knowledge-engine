@@ -24,6 +24,10 @@ Provenance must be rigorous internally and legible externally. A source-supporte
 
 Source precedent is not prescription. Preserve material agreement and disagreement across sources instead of flattening them into false consensus. Frame conclusions as reflecting the knowledge currently available in the selected scope; do not imply that the corpus is complete. New material may challenge earlier synthesis, so Ask & Explore should reconcile the current evidence when asked rather than simply append advice. This slice does not add persistent experiment tracking, decision records or an automatic reconciliation system.
 
+### Provider contract boundary
+
+The strict internal `GroundedAnswerDocument` is not the Gemini response schema. A hosted request using the richer internal schema was rejected with HTTP 400 even for a short question about one prepared source. Knowledge Engine therefore sends a small, shallow compatibility DTO at the provider boundary. It uses plain strings and arrays rather than internal enums, nullable unions or nested schema references. The response is validated against that DTO, its evidence references are checked against the request's retrieved knowledge, and it is converted into `GroundedAnswerDocument` for strict domain validation and the existing grounding checks. This boundary addresses provider compatibility without weakening the internal answer or `KnowledgeAsset` models. The diagnostic does not establish which individual schema feature caused the provider rejection.
+
 ## Active interface and reconciled baseline
 
 The active interface is the browser application in `apps/web`, served by FastAPI. It already supports Home, Library, Create, My work and Settings, browser history, material preparation/recovery, scoped idea selection, saved outputs and revisions. Streamlit validated the early extraction/retrieval/workshop workflow; its archived implementation in `legacy/streamlit_prototype` is historical reference, not the current UI or a migration still to be performed.

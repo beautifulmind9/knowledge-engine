@@ -2,6 +2,7 @@ import {MATERIAL_EXTENSIONS, validateMaterial, suggestedMaterialTitle, newMateri
 import {availableAIAllowance} from './knowledge-build.js';
 import {createMaterialPreparation} from './material-preparation.js';
 import { revisionPayload } from './output-revision.js';
+import {renderGroundedAnswer, observeAnswerTableOverflow} from './answer-renderer.js';
 import {api, apiFetch, csrfToken} from './api.js';
 import {createNavigation} from './navigation.js';
 import {newInteractionDraft, captureRequest, correctDraft, interpretDraft, draftNeedsInterpretation, workshopRequest, evidenceIdentity, confirmDraft, preparedGenerationRequest} from './interaction-draft.js';
@@ -367,7 +368,7 @@ async function knowledgeView(){const active=beginView();
  const [ql,qi]=field('What are you looking for or wondering about?','q','textarea',local.query);
  qi.placeholder='e.g. One-on-one facilitation approach';
  const search=form(async()=>{if(qi.value.trim().length<2){controller.invalidate();message('Enter at least two characters to search.');return;}browse.open=false;await controller.search(qi.value.trim(),s.value);});
- search.id='ke-search-form';qi.id='explore-request';qi.rows=3;const captureActions=actions(submit('Find ideas'));captureActions.id='explore-actions';search.append(l,ql,captureActions);main.append(search);
+ search.id='ke-search-form';qi.id='explore-request';qi.rows=3;const captureActions=actions(submit('Find matching ideas'));captureActions.id='explore-actions';search.append(l,ql,captureActions);main.append(search);
  const searchPanel=el('section');searchPanel.hidden=true;searchPanel.id='ke-search-results';searchPanel.setAttribute('aria-live','polite');
  const searchHeading=query=>query.trim().length>64||query.includes('\n')?'Related ideas':`Search results for “${query}”`;
  const selectedCount=el('p',undefined,'muted');
@@ -599,10 +600,10 @@ async function workshopView(){
 async function savedView(){const active=beginView();heading('MY WORK','Work worth coming back to.','Every saved revision has its own record. Your original work, ideas, and evidence stay intact.');const data=await api('/outputs');if(!active())return;const grid=el('div',undefined,'grid');const roots=new Map();for(const o of data.items)if(!roots.has(o.root_output_id))roots.set(o.root_output_id,o);for(const o of roots.values()){const c=card(o.title,`${o.output_type.replaceAll('_',' ')} · Version ${o.version}`);c.append(el('p',new Date(o.created_at).toLocaleString(),'muted'),button('Open work',()=>navigate('work',{id:o.id})));grid.append(c);}main.append(actions(button('Create something',()=>navigate('workshop'),'primary')),grid);if(!data.count)main.append(el('p','Your work will appear here. Start in Create to make something.','empty'));}
 async function outputView(id){
  const active=beginView();heading('MY WORK','Opening work…','');const o=await api(`/outputs/${id}`);if(!active())return;const quality=await api(`/outputs/${id}/quality`);if(!active())return;
- let sourceTitles=new Map();try{const sourceData=await api('/sources');if(!active())return;sourceTitles=new Map((sourceData.items||[]).map(source=>[source.id,source.title]).filter(([,title])=>Boolean(title)));}catch{/* Saved work remains reviewable if material titles are unavailable. */}
+ let sourceTitles=new Map(),sourceInfo=[];try{const sourceData=await api('/sources');if(!active())return;sourceInfo=(sourceData.items||[]).map(({id,title,author})=>({id,title,author}));sourceTitles=new Map(sourceInfo.map(source=>[source.id,source.title]).filter(([,title])=>Boolean(title)));}catch{/* Saved work remains reviewable if material titles are unavailable. */}
  heading('VERSION '+o.version,o.title,`${o.output_type.replaceAll('_',' ')} · Saved ${new Date(o.created_at).toLocaleString()}`);
  const review=card('Quality review',quality.validation_status.replaceAll('_',' '));review.append(el('p',o.provider==='manual'?'Manually supplied or edited':'Created with AI'),el('p',quality.note),list(quality.issues.map(i=>i.message)));if(quality.timing_checks)review.append(list(quality.timing_checks.map(c=>`${c.criterion.replaceAll('_',' ')}: ${c.status} · Requested: ${c.requested_minutes??'unknown'} min · Calculated: ${c.calculated_minutes??'unknown'} min`)));
- const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),el('article',o.content,'reading'));
+ const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;const reading=renderGroundedAnswer(o.content,{document,snapshot:o.knowledge_snapshot||[],sourceInfo});reading.className=`${reading.className||''} reading`.trim();main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),reading);const answerTableObserver=observeAnswerTableOverflow(reading);main._answerTableObserver?.disconnect();main._answerTableObserver=answerTableObserver;
  const evidence=detail('Ideas and evidence used');main.append(evidence);for(const ref of o.applied_knowledge||[]){const g=(o.knowledge_snapshot||[]).find(item=>item.canonical_asset?.id===ref.asset_id);const c=card(g?.canonical_asset?.title||'Knowledge used',ref.usage_note);const evidenceItems=(g?.evidence_trail||[]).map(item=>{const sourceTitle=sourceTitles.get(item.source_id);const context=[sourceTitle,item.chapter_or_section].filter(Boolean).join(' · ');return el('p',(context?context+'\n':'')+item.evidence,'evidence');});if(evidenceItems.length)c.append(detail('Source & evidence',...evidenceItems));evidence.append(c);}
  main.append(detail('Review and design choices',review,list(o.design_choices.length?o.design_choices:['No additional design choices recorded.'])));
  const revise=form(async fd=>{const body=revisionPayload(fd,o);const n=await api(`/outputs/${id}/revise`,{method:'POST',body});if(!active())return;if(!await navigate('work',{id:n.id}))return;message(`Saved version ${n.version}; the original is unchanged.`);});

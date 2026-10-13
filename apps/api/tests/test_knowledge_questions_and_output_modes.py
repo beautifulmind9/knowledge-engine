@@ -85,8 +85,8 @@ def test_all_knowledge_shortcuts_answer_in_knowledge_view_before_workshop_handof
     assert 'output_type: "knowledge_answer"' in javascript
     assert "save: false" in javascript
     assert 'button("Open in Create"' in javascript
-    assert "One AI drafting attempt. No automatic retry, repair or fallback." in javascript
-    assert "button('Ask with AI'" in javascript
+    assert "button('Ask across sources'" in javascript
+    assert javascript.count('apiFetch("/workshops/generate"') == 1
 
 
 def test_knowledge_answer_enhancement_has_its_own_rendering_helpers():
@@ -98,7 +98,8 @@ def test_knowledge_answer_enhancement_has_its_own_rendering_helpers():
     # enhancements.js is a separate ES module and cannot rely on module-scoped
     # helper functions from app.js.
     assert "function detail(title, ...nodes)" in javascript
-    assert "function list(items)" in javascript
+    assert "renderGroundedAnswer" in javascript
+    assert "createAnswerEvidenceIndex" in javascript
     assert "function actions(...nodes)" in javascript
     assert "function button(text, action, className" in javascript
 

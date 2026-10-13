@@ -58,6 +58,26 @@ test('source and asset references resolve to human names and remain inspectable'
   assert.ok(!/source_3c7cb4e7|3c7cb4e7|asset_697e6e90|chunk_id|source_id/.test(answer.textContent));
 });
 
+test('evidence-aware labels render as distinct semantic markers and hex references stay private', () => {
+  const answer = renderGroundedAnswer('**Source principle:** Give people a meaningful reason to join. (Source: 3c7cb4e7)\n\n**KE interpretation:** For this launch, consider early access.', {document, snapshot, sourceInfo});
+  const nodes = descendants(answer);
+  assert.ok(nodes.some(node => node.className === 'answer-label answer-label-source' && node.textContent === 'Source principle'));
+  assert.ok(nodes.some(node => node.className === 'answer-label answer-label-inference' && node.textContent === 'KE interpretation'));
+  assert.ok(answer.textContent.includes('Marketing Made Simple · Donald Miller'));
+  assert.ok(!/3c7cb4e7|\*\*Source principle|\*\*KE interpretation/.test(answer.textContent));
+});
+
+test('source identity fallback omits absent author and unknown location without fabricating either', () => {
+  const titleOnly = renderGroundedAnswer('Claim (Source: source_12345678).', {
+    document, snapshot:[{canonical_asset:{id:'asset_1',title:'A useful idea'},asset_ids:['asset_1'],evidence_trail:[{source_id:'source_12345678',evidence:'A grounded quote.'}]}],
+    sourceInfo:[{id:'source_12345678',title:'A Report'}],
+  });
+  assert.ok(titleOnly.textContent.includes('A Report'));
+  assert.ok(titleOnly.textContent.includes('A grounded quote.'));
+  assert.ok(!/undefined|null|Chapter|page/i.test(titleOnly.textContent));
+  assert.ok(!/source_12345678|12345678|asset_1/.test(titleOnly.textContent));
+});
+
 test('unresolvable identifiers use neutral evidence language instead of exposing IDs', () => {
   const answer = renderGroundedAnswer('Claim (Source: deadbeef). Related asset_abcdef12 and chunk_id:chunk-private-7.', {document, snapshot:[], sourceInfo:[]});
   assert.ok(answer.textContent.includes('Source & evidence'));
@@ -78,4 +98,11 @@ test('evidence index humanizes applied-knowledge references without changing the
   const inline = renderGroundedInline('Use asset_697e6e90.', {document, snapshot, sourceInfo});
   assert.ok(inline.textContent.includes('Marketing Made Simple'));
   assert.ok(!inline.textContent.includes('asset_697e6e90'));
+});
+
+test('numeric titles and quantities are not mistaken for hexadecimal identifiers', () => {
+  const index = createAnswerEvidenceIndex([{canonical_asset:{id:'asset_123',title:'9780143127741'},evidence_trail:[]}], []);
+  assert.equal(index.assetTitle('asset_123'), '9780143127741');
+  const answer = renderGroundedAnswer('The launch cap is 12345678 units.', {document, snapshot:[], sourceInfo:[]});
+  assert.ok(answer.textContent.includes('12345678'));
 });

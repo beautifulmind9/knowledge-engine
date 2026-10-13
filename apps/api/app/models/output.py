@@ -1,9 +1,11 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
 from app.models.workshop_generation import WorkshopGenerateRequest, WorkshopGeneratedOutput
+from app.models.workshop_generation import GroundedAnswerSection
 
 
 class OutputRecord(WorkshopGeneratedOutput):
+    reasoning_sections: list[GroundedAnswerSection] | None = None
     id: str
     brief: dict
     source_ids: list[str]

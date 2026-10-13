@@ -121,10 +121,13 @@ function validateKnowledgeQuestionScope(question) {
 function renderKnowledgeAnswer(data, originalQuestion, context) {
   const card = knowledgeAnswerCard();
   card.replaceChildren();
+  const localResults = document.querySelector('#ke-search-results');
+  if (localResults) localResults.hidden = true;
 
   const output = data.output || {};
   const snapshot = data.knowledge_snapshot || [];
-  const sourceInfo = document.querySelector('#main')?.exploreContext?.sourceInfo?.() || [];
+  const scopeIds = context?.sourceIds || [];
+  const sourceInfo = (document.querySelector('#main')?.exploreContext?.sourceInfo?.() || []).filter(source => scopeIds.includes(source.id));
   const evidenceIndex = createAnswerEvidenceIndex(snapshot, sourceInfo);
   const count = Number.isInteger(data.knowledge_unit_count) ? data.knowledge_unit_count : snapshot.length;
   const scopeLabel = document.querySelector('#main')?.exploreContext?.scopeLabel?.() || 'your selected materials';
@@ -135,8 +138,47 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
     makeElement("p", "Not saved automatically", "answer-save-note")
   );
   answerTitle.append(renderGroundedInline(output.title || "Answer from your library", {document, snapshot, sourceInfo}));
+  const evidenceBase = data.evidence_base;
+  if (evidenceBase?.selected_count) {
+    const {selected_count:selected,ready_count:ready,preparing_count:preparing,attention_count:attention,unavailable_count:unavailable} = evidenceBase;
+    const pieces = [`${selected} selected ${selected===1?'material':'materials'}`, `${ready} ready`];
+    if (preparing) pieces.push(`${preparing} still preparing`);
+    if (attention) pieces.push(`${attention} needs attention`);
+    if (unavailable) pieces.push(`${unavailable} unavailable`);
+    const base = makeElement('p', `Evidence base · ${pieces.join(' · ')}`, 'answer-evidence-base');
+    card.insertBefore(base, card.children[2] || null);
+    if (preparing || attention || unavailable) {
+      const note = preparing && !attention && !unavailable
+        ? 'This answer reflects the knowledge currently available. More may appear as the remaining material is prepared.'
+        : 'This answer reflects the knowledge currently available; some selected material is not fully available.';
+      card.insertBefore(makeElement('p', note, 'answer-evidence-limit'), card.children[3] || null);
+    }
+  }
 
-  const content = renderGroundedAnswer(output.content || "No answer returned.", {document, snapshot, sourceInfo});
+  let content;
+  if (Array.isArray(output.reasoning_sections) && output.reasoning_sections.length) {
+    const useWorkspaceGrid = output.reasoning_sections.length >= 6;
+    content = makeElement('article', undefined, `answer-document answer-reasoning-document${useWorkspaceGrid ? ' answer-reasoning-document--workspace-grid' : ''}`);
+    const labels = {
+      source_principle:'Source principle', source_tactic:'Source tactic', mechanism:'Underlying mechanism',
+      interpretation:'KE interpretation', assumption:'Assumption', experiment:'Experiment',
+      challenge:'Challenge / alternative', agreement:'Where sources agree', disagreement:'Disagreement',
+      applicability:'Applicability', open_question:'Open question', analysis:'Analysis',
+    };
+    const tones = {source_principle:'source',source_tactic:'source',mechanism:'source',interpretation:'inference',assumption:'uncertain',experiment:'action',challenge:'warning',agreement:'source',disagreement:'warning',applicability:'uncertain',open_question:'uncertain'};
+    for (const section of output.reasoning_sections) {
+      const block = makeElement('section', undefined, `answer-reasoning-section answer-reasoning-${section.kind}`);
+      block.append(makeElement('span', labels[section.kind] || 'Analysis', `answer-label answer-label-${tones[section.kind] || 'neutral'}`));
+      const sectionTitle = makeElement('h3', undefined, 'answer-section-title');
+      sectionTitle.append(renderGroundedInline(section.heading, {document, snapshot, sourceInfo}));
+      block.append(sectionTitle);
+      const body = renderGroundedAnswer(section.content, {document, snapshot, sourceInfo});
+      block.append(...Array.from(body.childNodes));
+      const sourceLabels = [...new Set((section.supporting_asset_ids || []).map(assetId => evidenceIndex.asset(assetId).label).filter(label => label && label !== 'Source & evidence'))];
+      if (sourceLabels.length) block.append(makeElement('p', `From ${sourceLabels.join('; ')}`, 'answer-section-sources'));
+      content.append(block);
+    }
+  } else content = renderGroundedAnswer(output.content || "No answer returned.", {document, snapshot, sourceInfo});
   card.append(content);
 
   const applied = output.applied_knowledge || [];
@@ -205,7 +247,7 @@ async function generateKnowledgeAnswer(question, trigger) {
   card.replaceChildren(
     makeElement("h3", "Generating grounded answer…"),
     makeElement("p", "Using knowledge from your selected scope.", "muted"),
-    detail("AI usage",makeElement("p","One AI drafting attempt. No automatic retry, repair or fallback.","muted"))
+    makeElement("p", "This answer uses AI and the materials in your selected scope.", "muted")
   );
 
   if (trigger) trigger.disabled = true;
@@ -266,12 +308,20 @@ function decorateKnowledgeView() {
   const searchForm=main?.querySelector('#ke-search-form');
   if(!searchForm||!viewState)return;
   const request=searchForm.elements.namedItem('q');
-  const askButton=button('Ask with AI',()=>{
+  const askButton=button('Ask across sources',()=>{
     if(request.value.trim().length<2){request.reportValidity();return;}
     generateKnowledgeAnswer(request.value,askButton);
-  });
+  },'primary');
   request.required=true;request.minLength=2;
   document.querySelector('#explore-actions').append(askButton);
+  const sourceScope=document.querySelector('#ke-source-scope');
+  const updateAskLabel=()=>{askButton.textContent=sourceScope?.value?'Ask this material':'Ask across sources';};
+  sourceScope?.addEventListener('change',updateAskLabel);updateAskLabel();
+  const actionNote=makeElement('p','Asking uses AI. Find matching ideas searches prepared knowledge locally.','muted');
+  actionNote.className='explore-action-note';
+  document.querySelector('#explore-actions').after(actionNote);
+  const findButton=document.querySelector('#explore-actions button[type="submit"]');
+  if(findButton){findButton.textContent='Find matching ideas';findButton.className='';}
   const optional=makeElement('div');optional.id='ke-ask-card';optional.className='explore-options';
   const suggestions=detail('Try a question');suggestions.className='question-suggestions';
   const prompts=makeElement('div');prompts.className='prompt-options';

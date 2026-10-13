@@ -4,6 +4,7 @@ import os
 from google import genai
 
 from app.models.workshop_generation import (
+    GroundedAnswerDocument,
     WorkshopGenerateRequest,
     WorkshopGeneratedOutput,
 )
@@ -166,35 +167,102 @@ Rules:
 
     model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
     from app.services.ai_gateway import generate
-    interaction = generate(model, model_input, WorkshopGeneratedOutput.model_json_schema())
+    knowledge_answer = payload.output_type == "knowledge_answer"
+    schema_model = GroundedAnswerDocument if knowledge_answer else WorkshopGeneratedOutput
+    if knowledge_answer:
+        model_input["instructions"] += """
+
+Grounded reasoning requirements for this answer:
+- Return reasoning_sections as a concise analytical document. Use only meaningful section kinds; do not add empty or forced headings.
+- Mark source-supported claims as source_principle or source_tactic and include supporting_asset_ids from the supplied knowledge.
+- Mark contextual reasoning as interpretation, never as though it came directly from a source.
+- State material assumptions explicitly and frame experiments as possibilities to test, not established results.
+- Separate a source's tactic or delivery channel from its underlying mechanism when that distinction matters. Do not assume a different channel is better merely because it is available.
+- Check any proposed adaptation against the user's stated objective, intended audience and operating context. If fit is uncertain, state the uncertainty rather than prescribing it.
+- Preserve source agreement, disagreement and scope differences. Use agreement/disagreement only when the supplied sources support it; cite the relevant assets. Do not manufacture consensus or choose a winner unless asked.
+- Treat source precedent as evidence to reason with, not a universal prescription. The answer reflects only knowledge currently available in the selected scope.
+- Keep each section's supporting_asset_ids limited to supplied asset IDs that actually support that section. Do not output source IDs, chunk IDs, asset IDs, or provider identifiers in prose.
+"""
+    interaction = generate(model, model_input, schema_model.model_json_schema())
 
     if not interaction.output_text:
         raise RuntimeError("The AI returned no Workshop output.")
 
-    generated = WorkshopGeneratedOutput.model_validate_json(interaction.output_text)
+    generated = schema_model.model_validate_json(interaction.output_text)
 
     available_asset_ids = {
-        unit.get("asset_id")
+        asset_id
         for unit in knowledge_units
-        if unit.get("asset_id")
+        for asset_id in ([unit.get("asset_id")] + list(unit.get("asset_ids") or []))
+        if asset_id
     }
-    if generated.output_type != payload.output_type:
+    available_canonical_ids = {unit.get("asset_id") for unit in knowledge_units if unit.get("asset_id")}
+    if not knowledge_answer and generated.output_type != payload.output_type:
         raise RuntimeError("The AI changed the requested output type. No output saved.")
     for applied in generated.applied_knowledge:
-        if applied.asset_id not in available_asset_ids:
+        if applied.asset_id not in available_canonical_ids:
             raise RuntimeError(
                 "The generated output referenced a knowledge asset that was not supplied to the Workshop."
             )
 
+    if knowledge_answer:
+        source_ids_by_asset = {}
+        for unit in knowledge_units:
+            member_ids = [unit.get("asset_id"), *(unit.get("asset_ids") or [])]
+            for asset_id in member_ids:
+                if asset_id:
+                    source_ids_by_asset[asset_id] = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
+        for section in generated.reasoning_sections:
+            invalid = set(section.supporting_asset_ids) - available_asset_ids
+            if invalid:
+                raise RuntimeError("The grounded answer referenced knowledge that was not supplied. No answer was accepted.")
+            if section.kind in {"source_principle", "source_tactic", "mechanism", "interpretation", "challenge", "agreement", "disagreement"} and not section.supporting_asset_ids:
+                raise RuntimeError("A source-related answer section lacked supporting knowledge. No answer was accepted.")
+            if section.kind in {"agreement", "disagreement"}:
+                cited_sources = set().union(*(source_ids_by_asset.get(asset_id, set()) for asset_id in section.supporting_asset_ids))
+                if len(cited_sources) < 2:
+                    raise RuntimeError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.")
+        content_parts = []
+        if generated.introduction:
+            content_parts.append(generated.introduction.strip())
+        label_by_kind = {
+            "source_principle": "Source principle", "source_tactic": "Source tactic",
+            "mechanism": "Underlying mechanism", "interpretation": "KE interpretation",
+            "assumption": "Assumption", "experiment": "Experiment",
+            "challenge": "Challenge / alternative", "agreement": "Agreement",
+            "disagreement": "Disagreement", "applicability": "Applicability",
+            "open_question": "Open question", "analysis": "Analysis",
+        }
+        for section in generated.reasoning_sections:
+            label = label_by_kind[section.kind]
+            content_parts.append(f"## {section.heading}\n\n**{label}:** {section.content.strip()}")
+        generated_output = WorkshopGeneratedOutput.model_validate({
+            "title": generated.title,
+            "output_type": "knowledge_answer",
+            "content": "\n\n".join(content_parts),
+            "applied_knowledge": [item.model_dump(mode="json") for item in generated.applied_knowledge],
+            "design_choices": generated.design_choices,
+            "reasoning_sections": [item.model_dump(mode="json") for item in generated.reasoning_sections],
+        })
+    else:
+        generated_output = generated
+
     from app.services.output_modes import quality_report
-    quality = quality_report(generated.model_dump(mode="json"), prepared["brief"], prepared["knowledge_units"])
-    return {
+    output_data = generated_output.model_dump(mode="json")
+    if knowledge_answer:
+        output_data["reasoning_sections"] = [item.model_dump(mode="json") for item in generated.reasoning_sections]
+    quality = quality_report(output_data, prepared["brief"], prepared["knowledge_units"])
+    result = {
         "quality_report": quality,
         "brief": prepared["brief"],
         "knowledge_unit_count": prepared["knowledge_unit_count"],
         "knowledge_snapshot": prepared["knowledge_units"],
-        "output": generated.model_dump(mode="json"),
+        "output": output_data,
         "provider": "gemini",
         "model": model,
         "model_response_id": getattr(interaction, "id", None),
     }
+    if knowledge_answer:
+        from app.services.workshop import evidence_base_state
+        result["evidence_base"] = evidence_base_state(payload.source_ids, payload.library_id)
+    return result

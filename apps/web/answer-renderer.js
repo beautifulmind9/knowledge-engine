@@ -1,12 +1,16 @@
 const LABEL_KIND = new Map([
-  ['principle', 'source'], ['adaptation', 'inference'], ['assumption', 'uncertain'],
+  ['principle', 'source'], ['source principle', 'source'], ['source tactic', 'source'],
+  ['adaptation', 'inference'], ['ke interpretation', 'inference'], ['underlying mechanism', 'source'],
+  ['assumption', 'uncertain'], ['applicability', 'uncertain'],
   ['experiment', 'action'], ['measurement', 'action'], ['warning', 'warning'],
+  ['challenge / alternative', 'warning'], ['disagreement', 'warning'], ['agreement', 'source'],
+  ['open question', 'uncertain'], ['analysis', 'neutral'],
   ['design choice', 'synthesis'], ['synthesis', 'synthesis'],
 ]);
 
 function humanIdentity(value, fallback = '') {
   const text = String(value || '').trim();
-  if (!text || /^(?:asset|source|chunk|canonical|job)_[a-z\d][\w-]*$/i.test(text) || /^[\da-f]{8,}$/i.test(text) || /^[\da-f]{8}-[\da-f-]{27,}$/i.test(text)) return fallback;
+  if (!text || /^(?:asset|source|chunk|canonical|job)_[a-z\d][\w-]*$/i.test(text) || /^(?=[\da-f]*[a-f])[\da-f]{8,}$/i.test(text) || /^[\da-f]{8}-[\da-f-]{27,}$/i.test(text)) return fallback;
   return text;
 }
 
@@ -57,6 +61,7 @@ function safeInlineText(text, references) {
   clean = clean.replace(/\b(?:source|chunk|canonical|job|provider|attempt|request)(?:_[a-z]+)?_id\s*[:=]\s*[\w-]+/gi, () => addReference('source', ''));
   clean = clean.replace(/\b(?:chunk|canonical|source|job|provider|attempt|request)_[a-z\d][\w-]*\b/gi, () => addReference('source', ''));
   clean = clean.replace(/\b[\da-f]{8}-[\da-f-]{27,}\b/gi, () => addReference('source', ''));
+  clean = clean.replace(/\b(?=[\da-f]*[a-f])[\da-f]{8,}\b/gi, id => addReference('source', id));
   // A short source reference is only treated as an identifier in citation syntax.
   return { clean, markers };
 }
@@ -141,7 +146,7 @@ function appendList(parent, lines, start, references, doc) {
 }
 
 function appendLabelledInline(parent, text, references, doc) {
-  const match = /^\s*\*\*(Principle|Adaptation|Assumption|Experiment|Measurement|Warning|Design choice|Synthesis):\*\*\s*(.*)$/i.exec(text);
+  const match = /^\s*\*\*(Source principle|Source tactic|Underlying mechanism|KE interpretation|Challenge \/ alternative|Applicability|Open question|Agreement|Disagreement|Analysis|Principle|Adaptation|Assumption|Experiment|Measurement|Warning|Design choice|Synthesis):\*\*\s*(.*)$/i.exec(text);
   if (!match) return appendInline(parent, text, references, doc);
   const label = doc.createElement('span'); label.className = `answer-label answer-label-${LABEL_KIND.get(match[1].toLowerCase()) || 'neutral'}`; label.textContent = match[1]; parent.append(label);
   if (match[2]) { parent.append(doc.createTextNode(' ')); appendInline(parent, match[2], references, doc); }
@@ -177,7 +182,7 @@ export function renderGroundedAnswer(text, { document: doc = globalThis.document
     while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) paragraph.push(lines[index++].trim());
     if (!paragraph.length) { paragraph.push(lines[index++]); }
     const node = doc.createElement('p');
-    const first = /^\*\*(Principle|Adaptation|Assumption|Experiment|Measurement|Warning|Design choice|Synthesis):\*\*\s*(.*)$/i.exec(paragraph[0]);
+    const first = /^\*\*(Source principle|Source tactic|Underlying mechanism|KE interpretation|Challenge \/ alternative|Applicability|Open question|Agreement|Disagreement|Analysis|Principle|Adaptation|Assumption|Experiment|Measurement|Warning|Design choice|Synthesis):\*\*\s*(.*)$/i.exec(paragraph[0]);
     if (first) {
       const label = doc.createElement('span'); label.className = `answer-label answer-label-${LABEL_KIND.get(first[1].toLowerCase()) || 'neutral'}`; label.textContent = first[1]; node.append(label);
       const rest = [first[2], ...paragraph.slice(1)].filter(Boolean).join(' '); if (rest) { node.append(doc.createTextNode(' ')); appendInline(node, rest, references, doc); }

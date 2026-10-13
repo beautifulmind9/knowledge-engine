@@ -421,6 +421,34 @@ def source_coverage(groups):
     return coverage
 
 
+def evidence_base_state(source_ids, library_id=None):
+    """Summarize only selected-material readiness for a grounded answer."""
+    from app.db.mock_data import sources
+    from app.services.source_summary import source_summaries
+
+    chosen_ids = set(source_ids or [])
+    chosen = [source for source in sources
+              if (not chosen_ids or source["id"] in chosen_ids)
+              and (library_id is None or source["library_id"] == library_id)]
+    state = {"selected_count": len(chosen), "ready_count": 0, "preparing_count": 0,
+             "attention_count": 0, "unavailable_count": 0}
+    for source in chosen:
+        try:
+            summary = source_summaries(source_id=source["id"])[0]
+        except Exception:
+            state["unavailable_count"] += 1
+            continue
+        if summary.readiness == "ready":
+            state["ready_count"] += 1
+        elif summary.readiness == "unknown":
+            state["unavailable_count"] += 1
+        elif summary.attention_category:
+            state["attention_count"] += 1
+        else:
+            state["preparing_count"] += 1
+    return state
+
+
 def synthesis_context(groups):
     from itertools import combinations
     from app.services.knowledge_extraction import potential_tension

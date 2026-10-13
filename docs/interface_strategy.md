@@ -18,6 +18,12 @@ The interaction contract is **natural capture → interpreted draft → visual c
 
 Interpret quietly when confidence is high and consequence low; show material interpretations even when confidence is high. Ask locally when uncertainty has material consequences. Leave nonessential missing information unset, or show a useful default. Preserve explicit input unless deliberately corrected.
 
+## Evidence-aware reasoning in Ask & Explore
+
+Provenance must be rigorous internally and legible externally. A source-supported principle or tactic must never be presented as KE's contextual interpretation, and KE's adaptation must never be attributed to a source. When advice is adapted, check its fit with the user's stated objective, intended audience and operating context. Keep the strategic mechanism distinct from a source's particular tactic or delivery channel; do not assume another channel is preferable without evidence. Make material assumptions visible and offer experiments as tests, not established outcomes.
+
+Source precedent is not prescription. Preserve material agreement and disagreement across sources instead of flattening them into false consensus. Frame conclusions as reflecting the knowledge currently available in the selected scope; do not imply that the corpus is complete. New material may challenge earlier synthesis, so Ask & Explore should reconcile the current evidence when asked rather than simply append advice. This slice does not add persistent experiment tracking, decision records or an automatic reconciliation system.
+
 ## Active interface and reconciled baseline
 
 The active interface is the browser application in `apps/web`, served by FastAPI. It already supports Home, Library, Create, My work and Settings, browser history, material preparation/recovery, scoped idea selection, saved outputs and revisions. Streamlit validated the early extraction/retrieval/workshop workflow; its archived implementation in `legacy/streamlit_prototype` is historical reference, not the current UI or a migration still to be performed.

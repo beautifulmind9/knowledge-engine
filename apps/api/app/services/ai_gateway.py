@@ -218,10 +218,16 @@ def generate(model, payload, schema):
             return interactions.create(model=model, input=json.dumps(payload, ensure_ascii=False), store=False,
                 response_format={"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)})
     except Exception as error:
-        logger.warning("Gemini provider failure diagnostic: %s", json.dumps(_provider_diagnostic(error), sort_keys=True))
+        diagnostic = _provider_diagnostic(error)
+        logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))
         quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
         if quota:
             usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")
             persist_state()
             raise HTTPException(429, usage["reason"]) from error
+        if diagnostic.get("status_code") == 400 and diagnostic.get("message_category") == "invalid_request_generic":
+            raise HTTPException(
+                502,
+                "The AI service could not accept this request. Your materials and saved work are unchanged.",
+            ) from error
         raise HTTPException(502, "AI provider request failed. Progress is saved; retry manually later.") from error

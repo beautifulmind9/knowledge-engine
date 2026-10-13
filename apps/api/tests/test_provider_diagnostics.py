@@ -73,3 +73,38 @@ def test_metadata_and_message_cannot_echo_source_or_key():
 def test_unknown_exception_names_are_not_logged():
     error = type(PRIVATE_TEXT, (Exception,), {})(PRIVATE_KEY)
     assert ai_gateway._provider_diagnostic(error)['exception_type'] == 'OtherProviderError'
+
+
+def test_generic_invalid_request_has_truthful_safe_user_message(monkeypatch, caplog):
+    original_client = genai.Client
+    secret_message = f'invalid request containing {PRIVATE_TEXT} and key={PRIVATE_KEY}'
+
+    def transport(request):
+        return httpx.Response(400, json={
+            'error': {'code': 'invalid_request', 'message': secret_message},
+        })
+
+    def factory(**kwargs):
+        kwargs['http_options'].update(client_args={'transport': httpx.MockTransport(transport), 'trust_env': False},
+                                      async_client_args={'trust_env': False})
+        return original_client(**kwargs)
+
+    monkeypatch.setattr(ai_gateway.genai, 'Client', factory)
+    monkeypatch.setenv('GEMINI_API_KEY', PRIVATE_KEY)
+    monkeypatch.setenv('GEMINI_FREE_TIER_CONFIRMED', 'true')
+    monkeypatch.setenv('GEMINI_DAILY_CALL_LIMIT', '450')
+
+    with caplog.at_level(logging.WARNING, logger=ai_gateway.__name__):
+        with pytest.raises(HTTPException) as failure:
+            ai_gateway.generate('fixture-model', {'synthetic': 'placeholder'}, {'type': 'object'})
+
+    assert failure.value.status_code == 502
+    assert failure.value.detail == 'The AI service could not accept this request. Your materials and saved work are unchanged.'
+    assert 'Progress is saved' not in failure.value.detail
+    assert PRIVATE_TEXT not in caplog.text and PRIVATE_KEY not in caplog.text
+    logged = json.loads(next(record.getMessage().split('diagnostic: ', 1)[1]
+                             for record in caplog.records if 'Gemini provider failure diagnostic:' in record.getMessage()))
+    assert logged['exception_type'] == 'BadRequestError'
+    assert logged['status_code'] == 400
+    assert logged['provider_code'] == 'invalid_request'
+    assert logged['message_category'] == 'invalid_request_generic'

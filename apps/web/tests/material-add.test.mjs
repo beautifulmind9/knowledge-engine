@@ -29,8 +29,16 @@ test('existing destination defaults to current or first visible choice and can c
  const libs=[{id:'first',name:'First'},{id:'current',name:'Current'}];
  const f=fixture(libs,'current');assert.equal(f.draft.libraryId,'current');
  assert.equal(newMaterialAdd(libs,null).libraryId,'first');
- f.draft.libraryId='first';f.draft.title='Corrected title';f.draft.author='An author';await f.run();
- assert.equal(f.calls[0].path,'/sources');assert.deepEqual(f.calls[0].options.body,{library_id:'first',title:'Corrected title',author:'An author',source_type:'document'});
+ f.draft.libraryId='first';f.draft.title='Corrected title';f.draft.author='An author';f.draft.titleUserConfirmed=true;f.draft.authorUserConfirmed=true;await f.run();
+ assert.equal(f.calls[0].path,'/sources');assert.deepEqual(f.calls[0].options.body,{library_id:'first',title:'Corrected title',author:'An author',source_type:'document',title_origin:'user_confirmed',author_origin:'user_confirmed'});
+});
+test('untouched filename title and blank author are explicitly provisional',async()=>{
+ const f=fixture();await f.run();const created=f.calls.find(call=>call.path==='/sources').options.body;
+ assert.equal(created.title_origin,'filename');assert.equal(created.author_origin,'unconfirmed');
+});
+test('explicitly cleared optional author is confirmed blank and cannot be filled by later reading',async()=>{
+ const f=fixture();f.draft.author='';f.draft.authorUserConfirmed=true;await f.run();const created=f.calls.find(call=>call.path==='/sources').options.body;
+ assert.equal(created.author,null);assert.equal(created.author_origin,'user_confirmed');
 });
 test('known destination survives source creation failure and retry does not duplicate it',async()=>{
  const f=fixture();f.fail('/sources');await assert.rejects(f.run,/Material has not been added yet/);

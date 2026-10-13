@@ -16,7 +16,7 @@ export function suggestedMaterialTitle(filename) {
 }
 
 export function newMaterialAdd(libraries, currentLibrary) {
-  return {file:null,title:'',author:'',libraryId:libraries.find(l=>l.id===currentLibrary)?.id || libraries[0]?.id || null,
+  return {file:null,title:'',titleSuggested:'',titleUserConfirmed:false,author:'',authorUserConfirmed:false,libraryId:libraries.find(l=>l.id===currentLibrary)?.id || libraries[0]?.id || null,
     libraryName:'My Library',sourceId:null,uploaded:false,read:false,busy:false,error:null,readFailure:null,replacementSelected:false};
 }
 
@@ -30,7 +30,8 @@ export function selectMaterialFiles(batch, files) {
   for (const file of Array.from(files||[])) {
     try {
       validateMaterial(file);
-      batch.items.push({...newMaterialAdd([],null),file,title:suggestedMaterialTitle(file.name),libraryId:batch.libraryId,libraryName:batch.libraryName});
+      const titleSuggested=suggestedMaterialTitle(file.name);
+      batch.items.push({...newMaterialAdd([],null),file,title:titleSuggested,titleSuggested,libraryId:batch.libraryId,libraryName:batch.libraryName});
     } catch(error) {
       batch.invalidFiles.push({name:file?.name||'Selected file',message:error.message});
     }
@@ -57,7 +58,8 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
     stage='source';
     if (!draft.sourceId) {
       progress('Adding material…');
-      const source=await api('/sources',{method:'POST',body:{library_id:draft.libraryId,title:draft.title.trim(),author:draft.author.trim()||null,source_type:'document'}});
+      const author=draft.author.trim();
+      const source=await api('/sources',{method:'POST',body:{library_id:draft.libraryId,title:draft.title.trim(),author:author||null,source_type:'document',title_origin:draft.titleUserConfirmed?'user_confirmed':'filename',author_origin:draft.authorUserConfirmed?'user_confirmed':'unconfirmed'}});
       draft.sourceId=source.id;
     }
     stage='upload';

@@ -1,5 +1,6 @@
 import {MATERIAL_EXTENSIONS, validateMaterial, suggestedMaterialTitle, newMaterialAddBatch, selectMaterialFiles, addMaterials} from './material-add.js';
-import {availableAIAllowance, buildQuantity, createKnowledgeBuild} from './knowledge-build.js';
+import {availableAIAllowance} from './knowledge-build.js';
+import {createMaterialPreparation} from './material-preparation.js';
 import { revisionPayload } from './output-revision.js';
 import {api, apiFetch, csrfToken} from './api.js';
 import {createNavigation} from './navigation.js';
@@ -7,7 +8,9 @@ import {newInteractionDraft, captureRequest, correctDraft, interpretDraft, draft
 import { PAGE_SIZE, filterUnits, createSearchController } from './knowledge-browser.js';
 const main=document.querySelector('main'), feedback=document.querySelector('#feedback');
 let interactionDraft=newInteractionDraft(),createMaterials=null,viewRevision=0,foregroundBuild=null;
-function beginView(){foregroundBuild?.stop();const revision=++viewRevision;return ()=>revision===viewRevision;}
+let preparationTransition=false;
+const preparationOutcomes=new Map();
+function beginView(){if(!preparationTransition)foregroundBuild?.stop('navigation');const revision=++viewRevision;return ()=>revision===viewRevision;}
 let homeDraft=newInteractionDraft(),exploreState=null,explorePicker=false,materialAddDraft=null;
 function captureDraft(){main.querySelector('#create-brief')?.captureInteraction();main.captureExplore?.();}
 function freshExplore(query=''){return {query,chapter:'',idea:'',contextOpen:false,contextMode:'both',promptMode:null,type:'',section:'',visible:PAGE_SIZE,browseOpen:false,results:null,answer:null};}
@@ -32,7 +35,7 @@ function field(label,name,kind='input',value=''){const l=el('label',label),i=el(
 function select(label,values,current='',multiple=false){const [l,s]=field(label,label,'select');s.multiple=multiple;for(const [id,name] of values){const o=el('option',name);o.value=id;o.selected=Array.isArray(current)?current.includes(id):id===current;s.append(o);}return [l,s];}
 function form(onSubmit){const f=el('form');f.onsubmit=e=>{e.preventDefault();return run(()=>onSubmit(new FormData(f)),f.querySelector('[type=submit]'));};return f;}
 function submit(text){const b=el('button',text,'primary');b.type='submit';return b;}
-function heading(kicker,title,description){main.captureExplore=null;main.exploreContext=null;main.refreshMaterialAdd=null;const signout=main.querySelector('#beta-logout');if(signout){signout.hidden=true;document.body.append(signout);}main.replaceChildren(el('div',kicker,'kicker'),el('h1',title),el('p',description,'intro'));}
+function heading(kicker,title,description){main.className='';main.updateMaterialPreparation=null;main.materialId=null;main.captureExplore=null;main.exploreContext=null;main.refreshMaterialAdd=null;const signout=main.querySelector('#beta-logout');if(signout){signout.hidden=true;document.body.append(signout);}main.replaceChildren(el('div',kicker,'kicker'),el('h1',title),el('p',description,'intro'));}
 function card(title,description){const c=el('section',undefined,'card');c.append(el('h3',title));if(description)c.append(el('p',description));return c;}
 function actions(...buttons){const d=el('div',undefined,'actions');d.append(...buttons);return d;}
 function detail(title,...nodes){const d=el('details');d.append(el('summary',title),...nodes);return d;}
@@ -48,33 +51,39 @@ function replaceScope(view){router.go({view,library:state.library,materials:crea
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=e=>{e.preventDefault();return run(()=>navigate(b.dataset.view),b);});
 async function libraries(){const data=await api('/libraries');return data.items;}
 async function sourceItems(){return (await api('/sources'+(state.library?'?library_id='+encodeURIComponent(state.library):''))).items;}
-const libraryReadiness={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Status unavailable'};
+function preparationLabel(completed,total){
+ if(!Number.isInteger(completed)||!Number.isInteger(total))return 'Preparation progress unavailable';
+ if(!total||!completed)return 'Not yet prepared';
+ return completed===total?'Prepared':'Partly prepared';
+}
+const libraryReadiness={added:'Added',ready_to_build:'Preparation not complete',partly_ready:'Partly ready',ready:'Ready',unknown:'Status unavailable'};
 function rowAction(summary){
  if(!summary)return 'Open material';
  if(summary.has_usable_knowledge)return 'Explore knowledge';
  if(summary.attention_category==='build_stopped'||summary.attention_category==='build_unconfirmed'||summary.recovery?.some(item=>item.allowed))return 'Open material';
  if(summary.readiness==='added'&&summary.next_action==='attach_file')return 'Finish adding';
  if(summary.readiness==='added'&&summary.next_action==='read_source')return 'Read source';
- if(summary.readiness==='ready_to_build'&&summary.next_action==='build_knowledge')return 'Build knowledge';
- if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building')return 'Continue building';
+ if(summary.readiness==='ready_to_build'&&summary.next_action==='build_knowledge')return 'Continue preparing';
+ if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building')return 'Continue preparing';
  return 'Open material';
 }
 function renderLibraryRow(source,summary,summaryUnavailable=false){
  const row=el('article',undefined,'library-row');
  const title=el('h2',source.title,'library-row-title');row.append(title);
+ if(source.title_origin==='filename')row.append(el('p','Temporary name from filename','library-row-author'));
  if(source.author?.trim())row.append(el('p',source.author,'library-row-author'));
  const action=rowAction(summary);
  if(action!=='Open material'){const open=el('a','Open material','library-row-open');open.href='#/library/material/'+encodeURIComponent(source.id);open.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};row.append(open);}
  if(summary){
   row.append(el('p',libraryReadiness[summary.readiness]||'Status unavailable','library-row-readiness'));
-  const coverage=summary.coverage_text||(summary.readiness==='unknown'?'Coverage unavailable':summary.readiness==='added'&&summary.total_parts===0?'No parts ready yet':'Coverage unavailable');
+  const coverage=preparationLabel(summary.completed_parts,summary.total_parts);
   row.append(el('p',coverage,'library-row-coverage'));
   if(summary.readiness==='ready'&&!summary.has_usable_knowledge)row.append(el('p','No usable knowledge is available from this material yet.','library-row-operation'));
   if(summary.attention_category)row.append(el('p',`Needs attention: ${summary.attention_message||'This material needs attention.'}`,'library-row-attention'));
   if(summary.operation==='build_unconfirmed'&&summary.attention_category!=='build_unconfirmed')row.append(el('p','Previous build has not reported completion.','library-row-operation'));
  }else{
   row.append(el('p',summaryUnavailable?'Readiness unavailable':'Status unavailable','library-row-readiness'));
-  row.append(el('p','Coverage unavailable','library-row-coverage'));
+  row.append(el('p','Preparation progress unavailable','library-row-coverage'));
   if(summaryUnavailable)row.append(el('p','Current status could not be loaded. Open the material to check it.','library-row-operation'));
  }
  const controls=actions();
@@ -84,11 +93,9 @@ function renderLibraryRow(source,summary,summaryUnavailable=false){
   if(action==='Read source'){
    await api(`/sources/${source.id}/process`,{method:'POST'});
    if(!await navigate('library',{replace:true}))return;
-   message('Source read. Build knowledge to find ideas you can use.');return;
+   await navigate('material',{id:source.id});await startPreparation([source.id]);return;
   }
-  const result=await api(`/sources/${source.id}/interpret?max_chunks=1`,{method:'POST'});
-  if(!await navigate('library',{replace:true}))return;
-  message(result.stopped_reason?'Knowledge building stopped.':`${result.processed_this_run||1} part ready.`,!!result.stopped_reason);
+  return navigate('material',{id:source.id});
  },'primary'));
  row.append(controls);return row;
 }
@@ -107,7 +114,7 @@ function materialAddSurface(libs,active){
  function renderConfirmation(){
   confirmation.replaceChildren();fileInput.disabled=batch.busy;
   if(!batch.items.length&&!batch.invalidFiles.length)return;
-  confirmation.append(el('h3','Here’s what we found'));
+  confirmation.append(el('h3','Here’s what we found'),el('p','KE will read and prepare this material so you can ask questions, explore ideas and use it in your work.','muted'));
   if(batch.items.length){
    const destinationName=libs.find(l=>l.id===batch.libraryId)?.name||batch.libraryName;
    confirmation.append(el('p',`${batch.items.length} ${batch.items.length===1?'material':'materials'} · ${destinationName}`,'file-facts'));
@@ -115,8 +122,8 @@ function materialAddSurface(libs,active){
    for(const [index,draft] of batch.items.entries()){
     const item=el('section',undefined,'material-batch-item');
     item.append(el('p',`${draft.file.name} · ${draft.file.name.split('.').at(-1).toUpperCase()} · ${draft.file.size<1024?draft.file.size+' bytes':draft.file.size<1024*1024?(draft.file.size/1024).toFixed(1)+' KiB':(draft.file.size/1024/1024).toFixed(2)+' MiB'}`,'file-facts'));
-    const [titleLabel,title]=field('Title · suggested from filename',batch.items.length===1?'title':'title-'+index,'input',draft.title);title.required=true;title.maxLength=500;title.disabled=batch.busy||!!draft.sourceId;title.oninput=()=>{draft.title=title.value;};item.append(titleLabel);
-    const [authorLabel,author]=field('Author / creator (optional)',batch.items.length===1?'author':'author-'+index,'input',draft.author);author.disabled=batch.busy||!!draft.sourceId;author.oninput=()=>{draft.author=author.value;};item.append(detail('Optional details',authorLabel));
+    const [titleLabel,title]=field('Title · suggested from filename',batch.items.length===1?'title':'title-'+index,'input',draft.title);title.required=true;title.maxLength=500;title.disabled=batch.busy||!!draft.sourceId;title.oninput=()=>{draft.title=title.value;draft.titleUserConfirmed=true;};item.append(titleLabel);
+    const [authorLabel,author]=field('Author / creator (optional)',batch.items.length===1?'author':'author-'+index,'input',draft.author);author.disabled=batch.busy||!!draft.sourceId;author.oninput=()=>{draft.author=author.value;draft.authorUserConfirmed=true;};item.append(detail('Optional details',authorLabel));
     if(draft.error){const error=el('p',draft.error.message,'error');error.setAttribute('role','alert');item.append(error);}
     if(draft.read)item.append(el('p','Added and read.','muted'));
     if(draft.sourceId)item.append(button('Open material',()=>navigate('material',{id:draft.sourceId,library:draft.libraryId})));
@@ -142,10 +149,15 @@ function materialAddSurface(libs,active){
    renderConfirmation();
    const result=await pending;
    if(!active())return;
-   if(batch.items.length===1&&!batch.invalidFiles.length&&result.added===1){const saved=batch.items[0];materialAddDraft=null;await navigate('material',{id:saved.sourceId,library:saved.libraryId});message('Material added and read. Build knowledge when you are ready.');return;}
-   if(result.failed===0&&!batch.invalidFiles.length){const count=batch.items.filter(item=>item.read).length;materialAddDraft=null;await navigate('library',{add:false,replace:true});message(`${count} ${count===1?'material was':'materials were'} added and read. Build knowledge when you are ready.`);return;}
+   const readable=result.results.filter(item=>item.ok).map(item=>item.draft.sourceId);
+   if(readable.length){
+    if(result.failed===0&&!batch.invalidFiles.length)materialAddDraft=null;
+    await navigate('material',{id:readable[0],library:batch.libraryId});
+    if(result.failed||batch.invalidFiles.length)message('Some files could not be added. Saved materials are kept; return to Library to finish adding the others.',true);
+    await startPreparation(readable);return;
+   }
    renderConfirmation();await navigate('library',{add:true,replace:true});
-   const successCount=batch.items.filter(item=>item.read).length;message(`${successCount} of ${batch.items.length} valid materials added and read.${batch.invalidFiles.length?' Some selected files were not added because they failed local validation.':''} Unfinished materials remain here to retry.`,true);
+   message('Material addition is incomplete. Saved records are kept; choose the supported next action below.',true);
   },'primary');add.disabled=batch.busy||!pendingItems.length;
   const clearSelection=()=>{batch.items=[];batch.invalidFiles=[];materialAddDraft=null;fileInput.value='';renderConfirmation();};
   const controls=actions(add);if(batch.items.every(item=>!item.sourceId&&!item.read))controls.append(button('Cancel',clearSelection));else if(!pendingItems.length)controls.append(button('Clear results',clearSelection));confirmation.append(controls);
@@ -166,191 +178,117 @@ async function libraryView(_id,route={}){const active=beginView();heading('LIBRA
  const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.items?.length)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));main.append(detail('Create a library',create));
  const grid=el('div',undefined,'library-rows');for(const source of sources)grid.append(renderLibraryRow(source,summaryById.get(source.id),summaryUnavailable));main.append(grid);
 }
+async function startPreparation(sourceIds){
+ if(foregroundBuild)return;
+ if(feedback.textContent==='Working…')message('');
+ const session=createMaterialPreparation({sourceIds,api,onSource:async id=>{
+  if(main.materialId===id)return;
+  preparationTransition=true;
+  let pending;
+  try{pending=navigate('material',{id,replace:true});}finally{preparationTransition=false;}
+  await pending;
+ },onProgress:snapshot=>{
+  for(const [id,outcome] of snapshot.outcomes)preparationOutcomes.set(id,outcome);
+  main.updateMaterialPreparation?.();
+ }});
+ foregroundBuild=session;
+ try{await session.run();}finally{
+  if(foregroundBuild===session)foregroundBuild=null;
+  for(const [id,outcome] of session.snapshot().outcomes)preparationOutcomes.set(id,outcome);
+  main.updateMaterialPreparation?.();
+ }
+}
 async function sourceView(id){
- const active=beginView(),previousSource=state.source;
- state.source=id;
+ const active=beginView(),previousSource=state.source;state.source=id;
  heading('LIBRARY · MATERIAL','Opening material…','');
- const [source,summary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
+ const [source,initialSummary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
  if(!active())return;
- const remainingParts=Number.isInteger(summary.total_parts)&&Number.isInteger(summary.completed_parts)?Math.max(0,summary.total_parts-summary.completed_parts):0;
- const canBuildMore=remainingParts>0&&['ready_to_build','partly_ready'].includes(summary.readiness)&&summary.operation!=='build_unconfirmed'&&['build_knowledge','continue_building'].includes(summary.next_action);
- let usage=null;
- if(canBuildMore){try{usage=await api('/usage');}catch{usage=null;}}
+ let summary=initialSummary,usage=null,previewRevision=0,lastPreviewCount=-1;
+ const canPrepare=()=>['build_knowledge','continue_building'].includes(summary.next_action)&&summary.operation!=='build_unconfirmed'&&Number.isInteger(summary.total_parts)&&summary.total_parts>summary.completed_parts;
+ if(canPrepare())usage=await api('/usage').catch(()=>null);
  if(!active())return;
- const plannedParts=buildQuantity(remainingParts,usage);
  const addDraft=materialAddDraft?.items?.find(item=>item.sourceId===id);
  if(addDraft){addDraft.uploaded=!!source.file_path;addDraft.read=summary.read_state==='read';addDraft.readFailure=summary.attention_category;}
- const readinessLabels={added:'Added',ready_to_build:'Ready to build knowledge',partly_ready:'Partly ready',ready:'Ready',unknown:'Status unavailable'};
- heading('LIBRARY · MATERIAL',source.title,source.author||'');
+ heading('LIBRARY · MATERIAL',source.title,source.author||'');main.className='material-workspace';main.materialId=id;
+ const header=el('section',undefined,'material-header');header.append(...Array.from(main.children));
+ const identityHint=source.title_origin==='material_text'?'Found in the material':source.title_origin==='document_metadata'?'From the document':source.title_origin==='filename'?'Temporary name from filename':'';
+ if(identityHint)header.append(el('p',identityHint,'material-identity-origin'));
+ const authorHint=source.author_origin==='material_text'?'Author found in the material':source.author_origin==='material_text_suggested'?'Author suggested from the material — please check':source.author_origin==='document_metadata'?'Author from the document':'';
+ if(source.author&&authorHint)header.append(el('p',authorHint,'material-identity-origin'));
+ if(summary.read_state==='read'&&!source.author&&source.author_origin!=='user_confirmed')header.append(el('p','Author not confirmed','muted'));
+ if(source.identity_conflict)header.append(el('p','The document details differ from the title shown. Review the identity if needed.','muted'));
+ const needsIdentityReview=source.title_origin==='filename'||source.author_origin==='material_text_suggested'||(summary.read_state==='read'&&!source.author&&source.author_origin!=='user_confirmed');
+ const identityEdit=detail(needsIdentityReview?'Review identity':'Edit identity');identityEdit.className='material-identity-edit';
+ const identityForm=form(async fd=>{await api(`/sources/${encodeURIComponent(id)}/identity`,{method:'PUT',body:{title:fd.get('identity_title'),author:fd.get('identity_author')||null}});if(active())await navigate('material',{id,replace:true});});
+ const [identityTitleLabel,identityTitle]=field('Title','identity_title','input',source.title);identityTitle.required=true;identityTitle.maxLength=500;
+ const [identityAuthorLabel,identityAuthor]=field('Author / creator (optional)','identity_author','input',source.author||'');identityAuthor.maxLength=500;
+ identityForm.append(identityTitleLabel,identityAuthorLabel,submit('Save identity'));identityEdit.append(identityForm);header.append(identityEdit);
+ header.append(button('← Library',()=>navigate('library')));main.append(header);
+ const status=el('section',undefined,'material-status');status.setAttribute('aria-label','Material preparation');
+ const statusTitle=el('h2'),coverage=el('p',undefined,'material-coverage'),statusNote=el('p',undefined,'muted'),attention=el('p',undefined,'material-attention'),progress=el('progress');progress.setAttribute('aria-label','Material preparation progress');
+ const preparationActions=actions();status.append(statusTitle,coverage,progress,statusNote,attention,preparationActions);main.append(status);
+ const workspace=el('div',undefined,'material-workspace-grid'),preview=el('section',undefined,'material-knowledge'),rail=el('section',undefined,'material-context');
+ const use=el('section',undefined,'material-use-actions');use.setAttribute('aria-label','Use this knowledge');rail.append(use);workspace.append(preview,rail);main.append(workspace);
  const libraryName=libraryData.find(item=>item.id===source.library_id)?.name||null;
- const back=button('← Library',()=>navigate('library'));
- main.append(actions(back));
-
- const status=card('Material status',readinessLabels[summary.readiness]||'Status unavailable');status.className='card material-status';
- status.append(el('p',summary.coverage_text||(summary.readiness==='added'?'No parts ready yet':'Coverage unavailable'),'material-coverage'));
- if(summary.operation==='build_unconfirmed'&&summary.attention_category!=='build_unconfirmed')status.append(el('p','Previous build has not reported completion.','material-operation'));
- if(summary.attention_category){const attentionMessage=summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue building knowledge.':summary.attention_message||'This material needs attention.';status.append(el('p',`Needs attention: ${attentionMessage}`,'material-attention'));}
- main.append(status);
-
- const sameSourceContext=previousSource===id&&createMaterials?.includes(id);
- const selectedForSource=sameSourceContext?[...state.selected]:[];
- const openScopedKnowledge=(query='')=>navigate('knowledge',{
-  source:id,materials:[id],library:source.library_id||null,
-  exploreState:sameSourceContext&&exploreState?exploreState:freshExplore(query),
-  selectedIds:selectedForSource,
- });
- let buildSurface,buildPending=false;
- const build=async()=>{
-  if(!plannedParts||foregroundBuild||buildPending)return;
-  buildPending=true;
-  buildSurface.querySelector('button').disabled=true;
-  try{
-  const currentUsage=await api('/usage').catch(()=>null);
-  if(!active())return;
-  if(availableAIAllowance(currentUsage)<plannedParts){
-   if(!active()||!await navigate('material',{id,replace:true}))return;
-   message('The shared AI allowance changed. Review the updated build plan before continuing.',true);return;
-  }
-  const progress=el('p');progress.setAttribute('role','status');progress.setAttribute('aria-live','polite');
-  const stop=el('button','Stop after current part');stop.type='button';
-  const run=createKnowledgeBuild({sourceId:id,remainingParts,usage:currentUsage,authorizationLimit:plannedParts,api,isActive:active,onProgress:snapshot=>{
-   if(!active())return;
-   progress.textContent=`${snapshot.completed} of ${snapshot.authorized} parts completed in this build`;
-   if(snapshot.summary){
-    status.querySelector('p').textContent=readinessLabels[snapshot.summary.readiness]||'Status unavailable';
-    status.querySelector('.material-coverage').textContent=snapshot.summary.coverage_text||'Coverage unavailable';
-    const attention=status.querySelector('.material-attention');
-    if(!snapshot.summary.attention_category)attention?.remove();
-    else if(attention)attention.textContent=`Needs attention: ${snapshot.summary.attention_message||'This material needs attention.'}`;
-   }
-   stop.disabled=snapshot.stopRequested||!['idle','running'].includes(snapshot.status);
-   if(snapshot.stopRequested)stop.textContent='Stopping after current part…';
-  }});
-  foregroundBuild=run;
-  stop.onclick=()=>run.stop();
-  buildSurface.id='knowledge-build-progress';
-  buildSurface.replaceChildren(el('h2','Building knowledge'),progress,el('p','Existing completed knowledge is saved as the build progresses.','muted'),stop);
-  message('');
-  let result;
-  try{result=await run.run();}finally{if(foregroundBuild===run)foregroundBuild=null;}
-  if(!active())return;
-  const finalUsage=await api('/usage').catch(()=>null);
-  if(!active())return;
-  const fullyReady=result.summary?.readiness==='ready';
-  const allowanceExhausted=!!finalUsage?.daily_limit_reached;
-  const outcome=card(fullyReady?'Knowledge building finished':allowanceExhausted?'Build paused for today':result.status==='completed'?'Build progress saved':'Knowledge building stopped');outcome.id='knowledge-build-result';
-  outcome.append(el('p',`${result.completed} ${result.completed===1?'part was':'parts were'} completed in this run.`));
-  if(result.status==='stopped')outcome.append(el('p',`${result.notStarted} ${result.notStarted===1?'part':'parts'} from this build ${result.notStarted===1?'was':'were'} not started.`));
-  if(result.status==='uncertain')outcome.append(el('p','The last part could not be confirmed. It has not been retried. Check the material status before continuing.'));
-  outcome.append(el('p','Existing progress has been saved.','muted'));
-  if(!fullyReady&&allowanceExhausted)outcome.append(el('p','Today’s shared AI allowance has been used.'));
-  if(result.summaryUnavailable){
-   outcome.append(el('p','Current material status could not be refreshed. Reload the material before building again.'));
-   buildSurface.replaceChildren(outcome,button('Reload material status',()=>navigate('material',{id,replace:true})));return;
-  }
-  if(!active()||!await navigate('material',{id,replace:true}))return;
-  main.querySelector('.material-status')?.after(outcome);
-  message('');
-  }finally{buildPending=false;}
+ const sameSourceContext=previousSource===id&&createMaterials?.includes(id),selectedForSource=sameSourceContext?[...state.selected]:[];
+ const openScopedKnowledge=(query='')=>navigate('knowledge',{source:id,materials:[id],library:source.library_id||null,exploreState:sameSourceContext&&exploreState?exploreState:freshExplore(query),selectedIds:selectedForSource});
+ const renderUse=()=>{
+  use.replaceChildren();if(!summary.has_usable_knowledge)return;
+  use.append(el('h2','Put this knowledge to work'),button('Ask this source',()=>openScopedKnowledge('What does this material teach?'),'primary'),button('Explore ideas',()=>openScopedKnowledge()),button('Use in Create',()=>openCreate({request:sameSourceContext&&exploreState?.query||interactionDraft.originalRequest||'',materials:[id],library:source.library_id||null,selectedIds:selectedForSource})));
  };
- const addBuildControl=(parent,primary=false)=>{
-  buildSurface=parent;
-  const count=plannedParts;
-  const label=count>1?(count===remainingParts?`Build remaining ${count} parts`:`Build next ${count} parts`):summary.readiness==='partly_ready'?'Continue building':'Build knowledge';
-  const action=button(label,build,primary?'primary':'material-build-secondary');action.onclick=()=>build().catch(error=>{if(active())message(error.message,true);});action.disabled=!count;parent.append(action);
-  if(count){const remain=remainingParts-count;parent.append(el('p',`Uses up to ${count} AI ${count===1?'action':'actions'}.${remain?` ${remain} parts will remain.`:''}`,'muted'),el('p','Keep this tab open while knowledge is being built.','muted'));}
-  else{
-   let status='The shared AI allowance could not be checked. Reload before building.';
-   if(usage){
-    if(!usage.configured||!usage.free_tier_confirmed)status='AI is unavailable right now. Existing knowledge remains available.';
-    else if(usage.daily_limit_reached||Number(usage.calls_today)>=Number(usage.daily_call_limit))status='The shared AI allowance is exhausted for today. Existing knowledge remains available.';
-    else if(usage.paused)status='AI is temporarily paused. Existing knowledge remains available.';
-    else status='No shared AI actions are available right now. Existing knowledge remains available.';
-   }
-   parent.append(el('p',status,'muted'));
-  }
- };
- const read=async()=>{
-  message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});
-  if(!active()||!await navigate('material',{id,replace:true}))return;
-  message('Source read. Choose Build knowledge when you are ready.');
- };
- const uploadFile=async file=>{
-  validateMaterial(file);
-  const data=new FormData();data.append('file',file);
-  await api(`/sources/${id}/upload`,{method:'POST',body:data});
-  const addDraft=materialAddDraft?.items?.find(item=>item.sourceId===id);if(addDraft)addDraft.uploaded=true;
-  message('Reading source…');await api(`/sources/${id}/process`,{method:'POST'});
-  if(!active()||!await navigate('material',{id,replace:true}))return;
-  message('Source read. Choose Build knowledge when you are ready.');
- };
- const uploadLabel=summary.attention_category==='ocr_required'?'Choose a different file with selectable text':summary.attention_category==='unsupported_extraction'?'Choose a supported file':'Choose a file';
- const canRetryRead=summary.file_state==='available'&&!!source.file_path&&!source.chunks_path&&summary.read_state==='read_failed';
- const noParts=summary.readiness==='ready_to_build'&&!summary.has_usable_knowledge;
- const needsUpload=!source.file_path||summary.file_state==='unattached'||summary.file_state==='missing'||summary.attention_category==='ocr_required'||summary.attention_category==='unsupported_extraction';
- const canOfferUpload=needsUpload&&summary.file_replacement_allowed;
- let primary=null;
- if(canOfferUpload){
-  const uploadForm=form(async fd=>uploadFile(fd.get('file')));
-  const [label,input]=field(uploadLabel,'file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
-  const action=submit(summary.attention_category==='ocr_required'||summary.file_state==='available'?'Use replacement file':'Upload file');requireValidFile(input,action);
-  uploadForm.append(label,action);
-  primary=el('section',undefined,'material-primary material-upload');primary.append(el('h2','What you can do now'),uploadForm);main.append(primary);
- }else if(canRetryRead||summary.next_action==='read_source'&&summary.file_state==='available'){
-  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Read source',read,'primary'));main.append(primary);
- }else if(noParts&&summary.next_action==='build_knowledge'){
-  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'));addBuildControl(primary,true);main.append(primary);
- }else if(summary.readiness==='partly_ready'&&!summary.has_usable_knowledge&&summary.next_action==='continue_building'){
-  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'));addBuildControl(primary,true);main.append(primary);
- }else if(summary.has_usable_knowledge){
-  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Ask this source',()=>openScopedKnowledge('What does this material teach?'),'primary'));main.append(primary);
- }else if(summary.readiness==='ready'){
-  status.append(el('p','No usable knowledge is available from this material yet.','material-empty-knowledge'));
-  if(source.file_path){primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Open original file',()=>window.open(`/sources/${encodeURIComponent(id)}/file`,'_blank','noopener'),'primary'));main.append(primary);}
- }else if(summary.readiness==='unknown'&&summary.file_state==='available'&&source.file_path){
-  primary=el('section',undefined,'material-primary');primary.append(el('h2','What you can do now'),button('Open original file',()=>window.open(`/sources/${encodeURIComponent(id)}/file`,'_blank','noopener'),'primary'));main.append(primary);
- }
-
- if(needsUpload&&!summary.file_replacement_allowed)main.append(el('p','The original file can’t be replaced after knowledge building has started. Add another material to use a different file.','muted'));
-
- if(summary.has_usable_knowledge){
-  const use=actions(
-   button('Explore ideas',()=>openScopedKnowledge()),
-   button('Use in Create',()=>openCreate({request:sameSourceContext&&exploreState?.query||interactionDraft.originalRequest||'',materials:[id],library:source.library_id||null,selectedIds:selectedForSource}))
-  );use.className='actions material-use-actions';main.append(use);
-  if(summary.readiness==='partly_ready'&&summary.next_action==='continue_building'){const buildMore=el('section',undefined,'material-secondary-build');addBuildControl(buildMore);main.append(buildMore);}
-  let result;
-  try{result=await api(`/sources/${id}/knowledge-units`);}catch{result={items:[],unavailable:true};}
-  if(!active())return;
-  const preview=el('section',undefined,'material-knowledge');preview.append(el('h2','Knowledge from this material'));
-  if(result.unavailable)preview.append(el('p','Available knowledge could not be loaded right now. You can still ask, explore, or use this material in Create.','muted'));
-  else if(!result.items?.length)preview.append(el('p','Usable knowledge is recorded for this material, but no ideas are available to preview right now. You can still ask a source-grounded question.','muted'));
-  else for(const group of result.items.slice(0,5)){
-   const asset=group.canonical_asset||{},idea=el('article',undefined,'material-idea');
-   idea.append(el('h3',asset.title||'Knowledge idea'));
+ async function loadKnowledge(){
+  const ticket=++previewRevision;preview.replaceChildren(el('h2','Knowledge from this material'));
+  if(!summary.has_usable_knowledge){preview.append(el('p',summary.readiness==='ready'?'No usable knowledge is available from this material yet.':'Knowledge will appear here as your material is prepared.','material-knowledge-empty'));return;}
+  let result;try{result=await api(`/sources/${id}/knowledge-units`);}catch{result={items:[],unavailable:true};}
+  if(!active()||ticket!==previewRevision)return;
+  if(!result.items?.length){preview.append(el('p',result.unavailable?'Available knowledge could not be loaded right now. You can still ask, explore, or use this material in Create.':'Usable knowledge is recorded for this material, but no ideas are available to preview right now. You can still ask a source-grounded question.','muted'));return;}
+  const ideas=el('div',undefined,'material-idea-grid');
+  for(const group of result.items.slice(0,5)){
+   const asset=group.canonical_asset||{},idea=el('article',undefined,'material-idea');idea.append(el('h3',asset.title||'Knowledge idea'));
    if(asset.what_it_says)idea.append(el('p',asset.what_it_says,'material-idea-summary'));
    const evidence=detail('Source & evidence');evidence.className='material-evidence';
    const trail=group.evidence_trail?.length?group.evidence_trail:[{evidence:asset.evidence,chapter_or_section:asset.chapter_or_section}].filter(item=>item.evidence);
-   for(const item of trail){
-    const sourceLabel=source.title+(item.chapter_or_section?` · ${item.chapter_or_section}`:'');
-    evidence.append(el('p',sourceLabel,'muted'),el('blockquote',item.evidence,'evidence'));
-   }
+   for(const item of trail)evidence.append(el('p',source.title+(item.chapter_or_section?' · '+item.chapter_or_section:''),'muted'),el('blockquote',item.evidence,'evidence'));
    if(!trail.length)evidence.append(el('p','Evidence is not available in this preview.','muted'));
-   idea.append(evidence);preview.append(idea);
+   idea.append(evidence);ideas.append(idea);
   }
-  main.append(preview);
+  preview.append(ideas);
  }
-
- // Failed parts can start a fresh explicit attempt; only blocked builds need reset.
- const eligible=summary.recovery?.filter(item=>item.allowed&&(summary.operation==='build_unconfirmed'?item.category==='unconfirmed_build':!canBuildMore))||[];
- if(eligible.length){
-  const recovery=card('Resolve a build issue',summary.has_usable_knowledge?'Existing knowledge remains available while you resolve this issue.':'The previous build stopped before completion. Resolving it does not build knowledge; continue explicitly afterward.');
-  recovery.append(button(eligible.length>1?'Resolve build issues':'Resolve build issue',async()=>{
-   for(const item of eligible)await api(`/knowledge-extractions/${encodeURIComponent(item.job_id)}/recover`,{method:'POST'});
-   if(active())await navigate('material',{id,replace:true});
-  }));main.append(recovery);
+ function renderPreparation(){
+  if(!active())return;
+  const outcome=preparationOutcomes.get(id),session=foregroundBuild?.snapshot();
+  // A reopened page's fresh server summary wins over a previous in-tab run snapshot.
+  if(outcome?.summary&&session?.status==='running'&&session.currentId===id)summary=outcome.summary;
+  const running=!!session&&session.status==='running'&&session.currentId===id;
+  const category=running?'running':outcome?.category;
+  statusTitle.textContent=['uncertain','status_unavailable'].includes(category)?'Preparation status unavailable.':summary.readiness==='ready'?'Ready':running?'Preparing your material':category==='daily_allowance'?'Preparation paused for today.':category==='allowance_unavailable'?'Preparation is unavailable right now.':category==='stopped'||category==='left'||category==='failed'||summary.attention_category==='build_stopped'?'Preparation stopped. Your progress is saved.':summary.readiness==='partly_ready'?'Partly ready':summary.readiness==='unknown'?'Status unavailable':summary.readiness==='added'?'Added':'Preparation not complete';
+  coverage.textContent=category==='status_unavailable'?'Preparation progress unavailable':preparationLabel(summary.completed_parts,summary.total_parts);
+  progress.hidden=!running;progress.max=100;progress.value=summary.total_parts?100*(summary.completed_parts||0)/summary.total_parts:0;progress.setAttribute('aria-valuetext',running?'Preparation in progress':preparationLabel(summary.completed_parts,summary.total_parts));
+  statusNote.textContent=running?'Keep this tab open while your material is being prepared. Progress is saved as it becomes available.':summary.has_usable_knowledge?'Existing knowledge remains available.':'';
+  if(category==='uncertain')statusNote.textContent='The last request could not be confirmed. It has not been retried. Check the material status before continuing.';
+  if(category==='status_unavailable')statusNote.textContent='Current preparation status could not be loaded. Your confirmed progress is kept.';
+  if(!running&&canPrepare()&&!availableAIAllowance(usage)&&!category){statusTitle.textContent=usage?.daily_limit_reached?'Preparation paused for today.':'Preparation is unavailable right now.';statusNote.textContent='Your material is saved. '+(summary.has_usable_knowledge?'Existing knowledge remains available.':'Preparation can continue when AI is available.');}
+  if(summary.operation==='build_unconfirmed'&&!running)statusNote.textContent='The previous preparation request has not reported completion. Check again before continuing.';
+  attention.textContent=summary.attention_category?summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue preparing.':summary.attention_category==='build_stopped'?'The previous preparation attempt stopped before completion.':summary.attention_category==='build_unconfirmed'?'The previous preparation request has not reported completion.':summary.attention_message||'This material needs attention.':'';
+  attention.hidden=!attention.textContent;preparationActions.replaceChildren();
+  if(running){const stop=button('Stop preparing',()=>foregroundBuild?.stop());stop.disabled=!!outcome?.stopRequested;if(stop.disabled)stop.textContent='Stopping safely…';preparationActions.append(stop);}
+  else if(['uncertain','status_unavailable'].includes(category))preparationActions.append(button('Check material status',()=>{preparationOutcomes.delete(id);return navigate('material',{id,replace:true});}));
+  else if(canPrepare()){
+   const action=button('Continue preparing',()=>startPreparation([id]));action.disabled=!!foregroundBuild||!availableAIAllowance(usage)||['daily_allowance','allowance_unavailable'].includes(category);preparationActions.append(action);
+  }
+  renderUse();
+  if(lastPreviewCount!==summary.completed_parts){lastPreviewCount=summary.completed_parts;loadKnowledge();}
  }
-
+ main.updateMaterialPreparation=renderPreparation;
+ const read=async()=>{await api(`/sources/${id}/process`,{method:'POST'});if(active()&&await navigate('material',{id,replace:true}))await startPreparation([id]);};
+ const uploadFile=async file=>{validateMaterial(file);const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});await read();};
+ const needsUpload=!source.file_path||['unattached','missing'].includes(summary.file_state)||['ocr_required','unsupported_extraction'].includes(summary.attention_category);
+ if(needsUpload&&summary.file_replacement_allowed){
+  const upload=form(async fd=>uploadFile(fd.get('file'))),[label,input]=field(summary.attention_category==='ocr_required'?'Choose a different file with selectable text':'Choose a supported file','file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
+  const action=submit(summary.file_state==='available'?'Use replacement file':'Upload file');requireValidFile(input,action);upload.append(label,action);rail.append(upload);
+ }else if(summary.file_state==='available'&&['read_source'].includes(summary.next_action))rail.append(button('Read and prepare material',read,'primary'));
+ const eligible=summary.recovery?.filter(item=>item.allowed&&(summary.operation==='build_unconfirmed'?item.category==='unconfirmed_build':!canPrepare()))||[];
+ if(eligible.length){const recovery=el('section',undefined,'material-recovery');recovery.append(el('h2','Resume preparation safely'),el('p','Resolve the interrupted attempt first. Preparation will only continue when you choose Continue preparing.','muted'),button('Resolve preparation issue',async()=>{for(const item of eligible)await api(`/knowledge-extractions/${encodeURIComponent(item.job_id)}/recover`,{method:'POST'});if(active())await navigate('material',{id,replace:true});}));rail.append(recovery);}
  const manage=detail('Manage material');manage.className='material-manage';
  if(libraryName)manage.append(el('p',`In ${libraryName}`,'muted'));
  if(source.file_name)manage.append(el('p',`Original file: ${source.file_name}${source.file_type?` · ${source.file_type.replace('.','').toUpperCase()}`:''}`,'muted'));
@@ -361,15 +299,22 @@ async function sourceView(id){
   const [label,input]=field('Choose a supported file','file');input.type='file';input.accept=MATERIAL_EXTENSIONS.join(',');input.required=true;
   const action=submit('Use replacement file');requireValidFile(input,action);
   replacementForm.append(label,action);replacement.append(replacementForm);manage.append(replacement);
- }else if(source.file_path&&!summary.file_replacement_allowed)manage.append(el('p','The original file can’t be replaced after knowledge building has started. Add another material to use a different file.','muted'));
+ }else if(source.file_path&&!summary.file_replacement_allowed)manage.append(el('p','The original file can’t be replaced after preparation has started. Add another material to use a different file.','muted'));
  manage.append(button('Delete material',async()=>{
   if(!confirm('Delete this material, its original file, its knowledge, and saved work histories that use its knowledge? This cannot be undone.'))return;
   await api(`/sources/${encodeURIComponent(id)}?delete_outputs=true`,{method:'DELETE'});
   if(!active())return;state.selected.clear();state.source=null;
   if(await navigate('library',{replace:true}))message('Material and related saved work were deleted.');
  },'danger'));
- main.append(manage);
+ workspace.append(manage);
 
+
+ renderPreparation();
+}
+async function developerSourceView(id){
+ const active=beginView();heading('INTERNAL · SUPPORT','Material diagnostics','Technical tools for the workspace owner or developer.');
+ const [source,summary]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`)]);if(!active())return;
+ main.append(button('Back to material',()=>navigate('material',{id})));
  if(source.chunks_path&&Number.isInteger(summary.total_parts)&&summary.total_parts>0){
  const advanced=detail('Advanced / Developer');advanced.className='material-advanced';main.append(advanced);
  const advancedStatus=el('p','Developer details have not been loaded.','muted');advanced.append(advancedStatus);
@@ -389,7 +334,7 @@ async function sourceView(id){
     if(chunks.items?.length){diagnostics.append(el('h3','Processing parts'));diagnostics.append(list(chunks.items.map(chunk=>`${chunk.id} · Part ${chunk.chunk_index} · ${chunk.word_count} words${chunk.chapter_or_section?` · ${chunk.chapter_or_section}`:''}`)));}
     if(source.chunks_path){
      const manual=form(async fd=>{
-      const chunkId=fd.get('Chunk');
+      const chunkId=fd.get('Processing part');
       const job=(await api('/knowledge-extractions',{method:'POST',body:{source_id:id,chunk_id:chunkId,reprocess:fd.get('replace')==='on'}})).job;
       const raw=fd.get('result').trim();
       if(raw){let parsed;try{parsed=JSON.parse(raw);}catch{throw new Error('Paste valid extraction JSON with an assets array.');}await api(`/knowledge-extractions/${job.id}/results`,{method:'POST',body:parsed});if(active()&&await navigate('material',{id,replace:true}))message('Knowledge imported and validated.');}
@@ -617,7 +562,7 @@ async function workshopView(){
    for(const source of rows){
      const known=Number.isInteger(source.prepared_sections)&&Number.isInteger(source.total_sections);
      const partial=known&&source.prepared_sections<source.total_sections;
-     coverage.append(el('p',source.title+' · '+(known?`${source.prepared_sections} of ${source.total_sections} parts ready${partial?' · Partial coverage':''}`:'Part coverage unavailable')+(source.relevant_idea_count?` · ${source.relevant_idea_count} relevant ${source.relevant_idea_count===1?'idea':'ideas'}`:'')));
+     coverage.append(el('p',source.title+' · '+(known?preparationLabel(source.prepared_sections,source.total_sections):'Preparation progress unavailable')+(source.relevant_idea_count?` · ${source.relevant_idea_count} relevant ${source.relevant_idea_count===1?'idea':'ideas'}`:'')));
    }
    if(rows.length)preview.append(coverage);
    if(!r.knowledge_unit_count)preview.append(el('p','No relevant ideas found in this scope. Try adjusting your request or knowledge scope.','muted'));
@@ -654,7 +599,7 @@ async function outputView(id){
  const active=beginView();heading('MY WORK','Opening work…','');const o=await api(`/outputs/${id}`);if(!active())return;const quality=await api(`/outputs/${id}/quality`);if(!active())return;
  let sourceTitles=new Map();try{const sourceData=await api('/sources');if(!active())return;sourceTitles=new Map((sourceData.items||[]).map(source=>[source.id,source.title]).filter(([,title])=>Boolean(title)));}catch{/* Saved work remains reviewable if material titles are unavailable. */}
  heading('VERSION '+o.version,o.title,`${o.output_type.replaceAll('_',' ')} · Saved ${new Date(o.created_at).toLocaleString()}`);
- const review=card('Quality review',quality.validation_status.replaceAll('_',' '));review.append(el('p',o.provider==='manual'?'Manually supplied or edited':o.provider+' / '+o.model),el('p',quality.note),list(quality.issues.map(i=>i.message)));if(quality.timing_checks)review.append(list(quality.timing_checks.map(c=>`${c.criterion.replaceAll('_',' ')}: ${c.status} · Requested: ${c.requested_minutes??'unknown'} min · Calculated: ${c.calculated_minutes??'unknown'} min`)));
+ const review=card('Quality review',quality.validation_status.replaceAll('_',' '));review.append(el('p',o.provider==='manual'?'Manually supplied or edited':'Created with AI'),el('p',quality.note),list(quality.issues.map(i=>i.message)));if(quality.timing_checks)review.append(list(quality.timing_checks.map(c=>`${c.criterion.replaceAll('_',' ')}: ${c.status} · Requested: ${c.requested_minutes??'unknown'} min · Calculated: ${c.calculated_minutes??'unknown'} min`)));
  const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),el('article',o.content,'reading'));
  const evidence=detail('Ideas and evidence used');main.append(evidence);for(const ref of o.applied_knowledge||[]){const g=(o.knowledge_snapshot||[]).find(item=>item.canonical_asset?.id===ref.asset_id);const c=card(g?.canonical_asset?.title||'Knowledge used',ref.usage_note);const evidenceItems=(g?.evidence_trail||[]).map(item=>{const sourceTitle=sourceTitles.get(item.source_id);const context=[sourceTitle,item.chapter_or_section].filter(Boolean).join(' · ');return el('p',(context?context+'\n':'')+item.evidence,'evidence');});if(evidenceItems.length)c.append(detail('Source & evidence',...evidenceItems));evidence.append(c);}
  main.append(detail('Review and design choices',review,list(o.design_choices.length?o.design_choices:['No additional design choices recorded.'])));
@@ -665,8 +610,8 @@ async function outputView(id){
  revise.append(il,ml,revisionMode,tl,cl,dl,revisionSubmit);main.append(detail('Revise this work',revise));
  const history=await api(`/outputs/${id}/history`);if(!active())return;const h=card('Version history');const diff=el('pre');for(const v of history.items)h.append(actions(button(`Open version ${v.version}`,()=>navigate('work',{id:v.id})),v.id!==id?button(`Compare v${o.version} → v${v.version}`,async()=>{const r=await api(`/outputs/${id}/compare/${v.id}`);diff.textContent=`Changed: ${r.changed_fields.join(', ')||'None'}\n\n${r.content_diff}`;}):el('span','Current','badge')));h.append(diff);main.append(h,actions(button('Delete work and version history',async()=>{if(!confirm('Delete this work and every revision? This cannot be undone.'))return;await api(`/outputs/${id}?entire_history=true`,{method:'DELETE'});if(!active())return;await navigate('outputs',{replace:true});},'danger')));
 }
-async function settingsView(){const active=beginView();heading('SETTINGS','Your data, in your hands.','Keep backups private: they contain your materials and saved work.');const [usage,integrity]=await Promise.all([api('/usage'),api('/data/integrity')]);if(!active())return;const remaining=Math.max(0,usage.daily_call_limit-usage.calls_today);const aiState=!usage.configured?'AI unavailable':!usage.free_tier_confirmed?'AI unavailable':usage.paused?'AI temporarily paused':'Available for explicit requests';const freeTierNote=usage.free_tier_confirmed?'This workspace is configured to stay within the approved $0 beta policy.':'AI is unavailable until the workspace owner confirms the approved $0 beta policy.';const c=card('Shared beta allowance');c.append(el('p',`AI actions used today: ${usage.calls_today} of ${usage.daily_call_limit}`),el('p',`AI actions remaining today: ${remaining}`),el('p','This allowance is shared across the workspace. AI actions stop when it is exhausted.','muted'),el('p','Local actions such as Find ideas, browsing, reading material, and editing requests do not use AI actions.','muted'),el('p',freeTierNote,'muted'),el('p',`AI status: ${aiState}`,'muted'));if(usage.paused&&!usage.daily_limit_reached)c.append(button('Resume after quota reset',async()=>{await api('/usage/resume',{method:'POST'});if(!active())return;await navigate('settings',{replace:true});}));const e=el('a','Download complete private backup');e.href='/data/export';const data=card('Export & integrity',integrity.ok?'No broken record links or missing material files detected.':`${integrity.issues.length} integrity issue(s) require attention.`);data.append(e,list(integrity.issues.map(i=>`${i.id}: ${i.problem}`)));main.append(c,data);if(csrfToken()){logoutButton.hidden=false;main.append(logoutButton);}}
-const views={home:homeView,library:libraryView,knowledge:knowledgeView,workshop:workshopView,outputs:savedView,settings:settingsView,material:sourceView,work:outputView};
+async function settingsView(){const active=beginView();heading('SETTINGS','Your data, in your hands.','Keep backups private: they contain your materials and saved work.');const [usage,integrity]=await Promise.all([api('/usage'),api('/data/integrity')]);if(!active())return;const remaining=Math.max(0,usage.daily_call_limit-usage.calls_today);const aiState=!usage.configured?'AI unavailable':!usage.free_tier_confirmed?'AI unavailable':usage.paused?'AI temporarily paused':'Available for explicit requests';const freeTierNote=usage.free_tier_confirmed?'This workspace is configured to stay within the approved $0 beta policy.':'AI is unavailable until the workspace owner confirms the approved $0 beta policy.';const c=card('Shared beta allowance');c.append(el('p',`Shared allowance used today: ${usage.calls_today} of ${usage.daily_call_limit}`),el('p',`Shared allowance remaining today: ${remaining}`),el('p','This allowance is shared across the workspace. AI is unavailable once today’s allowance is used.','muted'),el('p','Searching, browsing, reading material and editing requests do not use this allowance.','muted'),el('p',freeTierNote,'muted'),el('p',`AI status: ${aiState}`,'muted'));if(usage.paused&&!usage.daily_limit_reached)c.append(button('Resume after quota reset',async()=>{await api('/usage/resume',{method:'POST'});if(!active())return;await navigate('settings',{replace:true});}));const e=el('a','Download complete private backup');e.href='/data/export';const data=card('Export & integrity',integrity.ok?'No broken record links or missing material files detected.':`${integrity.issues.length} integrity issue(s) require attention.`);data.append(e,integrity.issues.length?el('p','Some saved material information needs attention. Contact the workspace owner.','muted'):el('p',''));main.append(c,data);if(csrfToken()){logoutButton.hidden=false;main.append(logoutButton);}}
+const views={home:homeView,library:libraryView,knowledge:knowledgeView,workshop:workshopView,outputs:savedView,settings:settingsView,material:sourceView,developerMaterial:developerSourceView,work:outputView};
 const logoutButton = el('button','Sign out');logoutButton.id='beta-logout';logoutButton.hidden=true;document.body.append(logoutButton);
 if (logoutButton && csrfToken()) {
   logoutButton.onclick = async () => {
@@ -692,5 +637,5 @@ const router=createNavigation(window,route=>run(async()=>{
  for(const b of document.querySelectorAll('nav button')){if(b.dataset.view===parent)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
  const pending=views[route.view](route.id,route),revision=viewRevision;await pending;if(revision===viewRevision)main.focus();
 }));
-window.addEventListener('pagehide',()=>{foregroundBuild?.stop();captureDraft();});
+window.addEventListener('pagehide',()=>{foregroundBuild?.stop('navigation');captureDraft();});
 router.start();

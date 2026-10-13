@@ -63,7 +63,7 @@ fs.mkdirSync(screenshots,{recursive:true});
   f=await fixture();const brief='Design a 90 minute workshop for new managers.\nKeep a long reflection break. Do not use role play. Work without slides. Budget: under $200.\nAudience: team leads';
   await f.fill(brief);await f.review();await f.ready();
   assert.equal(f.requests[0].body.situation,brief);assert.equal(f.requests[0].body.output_type,'workshop_plan');
-  const normal=await f.page.locator('main').innerText();assert.match(normal,/Facilitator notes · 12 of 20 parts ready · Partial coverage/);assert.doesNotMatch(normal,/sections ready/);
+  const normal=await f.page.locator('main').innerText();assert.match(normal,/Facilitator notes · Partly prepared/);assert.doesNotMatch(normal,/sections ready|\bparts? ready\b/i);
   assert.doesNotMatch(normal,/asset_id|chunk_id|retrieval_query|schema|Pydantic|Goal|Audience: team leads|Ctrl|Command|All materials|Refresh/);
   assert.equal(await f.page.locator('[name=original_request]').isVisible(),false);
   assert.equal(await f.page.locator('[name=audience]').isVisible(),false);

@@ -8,7 +8,7 @@ Library's Add disclosure starts with the file picker. Home's existing Add to my 
 
 File selection validates the supported extension, non-zero size and maximum 25 MiB locally. It writes nothing and invokes no provider. Backend upload validation remains authoritative. Only PDF, EPUB, DOCX, TXT, Markdown, HTML/HTM, CSV and JSON are offered.
 
-After selection, “Here's what we found” shows filename, extension/format and byte-derived size, followed by an editable title explicitly labeled as suggested from filename and a visible destination. Change destination and optional author are progressive disclosures. No author/content/subject/section metadata is inferred.
+After selection, “Here's what we found” shows filename, extension/format and byte-derived size, followed by an editable title explicitly labeled as suggested from filename and a visible destination. Change destination and optional author are progressive disclosures. The filename title remains provisional: deterministic reading may replace it with supported embedded metadata or clear title-page evidence. Only structured creator metadata or an explicit byline can fill an unknown author; ordinary names in prose are not treated as authors.
 
 Title suggestion strips the final extension, replaces underscores/hyphens with spaces, collapses whitespace and uppercases the first character. Remaining capitalization and Unicode are preserved; the suggestion is capped at the backend's 500-character title limit.
 

@@ -48,8 +48,8 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
   assert.ok(f.page.locator('#library-empty'));assert.equal(f.requests.some(r=>r.method==='POST'),false);await f.page.close();
 
   const states=[
-   ['ready-to-build','Build knowledge',summary('r1','ready_to_build',false,0,20),source('r1','Workshop field guide')],
-   ['partly-no-knowledge','Continue building',summary('r2','partly_ready',false,6,20),source('r2','Meeting notes')],
+   ['ready-to-build','Continue preparing',summary('r1','ready_to_build',false,0,20),source('r1','Workshop field guide')],
+   ['partly-no-knowledge','Continue preparing',summary('r2','partly_ready',false,6,20),source('r2','Meeting notes')],
    ['partly-usable','Explore knowledge',summary('r3','partly_ready',true,12,20),source('r3','Facilitator notes','A. Example')],
    ['partly-attention','Explore knowledge',summary('r4','partly_ready',true,12,20,{attention:'build_stopped'}),source('r4','Practice journal')],
    ['ready-usable','Explore knowledge',summary('r5','ready',true,20,20),source('r5','The complete guide')],
@@ -58,7 +58,7 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
   ];
   for(const [filename,expectedAction,facts,record] of states){
    f=await fixture({items:[{source:record,summary:facts}]});await f.shot(`${String(states.indexOf(states.find(s=>s[0]===filename))+2).padStart(2,'0')}-${filename}`);
-   const row=f.page.locator('.library-row');await row.getByText(facts.readiness==='unknown'?'Status unavailable':facts.readiness==='ready_to_build'?'Ready to build knowledge':facts.readiness==='partly_ready'?'Partly ready':'Ready',{exact:true}).waitFor();
+   const row=f.page.locator('.library-row');await row.getByText(facts.readiness==='unknown'?'Status unavailable':facts.readiness==='ready_to_build'?'Preparation not complete':facts.readiness==='partly_ready'?'Partly ready':'Ready',{exact:true}).waitFor();
    assert.equal(await row.getByRole('button',{name:'Explore knowledge',exact:true}).count(),facts.has_usable_knowledge?1:0);
    assert.equal(await row.getByRole('button',{name:expectedAction,exact:true}).count(),1);
    assert.equal(await row.getByRole('link',{name:'Open material',exact:true}).count(),expectedAction==='Open material'?0:1);
@@ -87,7 +87,7 @@ function summary(id,readiness,usable,completed,total,{attention=null,operation='
   await f.page.goBack();await f.page.locator('.library-row').waitFor();assert.equal(f.requests.filter(r=>r.method==='POST').length,0);await f.page.close();
 
   f=await fixture({items:[{source:source('unknown','Unknown status'),summary:summary('unknown','ready_to_build',false,0,3)}],summaryFailure:true});
-  const row=f.page.locator('.library-row');await row.getByText('Readiness unavailable',{exact:true}).waitFor();assert.ok((await row.textContent()).includes('Coverage unavailable'));assert.equal(await row.getByRole('button',{name:'Open material',exact:true}).count(),1);await f.page.close();
+  const row=f.page.locator('.library-row');await row.getByText('Readiness unavailable',{exact:true}).waitFor();assert.ok((await row.textContent()).includes('Preparation progress unavailable'));assert.equal(await row.getByRole('button',{name:'Open material',exact:true}).count(),1);await f.page.close();
   assert.deepEqual(errors,[]);console.log('Step 3A Library acceptance passed. Screenshots:',out);
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

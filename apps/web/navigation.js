@@ -2,6 +2,7 @@
 const paths = {home:'home', library:'library', workshop:'create', knowledge:'library/explore', outputs:'my-work', settings:'settings'};
 export function routeHash(route) {
   let path = paths[route.view] || 'home';
+  if (route.view === 'developerMaterial') path = 'internal/material/' + encodeURIComponent(route.id);
   if (route.view === 'material') path = 'library/material/' + encodeURIComponent(route.id);
   if (route.view === 'work') path = 'my-work/' + encodeURIComponent(route.id);
   const query = new URLSearchParams();
@@ -21,6 +22,7 @@ export function parseRoute(hash = '') {
     let view = path === 'create/ideas' ? 'knowledge' : Object.keys(paths).find(key => paths[key] === path), id;
     if (path.startsWith('library/material/') && path.slice(17)) { view = 'material'; id = decodeURIComponent(path.slice(17)); }
     if (path.startsWith('my-work/') && path.slice(8)) { view = 'work'; id = decodeURIComponent(path.slice(8)); }
+    if (path.startsWith('internal/material/') && path.slice(18)) { view = 'developerMaterial'; id = decodeURIComponent(path.slice(18)); }
     if (!view) return {view:'home'};
     return {view, id, picker:path === 'create/ideas' || query.get('picker') === '1', library:query.get('library'), add:query.get('add') === '1', materials:[...new Set(query.getAll('material'))], source:query.get('source')};
   } catch { return {view:'home'}; }

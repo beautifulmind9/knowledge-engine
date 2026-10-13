@@ -4,6 +4,7 @@ from shutil import copyfileobj
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
+from typing import Literal
 from datetime import datetime, timezone
 
 from app.db.mock_data import (
@@ -25,6 +26,7 @@ from app.services.text_extraction import (
 )
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 from app.services.source_structure import annotate_pdf_chunks_with_outline
+from app.services.source_identity import resolve_identity
 
 from app.models.source_summary import SourceSummary
 from app.services.source_summary import source_summaries, source_file_replacement_allowed
@@ -54,6 +56,15 @@ class SourceCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     author: str | None = None
     source_type: str = "book"
+    # Existing callers remain user-confirmed by default. Material-first Add
+    # marks untouched filename suggestions explicitly as provisional.
+    title_origin: Literal["filename", "user_confirmed"] = "user_confirmed"
+    author_origin: Literal["unconfirmed", "user_confirmed"] = "user_confirmed"
+
+
+class SourceIdentityUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=500)
+    author: str | None = Field(default=None, max_length=500)
 
 
 def persist_state():
@@ -163,6 +174,9 @@ def create_source(payload: SourceCreate):
         "library_id": payload.library_id,
         "title": payload.title,
         "author": payload.author or "",
+        "title_origin": payload.title_origin,
+        "author_origin": "user_confirmed" if (payload.author or "").strip() else payload.author_origin,
+        "identity_conflict": False,
         "source_type": payload.source_type,
         "processing_status": "not_started",
         "file_name": None,
@@ -177,6 +191,25 @@ def create_source(payload: SourceCreate):
     persist_state()
 
     return source
+
+
+@router.put("/{source_id}/identity")
+def update_source_identity(source_id: str, payload: SourceIdentityUpdate):
+    source = find_source(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if not payload.title.strip():
+        raise HTTPException(status_code=422, detail="A material title is required.")
+    source["title"] = payload.title.strip()
+    source["author"] = (payload.author or "").strip()
+    source["title_origin"] = "user_confirmed"
+    # Saving the optional field also confirms that blank authorship should stay
+    # blank; it must not be repopulated by a later deterministic read.
+    source["author_origin"] = "user_confirmed"
+    source["identity_conflict"] = False
+    persist_state()
+    return {"id": source["id"], "title": source["title"], "author": source["author"],
+            "title_origin": source["title_origin"], "author_origin": source["author_origin"]}
 
 
 @router.get("/{source_id}")
@@ -395,12 +428,14 @@ def extract_source_text(source_id: str):
             detail="Upload a source file before extracting text."
         )
 
+    identity = None
     try:
         with _artifact_store.materialize(Path(file_path)) as local_path:
             extracted_text = extract_text_from_file(
                 file_path=str(local_path),
                 file_type=file_type
             )
+            identity = resolve_identity(local_path, file_type, extracted_text)
     except Exception as error:
         category = "ocr_required" if isinstance(error, OCRRequiredError) else "unsupported_extraction" if isinstance(error, UnsupportedExtractionTypeError) else "read_failed"
         source["reading_failure"] = category
@@ -420,6 +455,16 @@ def extract_source_text(source_id: str):
     )
 
     source["extracted_text_path"] = extracted_text_path
+    # Legacy sources without origins are treated as user-owned. New Add flows
+    # explicitly mark filename suggestions and blank authors as provisional.
+    if identity and source.get("title_origin") == "filename" and identity.get("title"):
+        source["title"] = identity["title"]
+        source["title_origin"] = identity["title_origin"]
+    if identity and source.get("author_origin") == "unconfirmed" and identity.get("author"):
+        source["author"] = identity["author"]
+        source["author_origin"] = identity["author_origin"]
+    if identity and source.get("title_origin") in {"material_text", "document_metadata"}:
+        source["identity_conflict"] = identity.get("title_conflict", False)
     source["reading_failure"] = None
     source["processing_status"] = "text_extracted"
     persist_state()

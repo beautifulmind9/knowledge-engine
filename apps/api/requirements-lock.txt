@@ -10,6 +10,7 @@ cryptography==50.0.1
 distro==1.9.0
 EbookLib==0.20
 fastapi==0.141.1
+fonttools==4.66.1
 google-auth==2.58.0
 google-genai==2.23.0
 h11==0.16.0

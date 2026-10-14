@@ -5,7 +5,7 @@ python-multipart
 beautifulsoup4
 ebooklib
 google-genai==2.23.0
-pypdf
+pypdf[fonts]
 
 python-docx==1.2.0
 psycopg[binary]==3.3.6

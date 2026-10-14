@@ -63,6 +63,12 @@ test('a failed attempt ends only that material and the next authorized material 
 test('a single material retains its exact safe interruption category for source detail',async()=>{
  const f=fixture({ids:['one'],failures:{one:[2],category:'provider_unavailable'}}),result=await f.run.run();assert.equal(result.status,'provider_unavailable');assert.equal(result.outcomes.get('one').category,'provider_unavailable');assert.equal(f.posts().length,2);
 });
+test('a confirmed timeout pauses only that material and later siblings remain ready',async()=>{
+ const ids=['one','two','three'],f=fixture({ids,parts:2,failures:{two:[2],category:'request_timed_out'}});const result=await f.run.run();
+ assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('two').category,'preparation_timeout');
+ assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('two').completed_parts,1);assert.equal(f.summaries.get('three').readiness,'ready');
+ assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,2);assert.equal(f.posts().filter(c=>c.path.includes('/one/')).length,2);assert.equal(f.posts().filter(c=>c.path.includes('/three/')).length,2);
+});
 test('transport uncertainty never retries the material and sibling dispatch is independent',async()=>{
  const f=fixture({throwAt:2}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'uncertain');assert.equal(f.summaries.get('two').readiness,'ready');assert.equal(f.posts().filter(c=>c.path.includes('/one/')).length,2);assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,3);
 });

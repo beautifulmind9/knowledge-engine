@@ -67,7 +67,8 @@ test('Source detail keeps failed-build retry explicit, knowledge first, and evid
  await f.ctx.sourceView('s1');await new Promise(resolve=>setImmediate(resolve));
  assert.equal(f.main.querySelector('h1').textContent,'A book');
  assert.ok(f.nodes().some(n=>n.textContent==='Partly prepared'));
- assert.ok(f.nodes().some(n=>n.textContent==='The previous preparation attempt stopped before completion.'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Preparation paused'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Your progress is saved. Existing knowledge remains available.'));
  assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
  assert.ok(f.nodes().some(n=>n.textContent==='Explore ideas'));
  assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));
@@ -534,9 +535,9 @@ test('source detail shows summary dimensions independently and keeps diagnostics
  };
  await f.ctx.navigate('material',{id:'s1'});
  assert.equal(f.main.querySelector('h1').textContent,'A book');
- assert.ok(f.nodes().some(n=>n.textContent==='Partly ready'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Preparation paused'));
  assert.ok(f.nodes().some(n=>n.textContent==='Partly prepared'));
- assert.ok(f.nodes().some(n=>n.textContent==='The previous preparation attempt stopped before completion.'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Your progress is saved. Existing knowledge remains available.'));
  assert.ok(f.nodes().some(n=>n.textContent==='Ask this source'));
  assert.ok(f.nodes().some(n=>n.textContent==='Explore ideas'));
  assert.ok(f.nodes().some(n=>n.textContent==='Use in Create'));

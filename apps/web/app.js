@@ -81,7 +81,7 @@ function renderLibraryRow(source,summary,summaryUnavailable=false,batchOutcome=n
  if(summary){
   const queuedForBatch=batchOutcome?.category==='not_started'&&!preparationBatch?.finished;
   const activelyPreparing=batchOutcome?.category==='running';
-  const interrupted=['provider_unavailable','failed','uncertain','status_unavailable'].includes(batchOutcome?.category)||(!activelyPreparing&&!queuedForBatch&&['build_stopped','build_unconfirmed'].includes(summary.attention_category));
+  const interrupted=['provider_unavailable','preparation_timeout','failed','uncertain','status_unavailable'].includes(batchOutcome?.category)||(!activelyPreparing&&!queuedForBatch&&['build_stopped','build_unconfirmed'].includes(summary.attention_category));
   row.append(el('p',activelyPreparing||queuedForBatch?'Preparing':libraryReadiness[summary.readiness]||'Status unavailable','library-row-readiness'));
   if(activelyPreparing&&Number.isInteger(summary.completed_parts)&&summary.total_parts>0){
    const progress=el('progress');progress.max=summary.total_parts;progress.value=summary.completed_parts;progress.setAttribute('aria-label',`Preparation progress for ${source.title}`);row.append(progress,el('p',`${Math.round(100*summary.completed_parts/summary.total_parts)}% prepared`,'library-row-coverage'));
@@ -205,11 +205,11 @@ async function libraryView(_id,route={}){const active=beginView();heading('LIBRA
   const effective=source=>preparationBatch?.outcomes.get(source.id)?.summary||summaryById.get(source.id);
   const currentReady=sources.filter(source=>effective(source)?.readiness==='ready').length;
   const currentPreparing=sources.filter(source=>['running','not_started'].includes(preparationBatch?.outcomes.get(source.id)?.category)&&!preparationBatch?.finished).length;
-  const currentAttention=sources.filter(source=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(preparationBatch?.outcomes.get(source.id)?.category)||(effective(source)?.attention_category&&!['completed','running'].includes(preparationBatch?.outcomes.get(source.id)?.category))).length;
+  const currentAttention=sources.filter(source=>['provider_unavailable','preparation_timeout','failed','uncertain','status_unavailable'].includes(preparationBatch?.outcomes.get(source.id)?.category)||(effective(source)?.attention_category&&!['completed','running'].includes(preparationBatch?.outcomes.get(source.id)?.category))).length;
   summaryLine.replaceChildren(el('span',`${sources.length} ${sources.length===1?'material':'materials'}`),el('span',`${currentReady} ready`));if(currentPreparing)summaryLine.append(el('span',`${currentPreparing} preparing`));if(currentAttention)summaryLine.append(el('span',`${currentAttention} need attention`));
   batchSummary.replaceChildren();
   if(preparationBatch?.finished){
-   const failed=sources.filter(source=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(preparationBatch.outcomes.get(source.id)?.category));
+   const failed=sources.filter(source=>['provider_unavailable','preparation_timeout','failed','uncertain','status_unavailable'].includes(preparationBatch.outcomes.get(source.id)?.category));
    const incomplete=sources.filter(source=>{const s=effective(source);return s&&s.readiness!=='ready'&&['build_knowledge','continue_building'].includes(s.next_action)&&s.operation!=='build_unconfirmed';});
    if(failed.length||preparationBatch.status==='daily_allowance'||preparationBatch.status==='allowance_unavailable'){
     const affected=failed.length===1?'1 material needs another attempt.':`${failed.length} materials need another attempt.`;
@@ -248,8 +248,9 @@ async function startPreparation(sourceIds){
   libraryCollectionRefresh?.();
   if(final.status==='completed'){announceProcessingStatus('Your material is ready.');endProcessingStatus(activityId);}
   else if(final.status==='provider_unavailable')updateProcessingStatus(activityId,{label:'Preparation paused',detail:'The AI service was temporarily unavailable. Your progress is saved.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='preparation_timeout')updateProcessingStatus(activityId,{label:'Preparation paused',detail:'The last preparation request did not finish in time.',completed:final.completedWork,total:final.totalWork||null});
   else if(final.status==='daily_allowance')updateProcessingStatus(activityId,{label:'Preparation paused for today',detail:'Today’s shared allowance is used. Your progress is saved.',completed:final.completedWork,total:final.totalWork||null});
-  else if(final.status==='uncertain')updateProcessingStatus(activityId,{label:'Preparation needs confirmation',detail:'The last step could not be confirmed. No further work has started.',completed:final.completedWork,total:final.totalWork||null});
+  else if(final.status==='uncertain')updateProcessingStatus(activityId,{label:'Preparation needs confirmation',detail:'The last request could not be confirmed.',completed:final.completedWork,total:final.totalWork||null});
   else if(final.status==='status_unavailable')updateProcessingStatus(activityId,{label:'Preparation status unavailable',detail:'Your confirmed progress is saved. Check the material status before continuing.',completed:final.completedWork,total:final.totalWork||null});
   else if(final.status==='stopped'||final.status==='left')updateProcessingStatus(activityId,{label:'Preparation stopped',detail:final.status==='left'?'You can return to the material to continue.':'You can continue from the material page.',completed:final.completedWork,total:final.totalWork||null});
   else if(final.status==='failed')updateProcessingStatus(activityId,{label:'Preparation stopped',detail:'Your progress is saved. Continue preparing when you are ready.',completed:final.completedWork,total:final.totalWork||null});
@@ -323,14 +324,16 @@ async function sourceView(id){
   if(outcome?.summary&&session?.currentId===id)summary=outcome.summary;
   const running=!!session&&session.status==='running'&&session.currentId===id;
   const category=running?'running':outcome?.category;
-  statusTitle.textContent=running?'Preparing':['status_unavailable','callback_failure'].includes(category)||summary.readiness==='unknown'?'Status unavailable':summary.readiness==='ready'?'Ready':summary.readiness==='partly_ready'?'Partly ready':summary.readiness==='added'?'Added':summary.readiness==='ready_to_build'?'Ready to prepare':'Preparation not complete';
+  statusTitle.textContent=running?'Preparing':category==='preparation_timeout'||(!category&&summary.attention_category==='build_stopped')?'Preparation paused':['status_unavailable','callback_failure'].includes(category)||summary.readiness==='unknown'?'Status unavailable':summary.readiness==='ready'?'Ready':summary.readiness==='partly_ready'?'Partly ready':summary.readiness==='added'?'Added':summary.readiness==='ready_to_build'?'Ready to prepare':'Preparation not complete';
   coverage.textContent=category==='status_unavailable'?'Preparation progress unavailable':preparationLabel(summary.completed_parts,summary.total_parts);
   progress.hidden=true;progress.max=100;progress.value=summary.total_parts?100*(summary.completed_parts||0)/summary.total_parts:0;progress.setAttribute('aria-valuetext',summary.total_parts?`${Math.round(100*(summary.completed_parts||0)/summary.total_parts)}% prepared`:'Preparation progress unavailable');
   statusNote.textContent=running?(summary.has_usable_knowledge?'Existing knowledge remains available.':''):summary.has_usable_knowledge?'Existing knowledge remains available.':'';
   if(category==='provider_unavailable')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
+  if(category==='preparation_timeout')statusNote.textContent=summary.has_usable_knowledge?'Your progress is saved. Existing knowledge remains available.':'Your progress is saved.';
+  if(!category&&summary.attention_category==='build_stopped')statusNote.textContent=summary.has_usable_knowledge?'Your progress is saved. Existing knowledge remains available.':'Your progress is saved.';
   if(outcome?.interruptionCategory==='provider_rejected')statusNote.textContent='The AI service could not accept this request. Your material and saved work are unchanged.';
   if(outcome?.interruptionCategory==='validation_failed')statusNote.textContent='The response could not be safely checked. Your existing knowledge remains available.';
-  if(category==='uncertain')statusNote.textContent='Check the current material status before continuing.';
+  if(category==='uncertain')statusNote.textContent='The last request could not be confirmed.';
   if(category==='stopped'||category==='left')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your progress is saved.';
   if(category==='failed')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
   if(category==='daily_allowance')statusNote.textContent=summary.has_usable_knowledge?'Existing knowledge remains available.':'Your material remains saved.';
@@ -338,7 +341,7 @@ async function sourceView(id){
   if(category==='status_unavailable'||category==='callback_failure')statusNote.textContent='Your confirmed progress is saved. Check the material status before continuing.';
   if(!running&&canPrepare()&&!availableAIAllowance(usage)&&!category){statusTitle.textContent=usage?.daily_limit_reached?'Preparation paused for today.':'Preparation is unavailable right now.';statusNote.textContent='Your material is saved. '+(summary.has_usable_knowledge?'Existing knowledge remains available.':'Preparation can continue when AI is available.');}
   if(summary.operation==='build_unconfirmed'&&!running)statusNote.textContent='The previous preparation request has not reported completion. Check again before continuing.';
-  attention.textContent=['provider_unavailable','failed','daily_allowance','allowance_unavailable'].includes(category)?'':summary.attention_category?summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue preparing.':summary.attention_category==='build_stopped'?'The previous preparation attempt stopped before completion.':summary.attention_category==='build_unconfirmed'?'The previous preparation request has not reported completion.':summary.attention_message||'This material needs attention.':'';
+  attention.textContent=['provider_unavailable','preparation_timeout','failed','daily_allowance','allowance_unavailable'].includes(category)||(!category&&summary.attention_category==='build_stopped')?'':summary.attention_category?summary.attention_category==='artifact_unavailable'&&summary.has_usable_knowledge?'Source data is unavailable. Existing knowledge remains available. Restore the source data to continue preparing.':summary.attention_category==='build_stopped'?'Preparation paused. Your progress is saved.':summary.attention_category==='build_unconfirmed'?'The previous preparation request has not reported completion.':summary.attention_message||'This material needs attention.':'';
   attention.hidden=!attention.textContent;preparationActions.replaceChildren();
   if(running)statusNote.textContent=summary.has_usable_knowledge?'New knowledge is available as preparation continues.':'New knowledge will appear here as preparation continues.';
   else if(['uncertain','status_unavailable','callback_failure'].includes(category))preparationActions.append(button('Check material status',()=>{preparationOutcomes.delete(id);return navigate('material',{id,replace:true});}));

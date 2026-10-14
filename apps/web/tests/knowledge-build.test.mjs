@@ -56,6 +56,13 @@ test('provider 503 is a known interruption, preserves prior work, and is never r
  assert.equal(result.status,'provider_unavailable');assert.equal(result.interruptionCategory,'provider_unavailable');
  assert.equal(result.completed,2);assert.equal(result.summary.completed_parts,6);assert.equal(result.summary.has_usable_knowledge,true);assert.equal(f.posts().length,3);
 });
+test('backend-confirmed request timeout is distinct from browser transport uncertainty',async()=>{
+ const f=fixture({remaining:6,existing:3,failureAt:2,interruptionCategory:'request_timed_out'});const result=await f.run.run();
+ assert.equal(result.status,'preparation_timeout');assert.equal(result.interruptionCategory,'request_timed_out');
+ assert.equal(result.completed,1);assert.equal(result.summary.completed_parts,4);assert.equal(result.summary.has_usable_knowledge,true);assert.equal(f.posts().length,2);
+ const uncertain=fixture({remaining:6,existing:3,throwAt:2}),unknown=await uncertain.run.run();
+ assert.equal(unknown.status,'uncertain');assert.equal(unknown.interruptionCategory,null);assert.equal(uncertain.posts().length,2);
+});
 test('uncertain transport is not retried and confirmed prior progress remains known',async()=>{
  const f=fixture({throwAt:3});const result=await f.run.run();
  assert.equal(result.status,'uncertain');assert.equal(result.completed,2);assert.equal(f.posts().length,3);assert.equal(result.summary.completed_parts,2);

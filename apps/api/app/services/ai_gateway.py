@@ -235,7 +235,12 @@ def generate(model, payload, schema):
             category="provider_rejected"
         elif isinstance(diagnostic.get("status_code"), int) and diagnostic["status_code"] >= 500:
             category="provider_unavailable"
-        elif diagnostic.get("message_category")=="transport_timeout" or "Connection" in diagnostic.get("exception_type",""):
+        elif diagnostic.get("message_category")=="transport_timeout":
+            # The gateway received a definite timeout exception. The extraction
+            # service persists this attempt as failed before the API reports the
+            # interrupted run, so clients can offer explicit continuation.
+            category="request_timed_out"
+        elif "Connection" in diagnostic.get("exception_type",""):
             category="transport_uncertain"
         else:
             category="transport_uncertain"

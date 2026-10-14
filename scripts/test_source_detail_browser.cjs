@@ -20,10 +20,10 @@ const waitProgress=(page,completed,total)=>page.waitForFunction(({completed,tota
 
 (async()=>{
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']}),errors=[];
- async function fixture({summary=facts(),mobile=false,withUnits=true,advancedFail=false,sourceState={},usage={configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,paused:false,daily_limit_reached:false},holdAt=0,failAt=0,provider503At=0,transportAt=0,quotaAt=0,statusFailAt=0}={}){
+ async function fixture({summary=facts(),mobile=false,withUnits=true,advancedFail=false,sourceState={},usage={configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,paused:false,daily_limit_reached:false},holdAt=0,failAt=0,provider503At=0,timeoutAt=0,transportAt=0,quotaAt=0,statusFailAt=0}={}){
   const material={...source,...sourceState};
   const page=await browser.newPage({viewport:mobile?{width:390,height:844}:{width:1280,height:1000},isMobile:mobile,hasTouch:mobile});
-  page.on('pageerror',error=>errors.push(error.message));const requests=[];let releasePart,partRequests=0,inFlight=0,peak=0;const held=new Promise(resolve=>releasePart=resolve);
+  page.on('pageerror',error=>errors.push(error.message));const requests=[],dispatchedParts=[];let releasePart,partRequests=0,nextPart=summary.completed_parts||0,inFlight=0,peak=0;const held=new Promise(resolve=>releasePart=resolve);
   await page.route('http://ke.test/**',async route=>{
    const request=route.request(),url=new URL(request.url()),p=url.pathname,method=request.method();let data;
    if(p==='/'||p.startsWith('/static/'))return route.fulfill({body:fs.readFileSync(path.join(root,'apps/web',p==='/'?'index.html':p.slice(8))),contentType:p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'text/html'});
@@ -44,7 +44,7 @@ const waitProgress=(page,completed,total)=>page.waitForFunction(({completed,tota
    else if(p==='/knowledge-extractions/job-secret/recover')data={status:'pending_ai'};
    else if(p.endsWith('/process'))data={message:'Read'};
    else if(p.endsWith('/interpret')){
-    assert.equal(url.searchParams.get('max_chunks'),'1');assert.equal(method,'POST');partRequests++;inFlight++;peak=Math.max(peak,inFlight);
+    assert.equal(url.searchParams.get('max_chunks'),'1');assert.equal(method,'POST');partRequests++;dispatchedParts.push(nextPart);inFlight++;peak=Math.max(peak,inFlight);
     try{
      if(partRequests===holdAt)await held;
      if(partRequests===quotaAt){usage.calls_today=usage.daily_call_limit;usage.daily_limit_reached=true;usage.paused=true;}
@@ -52,13 +52,17 @@ const waitProgress=(page,completed,total)=>page.waitForFunction(({completed,tota
       usage.calls_today++;summary.attention_category='build_stopped';summary.recovery=[{job_id:'job-secret',category:'failed_build',allowed:true}];
       return await route.fulfill({json:{processed_this_run:0,stopped_reason:'Safe synthetic provider interruption',interruption_category:'provider_unavailable'}});
      }
+     if(partRequests===timeoutAt){
+      usage.calls_today++;summary.attention_category='build_stopped';summary.attention_message='The previous knowledge-building attempt stopped before completion.';summary.recovery=[{job_id:'job-secret',category:'failed_build',allowed:true}];
+      return await route.fulfill({json:{processed_this_run:0,stopped_reason:'Synthetic persisted interruption',interruption_category:'request_timed_out'}});
+     }
      if(partRequests===failAt||usage.calls_today>=usage.daily_call_limit){
       if(partRequests===failAt)usage.calls_today++;
       summary.attention_category='build_stopped';summary.attention_message='The previous knowledge-building attempt stopped before completion.';summary.recovery=[{job_id:'job-secret',category:'failed_build',allowed:true}];
       return await route.fulfill({json:{processed_this_run:0,stopped_reason:'Synthetic failure details must not appear in normal UI'}});
      }
      usage.calls_today++;usage.daily_limit_reached=usage.calls_today>=usage.daily_call_limit;usage.paused=usage.daily_limit_reached;
-     summary.completed_parts++;summary.coverage_text=`${summary.completed_parts} of ${summary.total_parts} parts ready`;summary.has_usable_knowledge=true;
+     nextPart++;summary.completed_parts++;summary.coverage_text=`${summary.completed_parts} of ${summary.total_parts} parts ready`;summary.has_usable_knowledge=true;summary.attention_category=null;summary.recovery=[];
      summary.readiness=summary.completed_parts===summary.total_parts?'ready':'partly_ready';summary.next_action=summary.readiness==='ready'?'use_knowledge':'continue_building';
      if(partRequests===transportAt)return await route.abort('failed');
      return await route.fulfill({json:{processed_this_run:1}});
@@ -69,7 +73,7 @@ const waitProgress=(page,completed,total)=>page.waitForFunction(({completed,tota
    return route.fulfill({json:data});
   });
   await page.goto('http://ke.test/#/library/material/s1');await page.getByRole('heading',{name:material.title,exact:true}).waitFor();
-  return {page,requests,releasePart,peak:()=>peak,shot:name=>(!process.env.KNOWLEDGE_ENGINE_SCREENSHOT_FILTER||new RegExp(process.env.KNOWLEDGE_ENGINE_SCREENSHOT_FILTER).test(name))?page.screenshot({path:path.join(out,name+'.png'),fullPage:true}):undefined};
+  return {page,requests,dispatchedParts,releasePart,peak:()=>peak,shot:name=>(!process.env.KNOWLEDGE_ENGINE_SCREENSHOT_FILTER||new RegExp(process.env.KNOWLEDGE_ENGINE_SCREENSHOT_FILTER).test(name))?page.screenshot({path:path.join(out,name+'.png'),fullPage:true}):undefined};
  }
  async function capture(name,options,open=[]){
   const f=await fixture(options);for(const label of open)await f.page.locator('summary').filter({hasText:label}).click();await f.shot(name);return f;
@@ -111,10 +115,29 @@ const waitProgress=(page,completed,total)=>page.waitForFunction(({completed,tota
   assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).isEnabled(),true);assert.ok(await f.page.getByRole('button',{name:'Ask this source',exact:true}).count());await f.shot('21-provider-503-paused');
   await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Ready',{exact:true}).waitFor();
   assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,9);await f.shot('22-explicit-continuation-ready');await f.page.close();
+  f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),timeoutAt:2});
+  await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Preparation paused',{exact:true}).waitFor();
+  await f.page.locator('#processing-status').getByText('The last preparation request did not finish in time.',{exact:true}).waitFor();
+  await f.page.locator('.material-status').getByText('Your progress is saved. Existing knowledge remains available.',{exact:true}).waitFor();
+  await f.page.getByRole('button',{name:'Continue preparing',exact:true}).waitFor();assert.equal(await f.page.getByRole('button',{name:'Check material status',exact:true}).count(),0);
+  assert.equal(await f.page.getByRole('button',{name:'Ask this source',exact:true}).count(),1);assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,2);await noInternals(f.page);
+  await f.shot('35-timeout-paused-with-knowledge');await f.page.reload();await f.page.locator('.material-status').getByText('Preparation paused',{exact:true}).waitFor();
+  await f.page.locator('.material-status').getByText('Your progress is saved. Existing knowledge remains available.',{exact:true}).waitFor();
+  assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).count(),1);assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,2);assert.equal(f.requests.filter(r=>r.path.endsWith('/upload')).length,0);await f.shot('37-timeout-reloaded-paused');
+  await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Ready',{exact:true}).waitFor();
+  assert.deepEqual(f.dispatchedParts,[12,13,13,14,15,16,17,18,19]);assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,9);await f.shot('39-timeout-explicit-continuation-ready');await f.page.close();
+  f=await fixture({summary:facts({readiness:'ready_to_build',usable:false,completed:0,total:6}),timeoutAt:1,withUnits:false});
+  await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Preparation paused',{exact:true}).waitFor();
+  await f.page.locator('#processing-status').getByText('The last preparation request did not finish in time.',{exact:true}).waitFor();
+  await f.page.locator('.material-status').getByText('Your progress is saved.',{exact:true}).waitFor();
+  assert.equal(await f.page.getByRole('button',{name:'Ask this source',exact:true}).count(),0);assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,1);await noInternals(f.page);await f.shot('36-timeout-before-knowledge');await f.page.close();
+  f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),mobile:true,timeoutAt:2});
+  await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Preparation paused',{exact:true}).waitFor();
+  assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).count(),1);assert.ok(await f.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await noInternals(f.page);await f.shot('40-mobile-timeout-paused');await f.page.close();
   f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:75}),usage:{configured:true,free_tier_confirmed:true,calls_today:433,daily_call_limit:450,paused:false,daily_limit_reached:false}});
   await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('#processing-status').getByText('Preparation paused for today',{exact:true}).waitFor();assert.equal(await f.page.locator('.material-status').getByText('Existing knowledge remains available.',{exact:true}).count(),1);assert.equal(await f.page.locator('.material-coverage').textContent(),'Partly prepared');assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,17);assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).isDisabled(),true);await noInternals(f.page);await f.shot('09-allowance-paused');await f.page.close();
   f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),failAt:3});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('#processing-status').getByText('Preparation stopped',{exact:true}).waitFor();await f.page.locator('.material-status').getByText('Existing knowledge remains available.',{exact:true}).waitFor();assert.equal(await f.page.locator('.material-coverage').textContent(),'Partly prepared');assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,3);assert.equal(await f.page.getByRole('button',{name:'Resolve preparation issue',exact:true}).count(),0);await f.shot('10-failure-existing-knowledge');await f.page.close();
-  f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),transportAt:2});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('#processing-status').getByText('Preparation needs confirmation',{exact:true}).waitFor();await f.page.locator('.material-status').getByText('Check the current material status before continuing.',{exact:true}).waitFor();assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,2);await f.shot('11-uncertain');await f.page.close();
+  f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),transportAt:2});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('#processing-status').getByText('Preparation needs confirmation',{exact:true}).waitFor();await f.page.locator('.material-status').getByText('The last request could not be confirmed.',{exact:true}).waitFor();await f.page.getByRole('button',{name:'Check material status',exact:true}).waitFor();assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).count(),0);assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,2);await f.shot('38-browser-uncertain');await f.page.close();
   f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),statusFailAt:2});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('#processing-status').getByText('Preparation status unavailable',{exact:true}).waitFor();await f.page.locator('.material-status').getByText('Status unavailable',{exact:true}).waitFor();await f.page.getByText('Preparation progress unavailable',{exact:true}).waitFor();assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,2);await f.shot('19-status-unavailable');await f.page.close();
   f=await fixture({summary:facts({readiness:'ready_to_build',usable:false,completed:0,total:6})});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await f.page.locator('.material-status').getByText('Ready',{exact:true}).waitFor();assert.equal(f.requests.filter(r=>r.path.endsWith('/interpret')).length,6);assert.equal(await f.page.getByRole('button',{name:'Continue preparing',exact:true}).count(),0);await f.shot('12-completed');await f.page.close();
   f=await fixture({summary:facts({readiness:'partly_ready',completed:12,total:20}),mobile:true,holdAt:2});await f.page.getByRole('button',{name:'Continue preparing',exact:true}).click();await waitProgress(f.page,13,20);await noInternals(f.page);assert.ok(await f.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await f.shot('13-mobile-running');await f.page.getByRole('button',{name:'Stop preparation',exact:true}).click();f.releasePart();await f.page.locator('#processing-status .processing-status-label').getByText('Preparation stopped',{exact:true}).waitFor();assert.ok(await f.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await f.shot('14-mobile-stopped');await f.page.close();

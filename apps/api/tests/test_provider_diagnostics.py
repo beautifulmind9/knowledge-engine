@@ -59,9 +59,31 @@ def test_real_sdk_failure_diagnostic_is_safe_and_single_attempt(monkeypatch, cap
     elif status == 503:
         assert failure.value.headers['X-KE-Interruption-Category']=='provider_unavailable'
     elif status == 0:
-        assert failure.value.headers['X-KE-Interruption-Category']=='transport_uncertain'
+        assert failure.value.headers['X-KE-Interruption-Category']=='request_timed_out'
     elif status == 400:
         assert failure.value.headers['X-KE-Interruption-Category']=='provider_rejected'
+
+
+def test_connection_loss_remains_uncertain_not_a_confirmed_timeout(monkeypatch):
+    original_client = genai.Client
+    attempts = []
+
+    def transport(request):
+        attempts.append(request)
+        raise httpx.ConnectError('synthetic connection loss', request=request)
+
+    def factory(**kwargs):
+        kwargs['http_options'].update(client_args={'transport': httpx.MockTransport(transport), 'trust_env': False},
+                                      async_client_args={'trust_env': False})
+        return original_client(**kwargs)
+
+    monkeypatch.setattr(ai_gateway.genai, 'Client', factory)
+    monkeypatch.setenv('GEMINI_API_KEY', PRIVATE_KEY)
+    monkeypatch.setenv('GEMINI_FREE_TIER_CONFIRMED', 'true')
+    with pytest.raises(HTTPException) as failure:
+        ai_gateway.generate('fixture-model', {'synthetic': True}, {'type': 'object'})
+    assert failure.value.headers['X-KE-Interruption-Category'] == 'transport_uncertain'
+    assert len(attempts) == 1
 
 
 def test_metadata_and_message_cannot_echo_source_or_key():

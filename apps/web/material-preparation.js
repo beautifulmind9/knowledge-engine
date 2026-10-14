@@ -58,12 +58,12 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
     else if(stopped)status='stopped';
     else if(status==='running'){
       const oneOutcome=ids.length===1?outcomes.get(ids[0]):null;
-      if(oneOutcome&&['provider_unavailable','uncertain','failed','status_unavailable'].includes(oneOutcome.category))status=oneOutcome.category;
+      if(oneOutcome&&['provider_unavailable','preparation_timeout','uncertain','failed','status_unavailable'].includes(oneOutcome.category))status=oneOutcome.category;
       else status=ids.length&&ids.every(id=>outcomes.get(id)?.summary?.readiness==='ready')?'completed':'incomplete';
     }
     let finalUsage;
     try {finalUsage=await api('/usage');} catch {/* Never infer exhaustion from an unavailable usage response. */}
-    if(!left&&!stopped&&!['completed','provider_unavailable','uncertain','failed','status_unavailable'].includes(status)){
+    if(!left&&!stopped&&!['completed','provider_unavailable','preparation_timeout','uncertain','failed','status_unavailable'].includes(status)){
       if(finalUsage?.daily_limit_reached)status='daily_allowance';
       else if(finalUsage&&(finalUsage.paused||!availableAIAllowance(finalUsage)))status='allowance_unavailable';
     }
@@ -74,7 +74,7 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
       else if(status==='daily_allowance'&&outcome.category==='completed'&&outcome.summary?.readiness!=='ready')outcome.category='daily_allowance';
     }
     if(ids.length>1&&!['left','stopped','daily_allowance','allowance_unavailable'].includes(status)){
-      const failures=[...outcomes.values()].filter(outcome=>['provider_unavailable','failed','uncertain','status_unavailable'].includes(outcome.category));
+      const failures=[...outcomes.values()].filter(outcome=>['provider_unavailable','preparation_timeout','failed','uncertain','status_unavailable'].includes(outcome.category));
       if(failures.length)status='incomplete';
     }
     if(callbackFailure)status='status_unavailable';

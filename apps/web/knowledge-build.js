@@ -40,7 +40,7 @@ export function createKnowledgeBuild({sourceId, remainingParts, usage, authoriza
       if (!isActive()) status = 'left';
       else if (result?.stopped_reason) {
         interruptionCategory=result?.interruption_category||null;
-        status=interruptionCategory==='provider_unavailable'?'provider_unavailable':interruptionCategory==='allowance_exhausted'?'daily_allowance':interruptionCategory==='transport_uncertain'?'uncertain':'failed';
+        status=interruptionCategory==='provider_unavailable'?'provider_unavailable':interruptionCategory==='allowance_exhausted'?'daily_allowance':interruptionCategory==='request_timed_out'?'preparation_timeout':interruptionCategory==='transport_uncertain'?'uncertain':'failed';
       }
       else if (result?.processed_this_run !== 1) status = 'uncertain';
       else if (stopRequested) status = 'stopped';

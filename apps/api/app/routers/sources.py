@@ -14,7 +14,7 @@ from app.db.mock_data import (
     libraries,
     sources,
 )
-from app.db.persistence import save_state
+from app.db.persistence import StateMutationConflict, save_state
 from app.persistence.factory import get_artifact_store
 from app.persistence.supabase_artifacts import HostedArtifactStoreError
 from app.persistence.artifact_paths import contained_locator, upload_locator, cleanup_unpublished_or_superseded
@@ -348,7 +348,9 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
         source.update(updated_fields)
         try:
             persist_state()
-        except Exception:
+        except Exception as error:
+            if isinstance(error, StateMutationConflict):
+                raise
             source.clear()
             source.update(previous)
             # A state commit may have succeeded before its response was lost.

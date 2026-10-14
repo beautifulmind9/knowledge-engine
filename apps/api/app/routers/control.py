@@ -6,7 +6,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs, usage
-from app.db.persistence import STORAGE_ROOT
+from app.db.persistence import STORAGE_ROOT, StateMutationConflict
 from app.persistence.factory import get_artifact_store
 from app.persistence.artifact_paths import contained_locator, archive_entry
 from app.services.knowledge_extraction import find_source, persist_state
@@ -106,7 +106,9 @@ def delete_source(source_id:str,delete_outputs:bool=False):
         # A stale-state conflict can then restore the latest source record without
         # leaving it pointed at files that this request already removed.
         persist_state()
-    except Exception:
+    except Exception as error:
+        if isinstance(error, StateMutationConflict):
+            raise
         # Keep the live API state usable when the save fails. No artifact has
         # been touched, so the source remains usable if persistence rejects it.
         outputs[:] = previous_outputs

@@ -1,4 +1,5 @@
 """Complete JSONB snapshots with optimistic concurrency and short transactions."""
+from copy import deepcopy
 from threading import RLock
 from typing import Any
 
@@ -31,6 +32,7 @@ class PostgresStateStore:
         self._workspace_key = workspace_key
         self._revision: int | None = None
         self._loaded = False
+        self._loaded_snapshot: dict[str, Any] | None = None
         # Serialize operations on the shared adapter; independent adapters use SQL CAS.
         self._lock = RLock()
 
@@ -52,6 +54,7 @@ class PostgresStateStore:
                 raise HostedStateStoreError("Hosted state load failed: database operation failed.") from None
             self._revision = row[1] if row is not None else None
             self._loaded = True
+            self._loaded_snapshot = deepcopy(row[0]) if row is not None else None
             return row[0] if row is not None else None
 
     def save(self, state: dict[str, Any]) -> None:
@@ -80,3 +83,10 @@ class PostgresStateStore:
             except (psycopg.Error, ValueError):
                 raise HostedStateStoreError("Hosted state save failed: database operation failed.") from None
             self._revision = row[0]
+            self._loaded_snapshot = deepcopy(state)
+
+    @property
+    def loaded_snapshot(self) -> dict[str, Any] | None:
+        """Copy of the snapshot used for the current optimistic revision."""
+        with self._lock:
+            return deepcopy(self._loaded_snapshot)

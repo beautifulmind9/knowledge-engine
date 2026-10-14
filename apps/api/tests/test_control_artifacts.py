@@ -238,6 +238,76 @@ def test_delete_persistence_failure_restores_live_records_and_reports_failure(cl
     assert all(path.is_file() for path in artifact_paths)
 
 
+@pytest.mark.parametrize('conflict_kind', ['same_source_update', 'reconciliation_exhaustion'])
+def test_delete_state_conflict_keeps_source_and_required_artifacts(client, source, monkeypatch, conflict_kind):
+    from app.db.persistence import StateMutationConflict
+
+    source_record = record(source)
+    source_id = source_record['id']
+    paths = [Path(source_record[key]) for key in KEYS]
+    removals = []
+    original_store = control._artifact_store
+
+    class TrackingStore(LocalArtifactStore):
+        def remove(self, path):
+            removals.append(path)
+            super().remove(path)
+
+    monkeypatch.setattr(control, '_artifact_store', TrackingStore())
+
+    def stale_save():
+        # save_state's bounded reconciliation restores its latest persisted
+        # snapshot before raising; model that contract at the route boundary.
+        latest = deepcopy(source_record)
+        if conflict_kind == 'same_source_update':
+            latest['title'] = 'Concurrent identity edit'
+        db.sources[:] = [latest]
+        message = (
+            'Hosted state changed repeatedly; this update could not be saved safely.'
+            if conflict_kind == 'reconciliation_exhaustion'
+            else 'Hosted state changed concurrently; this update could not be reconciled safely.'
+        )
+        raise StateMutationConflict(message)
+
+    monkeypatch.setattr(control, 'persist_state', stale_save)
+    response = client.delete(f'/sources/{source_id}')
+
+    assert response.status_code == 400
+    assert any(item['id'] == source_id for item in db.sources)
+    if conflict_kind == 'same_source_update':
+        assert db.sources[0]['title'] == 'Concurrent identity edit'
+    assert removals == []
+    assert all(path.is_file() for path in paths)
+    monkeypatch.setattr(control, '_artifact_store', original_store)
+
+
+def test_delete_reconciliation_preserves_independent_create_and_only_removes_target_artifacts(
+    client, source, monkeypatch
+):
+    source_record = record(source)
+    source_id = source_record['id']
+    paths = [Path(source_record[key]) for key in KEYS]
+    sibling_record = deepcopy(source_record)
+    sibling_record.update(id='source_concurrent', title='Independent material')
+    sibling_paths = [path.parent / f'concurrent-{path.name}' for path in paths]
+    for path in sibling_paths:
+        path.write_bytes(b'sibling artifact')
+        sibling_record[KEYS[sibling_paths.index(path)]] = str(path)
+
+    def rebase_delete():
+        # Simulate a successful bounded rebase that retained an independent
+        # concurrent create before the artifact cleanup phase.
+        db.sources[:] = [sibling_record]
+
+    monkeypatch.setattr(control, 'persist_state', rebase_delete)
+    response = client.delete(f'/sources/{source_id}')
+
+    assert response.status_code == 200
+    assert [item['id'] for item in db.sources] == ['source_concurrent']
+    assert all(not path.exists() for path in paths)
+    assert all(path.is_file() and path.read_bytes() == b'sibling artifact' for path in sibling_paths)
+
+
 def test_duplicate_delete_does_not_repeat_artifact_cleanup(client, source, monkeypatch):
     source_id = record(source)['id']
     removed = []

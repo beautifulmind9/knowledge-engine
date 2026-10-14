@@ -95,6 +95,7 @@ def test_load_exact_snapshot_and_workspace_isolation(database, snapshot):
     store = database.store()
     assert store.load() == snapshot
     assert store._revision == 8
+    assert store.loaded_snapshot == snapshot
 
 
 def test_insert_then_increment_and_roundtrip(database, snapshot):
@@ -102,6 +103,7 @@ def test_insert_then_increment_and_roundtrip(database, snapshot):
     assert store.load() is None
     store.save(snapshot)
     assert database.rows[database.key] == (snapshot, 1)
+    assert store.loaded_snapshot == snapshot
     store.save(snapshot)
     assert database.rows[database.key] == (snapshot, 2)
     assert store._revision == 2

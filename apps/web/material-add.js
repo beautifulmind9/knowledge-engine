@@ -1,12 +1,12 @@
 // Browser-owned, in-tab capture only. File selection never writes to the server.
 export const MATERIAL_EXTENSIONS = ['.pdf','.epub','.docx','.txt','.md','.html','.htm','.csv','.json'];
-export const MAX_MATERIAL_BYTES = 25 * 1024 * 1024;
+export const MAX_MATERIAL_BYTES = 50_000_000;
 
 export function validateMaterial(file) {
   if (!file || file.size === 0) throw Error('The uploaded file is empty.');
   const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
   if (!MATERIAL_EXTENSIONS.includes(extension)) throw Error('Unsupported file type. Choose PDF, EPUB, Word, TXT, Markdown, HTML, CSV or JSON.');
-  if (file.size > MAX_MATERIAL_BYTES) throw Error('The uploaded file exceeds the 25 MiB limit.');
+  if (file.size > MAX_MATERIAL_BYTES) throw Error('The uploaded file exceeds the 50 MB (50,000,000 bytes) per-file limit.');
   return extension;
 }
 

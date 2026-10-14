@@ -13,12 +13,20 @@ test('filename title is a conservative Unicode-preserving editable suggestion',(
  for(const [input,expected] of [['my_workshop_notes.pdf','My workshop notes'],['The_Workshop-Survival_Guide.docx','The Workshop Survival Guide'],['café_学习.PDF','Café 学习'],['NASA_notes.txt','NASA notes']])assert.equal(suggestedMaterialTitle(input),expected);
 });
 test('local validation matches backend extensions and byte boundary before any writes',async()=>{
+ assert.equal(MAX_MATERIAL_BYTES,50_000_000);
  assert.equal(MATERIAL_EXTENSIONS.length,9);
  for(const invalid of [{...file,size:0},{...file,size:MAX_MATERIAL_BYTES+1},{...file,name:'image.png'}]){
   const f=fixture();f.draft.file=invalid;await assert.rejects(f.run);assert.equal(f.calls.length,0);
  }
  assert.equal(validateMaterial({...file,size:MAX_MATERIAL_BYTES}),'.pdf');
+ assert.throws(()=>validateMaterial({...file,size:MAX_MATERIAL_BYTES+1}),/50 MB \(50,000,000 bytes\) per-file limit/);
  assert.equal(validateMaterial({...file,name:'NOTES.TXT'}),'.txt');
+});
+test('an oversized selected file does not invalidate valid batch siblings',()=>{
+ const batch=newMaterialAddBatch([],null);
+ selectMaterialFiles(batch,[{name:'at-limit.pdf',size:MAX_MATERIAL_BYTES},{name:'too-large.pdf',size:MAX_MATERIAL_BYTES+1},{name:'sibling.txt',size:100}]);
+ assert.deepEqual(batch.items.map(item=>item.file.name),['at-limit.pdf','sibling.txt']);
+ assert.deepEqual(batch.invalidFiles.map(item=>item.name),['too-large.pdf']);
 });
 test('empty account proposes destination without writes then creates library/source/upload/read only',async()=>{
  const f=fixture();assert.equal(f.draft.libraryName,'My Library');assert.equal(f.draft.libraryId,null);assert.equal(f.calls.length,0);

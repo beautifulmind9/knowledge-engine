@@ -132,7 +132,7 @@ def test_state_save_failure_keeps_both_versions_for_reload(client, published_sou
         assert recovered['processing_status'] == 'uploaded'
 
 
-@pytest.mark.parametrize('content,status', [(b'', 400), (b'x' * (25 * 1024 * 1024 + 1), 413)])
+@pytest.mark.parametrize('content,status', [(b'', 400), (b'x' * (sources.MAX_SOURCE_UPLOAD_BYTES + 1), 413)])
 def test_rejected_version_never_publishes_or_uploads(client, published_source, content, status):
     record, store, api, state = published_source
     before = deepcopy(record)

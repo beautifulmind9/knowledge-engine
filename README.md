@@ -66,7 +66,7 @@ When you choose an AI action, the relevant source chunk or retrieved evidence an
 6. Reopen saved work, make a new revision, compare versions, or export Markdown.
 7. Use Data & usage for quota state, integrity checks, and a private backup.
 
-Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CSV, and JSON, up to 25 MB. Scanned PDFs need OCR, which is not implemented. Markdown, HTML, EPUB and DOCX headings are retained as section hints. EPUB follows spine reading order; DOCX preserves paragraph/table order. PDF chapter inference remains limited.
+Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CSV, and JSON, up to 50 MB (50,000,000 bytes) per file. Scanned PDFs need OCR, which is not implemented. Markdown, HTML, EPUB and DOCX headings are retained as section hints. EPUB follows spine reading order; DOCX preserves paragraph/table order. PDF chapter inference remains limited.
 
 ## Architecture and storage
 

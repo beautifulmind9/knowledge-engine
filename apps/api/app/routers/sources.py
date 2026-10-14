@@ -36,6 +36,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 from app.db.persistence import STORAGE_ROOT
 
 UPLOAD_FOLDER = STORAGE_ROOT / "uploads"
+MAX_SOURCE_UPLOAD_BYTES = 50_000_000
 _artifact_store = get_artifact_store()
 
 ALLOWED_FILE_EXTENSIONS = {
@@ -287,8 +288,8 @@ def _write_source_upload(file: UploadFile, path: Path) -> None:
     with _artifact_store.open_binary_write(path) as buffer:
         while data := file.file.read(1024 * 1024):
             size += len(data)
-            if size > 25 * 1024 * 1024:
-                raise HTTPException(413, "Upload limit is 25 MB.")
+            if size > MAX_SOURCE_UPLOAD_BYTES:
+                raise HTTPException(413, "Upload limit is 50 MB (50,000,000 bytes) per file.")
             buffer.write(data)
         if not size:
             raise HTTPException(400, "The uploaded file is empty.")

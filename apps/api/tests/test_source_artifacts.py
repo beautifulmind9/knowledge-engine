@@ -54,7 +54,7 @@ def test_upload_bytes_absolute_path_and_download_filename(client, empty_source):
 
 @pytest.mark.parametrize("content,status,message", [
     (b"", 400, "The uploaded file is empty."),
-    (b"x" * (25 * 1024 * 1024 + 1), 413, "Upload limit is 25 MB."),
+    (b"x" * (router.MAX_SOURCE_UPLOAD_BYTES + 1), 413, "Upload limit is 50 MB (50,000,000 bytes) per file."),
 ])
 def test_rejected_upload_cleans_partial_and_preserves_prior(client, empty_source, content, status, message):
     assert upload(client, empty_source, b"original").status_code == 200
@@ -68,7 +68,7 @@ def test_rejected_upload_cleans_partial_and_preserves_prior(client, empty_source
 
 
 def test_exact_upload_limit_is_accepted(client, empty_source):
-    content = b"x" * (25 * 1024 * 1024)
+    content = b"x" * router.MAX_SOURCE_UPLOAD_BYTES
     assert upload(client, empty_source, content).status_code == 200
     assert Path(stored(empty_source)["file_path"]).read_bytes() == content
 

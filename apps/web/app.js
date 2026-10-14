@@ -121,7 +121,7 @@ async function homeView(){beginView();heading('HOME','What would you like to do?
 function materialAddSurface(libs,active){
  if(!materialAddDraft?.items?.length)materialAddDraft=newMaterialAddBatch(libs,state.library);
  const batch=materialAddDraft;
- const surface=card('Add material','Choose one or more PDF, EPUB, Word, TXT, Markdown, HTML, CSV or JSON files · up to 25 MiB each');surface.id='material-add';
+ const surface=card('Add material','Choose one or more PDF, EPUB, Word, TXT, Markdown, HTML, CSV or JSON files · up to 50 MB (50,000,000 bytes) each');surface.id='material-add';
  const [fileLabel,fileInput]=field('Choose one or more material files','file');fileInput.type='file';fileInput.multiple=true;fileInput.accept=MATERIAL_EXTENSIONS.join(',');
  const confirmation=el('div');confirmation.id='material-confirmation';
  surface.append(fileLabel,confirmation);

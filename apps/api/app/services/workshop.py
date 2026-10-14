@@ -1,4 +1,5 @@
 from collections import defaultdict
+from math import ceil
 
 from app.models.workshop import WorkshopPrepareRequest
 from app.services.knowledge_extraction import (
@@ -301,11 +302,12 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
             for aid in group["asset_ids"]
         }
         candidates = [a for a in candidates if a["id"] in contributing_ids]
+    multi_source_scope = len({item.get("source_id") for item in candidates if item.get("source_id")}) > 1
     ranked = []
     for item in candidates:
         score, matched_terms = _workshop_relevance(item, payload)
         if score <= 0 and not payload.asset_ids:
-            if payload.output_type == "knowledge_answer":
+            if payload.output_type == "knowledge_answer" and not multi_source_scope:
                 # Broad source questions such as "What does this source teach?"
                 # should still return a representative evidence-grounded set.
                 score = 1
@@ -327,7 +329,92 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
         reverse=True,
     )
 
-    return ranked[: max(payload.limit * 5, 30)]
+    pool_limit = max(payload.limit * 5, 30)
+    if payload.output_type == "knowledge_answer" and multi_source_scope:
+        source_ids = {item.get("source_id") for item in ranked if item.get("source_id")}
+        per_source_limit = max(3, ceil(pool_limit / max(len(source_ids), 1)))
+        source_counts = defaultdict(int)
+        balanced_pool = []
+        for item in ranked:
+            source_id = item.get("source_id")
+            if source_id and source_counts[source_id] >= per_source_limit:
+                continue
+            balanced_pool.append(item)
+            if source_id:
+                source_counts[source_id] += 1
+            if len(balanced_pool) >= pool_limit:
+                break
+        ranked = balanced_pool
+
+    return ranked[:pool_limit]
+
+
+def _coverage_aware_group_selection(groups, raw_assets, payload):
+    """Keep relevance primary while giving similarly relevant sources a chance to appear."""
+    if payload.output_type != "knowledge_answer":
+        return groups[: payload.limit]
+
+    from app.db.mock_data import sources
+
+    selected = set(payload.source_ids)
+    if payload.library_id:
+        selected = selected or {source["id"] for source in sources if source["library_id"] == payload.library_id}
+    if not selected:
+        selected = {item.get("source_id") for item in raw_assets if item.get("source_id")}
+    if len(selected) < 2:
+        return groups[: payload.limit]
+
+    raw_by_id = {item.get("id"): item for item in raw_assets if item.get("id")}
+    best_score = max((group.get("relevance_score", 0) for group in groups), default=0)
+    if best_score <= 0:
+        return groups[: payload.limit]
+
+    # Only reserve a source when its own evidence has meaningful query overlap
+    # and is at least half as relevant as the strongest candidate. This avoids
+    # forcing every selected material into a comparison for the sake of breadth.
+    threshold = best_score * 0.5
+    source_candidates = []
+    for source_id in sorted(selected):
+        best = None
+        for group in groups:
+            member_scores = [
+                raw_by_id.get(asset_id, {})
+                for asset_id in group.get("asset_ids", [])
+            ]
+            own = [item for item in member_scores if item.get("source_id") == source_id and item.get("matched_terms")]
+            source_score = max((item.get("relevance_score", 0) for item in own), default=0)
+            if source_score < threshold:
+                continue
+            candidate = (source_score, group)
+            if best is None or source_score > best[0]:
+                best = candidate
+        if best:
+            source_candidates.append((best[0], source_id, best[1]))
+
+    source_candidates.sort(key=lambda item: (-item[0], item[1], tuple(item[2].get("asset_ids", []))))
+    chosen = []
+    chosen_ids = set()
+    for _, _, group in source_candidates:
+        marker = tuple(group.get("asset_ids", []))
+        if marker in chosen_ids:
+            continue
+        chosen.append(group)
+        chosen_ids.add(marker)
+        if len(chosen) >= payload.limit:
+            break
+    for group in groups:
+        marker = tuple(group.get("asset_ids", []))
+        if marker in chosen_ids:
+            continue
+        chosen.append(group)
+        chosen_ids.add(marker)
+        if len(chosen) >= payload.limit:
+            break
+    # Preserve the relevance ordering for presentation and provider context.
+    return sorted(chosen, key=lambda group: (
+        group.get("relevance_score", 0), group.get("support_count", 0),
+        group["canonical_asset"].get("confidence_score", 0),
+    ), reverse=True)
 
 
 def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
@@ -359,7 +446,7 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
         ),
         reverse=True,
     )
-    groups = groups[: payload.limit]
+    groups = _coverage_aware_group_selection(groups, raw_assets, payload)
 
     by_type = defaultdict(list)
     for group in groups:
@@ -430,7 +517,7 @@ def evidence_base_state(source_ids, library_id=None):
     chosen = [source for source in sources
               if (not chosen_ids or source["id"] in chosen_ids)
               and (library_id is None or source["library_id"] == library_id)]
-    state = {"selected_count": len(chosen), "ready_count": 0, "preparing_count": 0,
+    state = {"selected_count": len(chosen), "selected_source_ids": [source["id"] for source in chosen], "ready_count": 0, "preparing_count": 0,
              "attention_count": 0, "unavailable_count": 0}
     for source in chosen:
         try:

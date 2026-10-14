@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import get_args
 from pydantic import ValidationError
 
@@ -23,6 +24,15 @@ DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 class GroundedAnswerValidationError(RuntimeError):
     """A provider response failed local grounded-answer validation."""
+
+
+_BROAD_COVERAGE_CLAIM = re.compile(
+    r"\b(?:the|this|your) corpus\b|"
+    r"\bacross (?:all )?(?:the )?(?:available )?(?:selected )?(?:materials|sources|library|corpus)\b|"
+    r"\b(?:all|every) (?:of the )?(?:selected |available )?(?:materials|sources)\b|"
+    r"\bthe sources (?:all )?(?:agree|disagree|show|demonstrate|establish|support)\b",
+    re.IGNORECASE,
+)
 
 
 def _adapt_grounded_answer_provider_json(
@@ -234,6 +244,9 @@ Grounded reasoning requirements for this answer:
 - Check any proposed adaptation against the user's stated objective, intended audience and operating context. If fit is uncertain, state the uncertainty rather than prescribing it.
 - Preserve source agreement, disagreement and scope differences. Use agreement/disagreement only when the supplied sources support it; cite the relevant assets. Do not manufacture consensus or choose a winner unless asked.
 - Treat source precedent as evidence to reason with, not a universal prescription. The answer reflects only knowledge currently available in the selected scope.
+- Do not imply that a finding represents the whole corpus or all selected materials unless the cited evidence actually covers that breadth. Selection alone is not evidence; describe narrower findings as coming from the sources represented in the answer. Omitted or still-preparing materials are unknown, not evidence of agreement or disagreement.
+- Use agreement or disagreement only when distinct cited materials support the comparison. Do not describe one material's position as cross-source consensus.
+- Avoid unsupported exact counts of principles, sources, steps, or recommendations. If a count is needed, make it match the items explicitly represented in the answer.
 - Return the provider response using title, introduction (use an empty string when absent), sections, applied_knowledge and design_choices. Each section has kind, heading, content and evidence_refs.
 - Use only the established section kinds: source_principle, source_tactic, mechanism, interpretation, assumption, experiment, challenge, agreement, disagreement, applicability, open_question, analysis.
 - Keep each section's evidence_refs limited to supplied asset IDs that actually support that section. Do not output source IDs, chunk IDs, asset IDs, or provider identifiers in prose.
@@ -269,6 +282,8 @@ Grounded reasoning requirements for this answer:
             )
 
     if knowledge_answer:
+        from app.services.workshop import evidence_base_state
+
         source_ids_by_asset = {}
         for unit in knowledge_units:
             member_ids = [unit.get("asset_id"), *(unit.get("asset_ids") or [])]
@@ -282,6 +297,27 @@ Grounded reasoning requirements for this answer:
                 cited_sources = set().union(*(source_ids_by_asset.get(asset_id, set()) for asset_id in section.supporting_asset_ids))
                 if len(cited_sources) < 2:
                     raise GroundedAnswerValidationError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.")
+        cited_source_ids = set().union(*(
+            source_ids_by_asset.get(asset_id, set())
+            for section in generated.reasoning_sections
+            for asset_id in section.supporting_asset_ids
+        )) if generated.reasoning_sections else set()
+        evidence_base = evidence_base_state(payload.source_ids, payload.library_id)
+        answer_text = "\n".join([
+            generated.title, generated.introduction or "",
+            *(section.heading + "\n" + section.content for section in generated.reasoning_sections),
+            *(item.usage_note for item in generated.applied_knowledge),
+            *generated.design_choices,
+        ])
+        scope_is_complete = (
+            evidence_base.get("selected_count", 0) > 0
+            and evidence_base.get("ready_count", 0) == evidence_base.get("selected_count", 0)
+            and not any(evidence_base.get(key, 0) for key in ("preparing_count", "attention_count", "unavailable_count"))
+        )
+        if _BROAD_COVERAGE_CLAIM.search(answer_text) and (
+            not scope_is_complete or len(cited_source_ids) < evidence_base.get("selected_count", 0)
+        ):
+            raise GroundedAnswerValidationError("The answer claimed broader source coverage than its cited evidence supports. No answer was accepted.")
         content_parts = []
         if generated.introduction:
             content_parts.append(generated.introduction.strip())
@@ -323,6 +359,49 @@ Grounded reasoning requirements for this answer:
         "model_response_id": getattr(interaction, "id", None),
     }
     if knowledge_answer:
-        from app.services.workshop import evidence_base_state
-        result["evidence_base"] = evidence_base_state(payload.source_ids, payload.library_id)
+        source_ids_by_asset = {}
+        for unit in prepared["knowledge_units"]:
+            member_ids = [unit.get("asset_id"), *(unit.get("asset_ids") or [])]
+            source_ids = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
+            for asset_id in member_ids:
+                if asset_id:
+                    source_ids_by_asset[asset_id] = source_ids
+        used_source_ids = set()
+        canonical_by_asset = {}
+        for section in generated.reasoning_sections:
+            for asset_id in section.supporting_asset_ids:
+                used_source_ids.update(source_ids_by_asset.get(asset_id, set()))
+        for unit in prepared["knowledge_units"]:
+            canonical_id = unit.get("asset_id")
+            for asset_id in [canonical_id, *(unit.get("asset_ids") or [])]:
+                if asset_id and canonical_id:
+                    canonical_by_asset[asset_id] = canonical_id
+        used_idea_ids = {
+            canonical_by_asset[asset_id]
+            for section in generated.reasoning_sections
+            for asset_id in section.supporting_asset_ids
+            if asset_id in canonical_by_asset
+        }
+        retrieved_source_ids = {
+            source_id for unit in prepared["knowledge_units"]
+            for source_id in (unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
+        }
+        from app.db.mock_data import sources as source_records
+        source_by_id = {source["id"]: source for source in source_records}
+        describe_sources = lambda ids: [
+            {"title": source_by_id[source_id].get("title") or "", "author": source_by_id[source_id].get("author") or ""}
+            for source_id in sorted(ids) if source_id in source_by_id
+        ]
+        result["evidence_base"] = evidence_base
+        result["evidence_coverage"] = {
+            "selected_count": evidence_base["selected_count"],
+            "selected_source_ids": evidence_base.get("selected_source_ids", []),
+            "used_idea_count": len(used_idea_ids),
+            "retrieved_source_ids": sorted(retrieved_source_ids),
+            "used_source_ids": sorted(used_source_ids),
+            "retrieved_source_count": len(retrieved_source_ids),
+            "used_source_count": len(used_source_ids),
+            "retrieved_sources": describe_sources(retrieved_source_ids),
+            "used_sources": describe_sources(used_source_ids),
+        }
     return result

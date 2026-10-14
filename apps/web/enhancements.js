@@ -128,9 +128,13 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
   const output = data.output || {};
   const snapshot = data.knowledge_snapshot || [];
   const scopeIds = context?.sourceIds || [];
-  const sourceInfo = (document.querySelector('#main')?.exploreContext?.sourceInfo?.() || []).filter(source => scopeIds.includes(source.id));
+  const availableSources = document.querySelector('#main')?.exploreContext?.sourceInfo?.() || [];
+  const sourceInfo = scopeIds.length ? availableSources.filter(source => scopeIds.includes(source.id)) : availableSources;
   const evidenceIndex = createAnswerEvidenceIndex(snapshot, sourceInfo);
-  const count = Number.isInteger(data.knowledge_unit_count) ? data.knowledge_unit_count : snapshot.length;
+  const applied = output.applied_knowledge || [];
+  const count = Number.isInteger(data.evidence_coverage?.used_idea_count)
+    ? data.evidence_coverage.used_idea_count
+    : applied.length || (Number.isInteger(data.knowledge_unit_count) ? data.knowledge_unit_count : snapshot.length);
   const scopeLabel = document.querySelector('#main')?.exploreContext?.scopeLabel?.() || 'your selected materials';
   const answerTitle = makeElement("h2", undefined, "answer-title");
   card.append(
@@ -140,6 +144,7 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
   );
   answerTitle.append(renderGroundedInline(output.title || "Answer from your library", {document, snapshot, sourceInfo}));
   const evidenceBase = data.evidence_base;
+  const evidenceCoverage = data.evidence_coverage;
   if (evidenceBase?.selected_count) {
     const {selected_count:selected,ready_count:ready,preparing_count:preparing,attention_count:attention,unavailable_count:unavailable} = evidenceBase;
     const pieces = [`${selected} selected ${selected===1?'material':'materials'}`, `${ready} ready`];
@@ -154,6 +159,20 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
         : 'This answer reflects the knowledge currently available; some selected material is not fully available.';
       card.insertBefore(makeElement('p', note, 'answer-evidence-limit'), card.children[3] || null);
     }
+  }
+  if (evidenceCoverage && evidenceCoverage.selected_count > 1) {
+    const retrieved = Number.isInteger(evidenceCoverage.retrieved_source_count)
+      ? evidenceCoverage.retrieved_source_count
+      : Array.isArray(evidenceCoverage.retrieved_sources) ? evidenceCoverage.retrieved_sources.length : 0;
+    const usedCount = Number.isInteger(evidenceCoverage.used_source_count)
+      ? evidenceCoverage.used_source_count
+      : Array.isArray(evidenceCoverage.used_sources) ? evidenceCoverage.used_sources.length : 0;
+    const used = Array.isArray(evidenceCoverage.used_sources) ? evidenceCoverage.used_sources : [];
+    const consideredLabel = `${retrieved} ${retrieved === 1 ? 'material' : 'materials'}`;
+    const usedNames = [...new Set(used.map(source => [source.title, source.author].filter(Boolean).join(' · ')).filter(Boolean))];
+    const summary = makeElement('p', `Evidence considered from ${consideredLabel}. Evidence cited from ${usedCount} of ${evidenceCoverage.selected_count} selected materials.`, 'answer-source-coverage');
+    card.insertBefore(summary, card.children[2] || null);
+    if (usedNames.length) card.insertBefore(makeElement('p', `Cited materials: ${usedNames.join('; ')}`, 'answer-used-sources'), card.children[3] || null);
   }
 
   let content;
@@ -176,13 +195,21 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
       const body = renderGroundedAnswer(section.content, {document, snapshot, sourceInfo});
       block.append(...Array.from(body.childNodes));
       const sourceLabels = [...new Set((section.supporting_asset_ids || []).map(assetId => evidenceIndex.asset(assetId).label).filter(label => label && label !== 'Source & evidence'))];
-      if (sourceLabels.length) block.append(makeElement('p', `From ${sourceLabels.join('; ')}`, 'answer-section-sources'));
+      if (sourceLabels.length) {
+        const provenance = ['source_principle', 'source_tactic'].includes(section.kind)
+          ? `From ${sourceLabels.join('; ')}`
+          : ['agreement', 'disagreement'].includes(section.kind)
+            ? `Compared across evidence from: ${sourceLabels.join('; ')}`
+            : section.kind === 'challenge'
+              ? `Alternative evidence from: ${sourceLabels.join('; ')}`
+            : `Evidence basis: ${sourceLabels.join('; ')}`;
+        block.append(makeElement('p', provenance, 'answer-section-sources'));
+      }
       content.append(block);
     }
   } else content = renderGroundedAnswer(output.content || "No answer returned.", {document, snapshot, sourceInfo});
   card.append(content);
 
-  const applied = output.applied_knowledge || [];
   if (applied.length) {
     const appliedList = document.createElement("ul");
     for (const reference of applied) {

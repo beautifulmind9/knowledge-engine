@@ -39,6 +39,19 @@ export function selectMaterialFiles(batch, files) {
   return batch;
 }
 
+function addFailureMessage(stage,error) {
+  if(stage==='destination')return 'The destination could not be created. No material was added; check the destination and try again.';
+  if(stage==='source')return 'The material record could not be created. Nothing was uploaded; check the title and try again.';
+  if(stage==='upload'){
+    if(error.status===413||/50 MB|too large/i.test(error.message))return 'This file is larger than 50 MB. Choose a smaller file.';
+    if(/unsupported file type/i.test(error.message))return 'This file type is not supported. Choose PDF, EPUB, Word, TXT, Markdown, HTML, CSV or JSON.';
+    if(/uploaded file is empty|file is empty/i.test(error.message))return 'This file is empty. Choose another file.';
+    return 'The file could not be uploaded right now. Your material record is saved; try uploading again.';
+  }
+  if(stage==='read')return 'The file was uploaded, but reading could not finish. Your material and file are saved; retry reading or choose another supported file.';
+  return 'Material addition could not be completed. Your saved material is still available; check its status before trying again.';
+}
+
 // Each acknowledged durable identity is retained before the next operation.
 // No provider endpoint is used; a failed step requires another explicit action.
 export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
@@ -81,8 +94,7 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
       const summary=await api(`/sources/${draft.sourceId}/summary`).catch(()=>null);
       draft.readFailure=summary?.attention_category||null;
     }
-    const prefix={destination:'The destination could not be created. Material has not been added.',source:'The destination is kept. Material has not been added yet.',upload:'Material record kept. The file upload did not complete.',read:'Material and file kept. Reading did not complete.'}[stage];
-    draft.error={stage,message:`${prefix} ${error.message}`};
+    draft.error={stage,message:addFailureMessage(stage,error)};
     throw Error(draft.error.message);
   } finally { draft.busy=false; }
 }

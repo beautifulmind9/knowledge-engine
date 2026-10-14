@@ -64,8 +64,9 @@ def test_failed_upload_preserves_published_bytes_and_derived_state(client, publi
         return original(request, timeout)
     api.open = faulty
     response = client.post(f"/sources/{record['id']}/upload", files={'file': ('new.md', b'changed bytes')})
-    assert response.status_code == 400
-    assert response.json() == {'detail': 'Hosted artifact transport failed.'}
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'The file could not be uploaded right now. Your material record is saved; try uploading again.'}
+    assert 'private diagnostic' not in response.text and 'response lost' not in response.text
     assert record == before and state.snapshot == saved
     for key, value in objects.items():
         assert api.objects[key] == value
@@ -142,6 +143,38 @@ def test_rejected_version_never_publishes_or_uploads(client, published_source, c
     assert response.status_code == status
     assert record == before and api.objects == objects
     assert not any(request.method == 'POST' for request in api.requests)
+
+
+def test_hosted_upload_storage_failure_has_safe_retryable_response(client, published_source):
+    record, store, api, state = published_source
+    before_record = deepcopy(record)
+    before_snapshot = deepcopy(state.snapshot)
+    api.failure = (400, {'error': 'private-storage-detail'})
+
+    response = client.post(f"/sources/{record['id']}/upload", files={'file': ('updated.md', b'new content')})
+
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'The file could not be uploaded right now. Your material record is saved; try uploading again.'}
+    assert record == before_record
+    assert state.snapshot == before_snapshot
+    assert 'private-storage-detail' not in response.text
+
+
+def test_hosted_storage_delete_rejection_leaves_only_an_unreferenced_artifact(client, published_source):
+    record, store, api, state = published_source
+    before_objects = dict(api.objects)
+    api.failure = (400, {'error': 'synthetic storage rejection'})
+
+    response = client.delete(f"/sources/{record['id']}?delete_outputs=true")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'deleted_source_id': record['id'],
+        'deleted_output_histories': 0,
+        'artifact_cleanup_pending': True,
+    }
+    assert api.objects == before_objects
+    assert not any(source['id'] == record['id'] for source in state.snapshot['sources'])
 
 
 @pytest.mark.parametrize('kind', ['bad_status', 'incomplete'])

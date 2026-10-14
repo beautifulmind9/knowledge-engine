@@ -374,10 +374,19 @@ async function sourceView(id){
   replacementForm.append(label,action);replacement.append(replacementForm);manage.append(replacement);
  }else if(source.file_path&&!summary.file_replacement_allowed)manage.append(el('p','The original file can’t be replaced after preparation has started. Add another material to use a different file.','muted'));
  manage.append(button('Delete material',async()=>{
-  if(!confirm('Delete this material, its original file, its knowledge, and saved work histories that use its knowledge? This cannot be undone.'))return;
-  await api(`/sources/${encodeURIComponent(id)}?delete_outputs=true`,{method:'DELETE'});
+  if(!confirm('Remove this material, its original file and its prepared knowledge? Saved work that uses this material will be kept unless you confirm separately.'))return;
+  const path=`/sources/${encodeURIComponent(id)}`;
+  let removedHistories=false;
+  try{
+   await api(path,{method:'DELETE'});
+  }catch(error){
+   if(error.status!==409||!error.message.startsWith("Saved output histories contain this source's knowledge."))throw Error('This material could not be removed right now. Check its status and try again.');
+   if(!confirm('Saved work uses this material. Delete that saved work too? This cannot be undone.'))return;
+   try{await api(`${path}?delete_outputs=true`,{method:'DELETE'});removedHistories=true;}
+   catch{throw Error('This material could not be removed right now. Check its status and try again.');}
+  }
   if(!active())return;state.selected.clear();state.source=null;
-  if(await navigate('library',{replace:true}))message('Material and related saved work were deleted.');
+  if(await navigate('library',{replace:true}))message(removedHistories?'Material and related saved work were deleted.':'Material removed.');
  },'danger'));
  workspace.append(manage);
 

@@ -16,6 +16,7 @@ from app.db.mock_data import (
 )
 from app.db.persistence import save_state
 from app.persistence.factory import get_artifact_store
+from app.persistence.supabase_artifacts import HostedArtifactStoreError
 from app.persistence.artifact_paths import contained_locator, upload_locator, cleanup_unpublished_or_superseded
 from app.responses import ArtifactFileResponse
 from app.services.text_extraction import (
@@ -272,7 +273,7 @@ def request_source_processing(source_id: str):
     except Exception as error:
         source["reading_failure"] = "read_failed"
         persist_state()
-        raise HTTPException(400, "Source reading could not finish. Retry reading or restore the source data.") from error
+        raise HTTPException(400, "The file was uploaded, but reading could not finish. Your material and original file are saved; retry reading or choose another supported file.") from error
 
 
 @router.post("/{source_id}/recover-structure")
@@ -312,7 +313,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     if file_extension not in ALLOWED_FILE_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type. Allowed types: {sorted(ALLOWED_FILE_EXTENSIONS)}"
+            detail="Unsupported file type. Choose PDF, EPUB, Word, TXT, Markdown, HTML, CSV or JSON."
         )
 
     _artifact_store.create_directory(UPLOAD_FOLDER)
@@ -337,6 +338,9 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
         # unpublished candidate, never the bytes referenced by the current source.
         try:
             _write_source_upload(file, file_path)
+        except HostedArtifactStoreError:
+            cleanup_unpublished_or_superseded(_artifact_store, [file_path])
+            raise HTTPException(503, "The file could not be uploaded right now. Your material record is saved; try uploading again.") from None
         except Exception:
             cleanup_unpublished_or_superseded(_artifact_store, [file_path])
             raise

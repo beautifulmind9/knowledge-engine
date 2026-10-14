@@ -49,24 +49,50 @@ test('explicitly cleared optional author is confirmed blank and cannot be filled
  assert.equal(created.author,null);assert.equal(created.author_origin,'user_confirmed');
 });
 test('known destination survives source creation failure and retry does not duplicate it',async()=>{
- const f=fixture();f.fail('/sources');await assert.rejects(f.run,/Material has not been added yet/);
+ const f=fixture();f.fail('/sources');await assert.rejects(f.run,/material record could not be created/i);
  assert.equal(f.draft.libraryId,'new-library');assert.equal(f.draft.sourceId,null);
  f.fail(null);await f.run();assert.equal(f.calls.filter(c=>c.path==='/libraries').length,1);
 });
-test('upload failure retains source identity and explicit retry reuses it',async()=>{
- const f=fixture();f.fail('/sources/new-source/upload');await assert.rejects(f.run,/Material record kept/);
+test('upload failure retains source identity and gives a safe actionable message',async()=>{
+ const f=fixture();f.fail('/sources/new-source/upload');await assert.rejects(f.run,/file could not be uploaded right now.*material record is saved/i);
  assert.equal(f.draft.sourceId,'new-source');assert.equal(f.draft.uploaded,false);
  f.fail(null);await f.run();assert.equal(f.calls.filter(c=>c.path==='/sources').length,1);
  assert.equal(f.calls.filter(c=>c.path.endsWith('/upload')).length,2);
 });
-test('read failure retains source and upload; retry only reads, never builds',async()=>{
- const f=fixture();f.fail('/sources/new-source/process');await assert.rejects(f.run,/Material and file kept/);
+test('read failure retains source and upload; retry only reads with safe actionable copy',async()=>{
+ const f=fixture();f.fail('/sources/new-source/process');await assert.rejects(f.run,/uploaded, but reading could not finish.*retry reading/i);
  assert.equal(f.draft.uploaded,true);assert.equal(f.draft.read,false);
  f.fail(null);await f.run();assert.equal(f.calls.filter(c=>c.path==='/sources').length,1);assert.equal(f.calls.filter(c=>c.path.endsWith('/upload')).length,1);
  assert.equal(f.calls.filter(c=>c.path.endsWith('/process')).length,2);assert.ok(!f.calls.some(c=>/interpret|generate/.test(c.path)));
 });
+
+test('upload failure categories distinguish size, type, empty, storage and generic add failures',async()=>{
+ const cases=[
+  [413,'Upload limit','larger than 50 MB'],
+  [400,'Unsupported file type.','file type is not supported'],
+  [400,'The uploaded file is empty.','file is empty'],
+  [503,'safe storage message','could not be uploaded right now'],
+  [400,'private or unfamiliar server detail','could not be uploaded right now'],
+ ];
+ for(const [status,detail,expected] of cases){
+  const draft=fixture().draft;let failed=false;
+  const api=async path=>{
+   if(path==='/libraries')return {id:'lib'};
+   if(path==='/sources')return {id:'source'};
+   if(path.endsWith('/upload')&&!failed){failed=true;const error=Error(detail);error.status=status;throw error;}
+   return {};
+  };
+  await assert.rejects(addMaterial(draft,api,file=>({file})),new RegExp(expected,'i'));
+  assert.equal(draft.error.stage,'upload');
+  assert.ok(!draft.error.message.includes('private or unfamiliar server detail'));
+ }
+ const draft=fixture().draft;
+ const api=async path=>{if(path==='/libraries')throw Error('private create detail');throw Error(path);};
+ await assert.rejects(addMaterial(draft,api,file=>({file})),/destination could not be created.*check the destination/i);
+ assert.ok(!draft.error.message.includes('private create detail'));
+});
 test('destination failure leaves no source, and in-flight duplicate activation cannot dispatch twice',async()=>{
- const f=fixture();f.fail('/libraries');await assert.rejects(f.run,/Material has not been added/);assert.equal(f.calls.length,1);
+ const f=fixture();f.fail('/libraries');await assert.rejects(f.run,/destination could not be created/i);assert.equal(f.calls.length,1);
  let release;const pending=new Promise(resolve=>{release=resolve;});let calls=0;
  const draft=fixture().draft;
  const api=async path=>{calls++;if(path==='/libraries')await pending;return {id:'id'};};
@@ -77,7 +103,7 @@ test('structured OCR classification blocks unchanged reread; replacement reuses 
  const f=fixture();let failRead=true;const calls=[];
  const api=async(path,options)=>{calls.push({path,options});if(path.endsWith('/summary'))return {attention_category:'ocr_required'};if(path.endsWith('/process')&&failRead)throw Error('Safe OCR message');return {id:path==='/libraries'?'lib':'source'};};
  const run=()=>addMaterial(f.draft,api,file=>({file}));
- await assert.rejects(run,/Material and file kept/);assert.equal(f.draft.readFailure,'ocr_required');
+ await assert.rejects(run,/file was uploaded, but reading could not finish/i);assert.equal(f.draft.readFailure,'ocr_required');
  const before=calls.length;await assert.rejects(run,/Choose a different file/);assert.equal(calls.length,before);
  f.draft.file={name:'readable.txt',size:50};f.draft.uploaded=false;f.draft.replacementSelected=true;failRead=false;
  await run();assert.equal(calls.filter(c=>c.path==='/sources').length,1);assert.equal(f.draft.sourceId,'source');assert.equal(f.draft.read,true);

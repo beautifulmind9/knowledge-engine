@@ -205,8 +205,11 @@ def test_invalid_upload_empty_file_and_missing_source(client,source):
     s,c=source
     assert client.post('/sources',json={'title':'Bad','library_id':'missing'}).status_code==404
     assert client.post('/sources/missing/upload',files={'file':('n.txt','hello')}).status_code==404
-    assert client.post(f"/sources/{s['id']}/upload",files={'file':('bad.exe','x')}).status_code==400
-    assert client.post(f"/sources/{s['id']}/upload",files={'file':('empty.txt','')}).status_code==400
+    unsupported=client.post(f"/sources/{s['id']}/upload",files={'file':('bad.exe','x')})
+    assert unsupported.status_code==400
+    assert unsupported.json()['detail'].startswith('Unsupported file type.')
+    empty=client.post(f"/sources/{s['id']}/upload",files={'file':('empty.txt','')})
+    assert empty.status_code==400 and empty.json()['detail']=='The uploaded file is empty.'
     assert client.post(f"/sources/{s['id']}/upload",files={'file':('blank.txt','   ')}).status_code==200
     assert client.post(f"/sources/{s['id']}/process").status_code==400
 

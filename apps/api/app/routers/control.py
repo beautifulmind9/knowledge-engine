@@ -93,15 +93,41 @@ def delete_source(source_id:str,delete_outputs:bool=False):
             except ValueError:
                 raise HTTPException(409,"A legacy file is outside the private storage directory. Resolve its location before deletion.")
             paths.append(path)
-    # File failures stop deletion before removing records; integrity audit identifies partial disk deletion.
-    for path in paths:
-        _artifact_store.remove(path)
+    previous_outputs = list(outputs)
+    previous_assets = list(knowledge_assets)
+    previous_jobs = list(extraction_jobs)
+    previous_sources = list(sources)
     outputs[:]=[o for o in outputs if o["root_output_id"] not in affected_roots]
     knowledge_assets[:]=[a for a in knowledge_assets if a["source_id"]!=source_id]
     extraction_jobs[:]=[j for j in extraction_jobs if j["source_id"]!=source_id]
     sources.remove(source)
-    persist_state()
-    return {"deleted_source_id":source_id,"deleted_output_histories":len(affected_roots)}
+    try:
+        # Persist the logical deletion before removing required source artifacts.
+        # A stale-state conflict can then restore the latest source record without
+        # leaving it pointed at files that this request already removed.
+        persist_state()
+    except Exception:
+        # Keep the live API state usable when the save fails. No artifact has
+        # been touched, so the source remains usable if persistence rejects it.
+        outputs[:] = previous_outputs
+        knowledge_assets[:] = previous_assets
+        extraction_jobs[:] = previous_jobs
+        sources[:] = previous_sources
+        raise
+
+    cleanup_pending = False
+    for path in paths:
+        try:
+            _artifact_store.remove(path)
+        except Exception:
+            # The source deletion is already durable. Keep it deleted rather
+            # than restoring a record whose required artifacts may be gone.
+            # A leftover private artifact is safer and can be cleaned later.
+            cleanup_pending = True
+    result = {"deleted_source_id":source_id,"deleted_output_histories":len(affected_roots)}
+    if cleanup_pending:
+        result["artifact_cleanup_pending"] = True
+    return result
 
 @router.delete("/libraries/{library_id}")
 def delete_library(library_id:str):

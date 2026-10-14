@@ -45,7 +45,9 @@ export async function api(path, options = {}) {
     let data;
     try { data = await response.json(); }
     catch { data = {detail: `Request failed (${response.status})`}; }
-    throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+    const error = new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+    error.status = response.status;
+    throw error;
   }
   return response.json();
 }

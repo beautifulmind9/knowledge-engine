@@ -11,6 +11,7 @@ from app.db import mock_data as db
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.local_artifacts import LocalArtifactStore
 from app.routers import control
+from app.routers import sources as source_router
 
 KEYS = ("file_path", "extracted_text_path", "chunks_path")
 RESTORE = "Private backup. Stop the server. Extract storage into a NEW empty directory. Set KNOWLEDGE_ENGINE_STORAGE to that storage directory, then start the app. Never overwrite a live database.\n"
@@ -110,35 +111,42 @@ def test_outside_storage_refused(client, source, tmp_path, operation, symlink):
 
 
 @pytest.mark.parametrize('missing', [None, *KEYS])
-def test_delete_finishes_artifacts_before_records_and_persistence(client, source, knowledge, monkeypatch, missing):
+def test_delete_persists_records_before_artifact_cleanup(client, source, knowledge, monkeypatch, missing):
     item = record(source)
     paths = [Path(item[key]).resolve() for key in KEYS]
     if missing:
         Path(item[missing]).unlink()
-    before = snapshot()
     removed = []
+    persisted = []
     class TrackingStore(LocalArtifactStore):
         def remove(self, path):
-            assert snapshot() == before
+            assert not any(item['id'] == item_id for item in db.sources)
+            assert persisted
             super().remove(path)
             removed.append(path)
     monkeypatch.setattr(control, '_artifact_store', TrackingStore())
     saves = []
     def persist():
-        assert removed == paths and all(not path.exists() for path in paths)
+        assert not db.sources and not db.extraction_jobs and not db.knowledge_assets
+        missing_path = Path(item[missing]).resolve() if missing else None
+        assert all(path.exists() for path in paths if path != missing_path)
+        persisted.append(True)
         assert not db.sources and not db.extraction_jobs and not db.knowledge_assets
         saves.append(True)
     monkeypatch.setattr(control, 'persist_state', persist)
+    item_id = item['id']
     response = client.delete('/sources/' + item['id'])
     assert response.status_code == 200
     assert response.json() == {'deleted_source_id': item['id'], 'deleted_output_histories': 0}
     assert saves == [True]
+    assert removed == paths
 
 
 @pytest.mark.parametrize('operation', ['delete', 'export'])
 @pytest.mark.parametrize('failure', ['resolve', 'io'])
-def test_adapter_failure_does_not_succeed_or_remove_records(client, source, monkeypatch, operation, failure):
+def test_adapter_failure_keeps_delete_state_consistent_and_export_fails_closed(client, source, monkeypatch, operation, failure):
     before = snapshot()
+    source_id = record(source)['id']
     calls = []
     class FailingStore(LocalArtifactStore):
         def resolve(self, path):
@@ -153,16 +161,23 @@ def test_adapter_failure_does_not_succeed_or_remove_records(client, source, monk
         def open_binary_read(self, path):
             raise OSError('adapter failed')
     monkeypatch.setattr(control, '_artifact_store', FailingStore())
-    monkeypatch.setattr(control, 'persist_state', lambda: pytest.fail('must not persist'))
-    with pytest.raises(OSError, match='adapter failed'):
-        if operation == 'delete':
-            client.delete('/sources/' + record(source)['id'])
-        else:
-            client.get('/data/export')
-    assert snapshot() == before
     if operation == 'delete' and failure == 'io':
-        assert not Path(record(source)['file_path']).exists()
-        assert Path(record(source)['extracted_text_path']).exists()
+        monkeypatch.setattr(control, 'persist_state', lambda: None)
+        response = client.delete('/sources/' + source_id)
+        assert response.status_code == 200
+        assert response.json()['artifact_cleanup_pending'] is True
+        assert not any(item['id'] == source_id for item in db.sources)
+        assert len(calls) == 3  # cleanup continues for this source's other artifacts
+        assert not Path(calls[0]).exists() and Path(calls[1]).exists() and not Path(calls[2]).exists()
+        assert all(asset['source_id'] != source_id for asset in db.knowledge_assets)
+    else:
+        monkeypatch.setattr(control, 'persist_state', lambda: pytest.fail('must not persist'))
+        with pytest.raises(OSError, match='adapter failed'):
+            if operation == 'delete':
+                client.delete('/sources/' + source_id)
+            else:
+                client.get('/data/export')
+        assert snapshot() == before
 
 
 def test_dependent_outputs_require_opt_in_and_remove_complete_histories(client, source, knowledge):
@@ -186,6 +201,95 @@ def test_dependent_outputs_require_opt_in_and_remove_complete_histories(client, 
     assert response.json() == {'deleted_source_id': sid, 'deleted_output_histories': 2}
     assert db.outputs == [before['outputs'][-1]]
     assert not db.sources and not db.knowledge_assets and not db.extraction_jobs
+
+
+def test_unuploaded_and_partly_prepared_materials_delete_without_output_opt_in(client, source, knowledge):
+    sibling, _ = source
+    incomplete = client.post("/sources", json={
+        "library_id": sibling["library_id"], "title": "Not yet uploaded",
+    }).json()
+    response = client.delete(f"/sources/{incomplete['id']}")
+    assert response.status_code == 200
+    assert response.json() == {"deleted_source_id": incomplete["id"], "deleted_output_histories": 0}
+    assert [item["id"] for item in db.sources] == [sibling["id"]]
+    assert db.knowledge_assets == [knowledge]
+
+    # Existing useful knowledge is also removable without deleting saved work
+    # when no output history depends on it.
+    response = client.delete(f"/sources/{sibling['id']}")
+    assert response.status_code == 200
+    assert response.json()["deleted_source_id"] == sibling["id"]
+    assert not db.sources and not db.knowledge_assets
+
+
+def test_delete_persistence_failure_restores_live_records_and_reports_failure(client, source, knowledge, monkeypatch):
+    sibling, _ = source
+    source_record = next(item for item in db.sources if item['id'] == sibling['id'])
+    artifact_paths = [Path(source_record[key]) for key in KEYS]
+    def fail_save():
+        raise RuntimeError("Synthetic persistence failure.")
+    monkeypatch.setattr(control, "persist_state", fail_save)
+
+    response = client.delete(f"/sources/{sibling['id']}")
+
+    assert response.status_code == 400
+    assert any(item["id"] == sibling["id"] for item in db.sources)
+    assert db.knowledge_assets == [knowledge]
+    assert all(path.is_file() for path in artifact_paths)
+
+
+def test_duplicate_delete_does_not_repeat_artifact_cleanup(client, source, monkeypatch):
+    source_id = record(source)['id']
+    removed = []
+    original_remove = control._artifact_store.remove
+
+    def track_remove(path):
+        removed.append(path)
+        original_remove(path)
+
+    monkeypatch.setattr(control._artifact_store, 'remove', track_remove)
+    first = client.delete(f'/sources/{source_id}')
+    count = len(removed)
+    second = client.delete(f'/sources/{source_id}')
+
+    assert first.status_code == 200
+    assert second.status_code == 404
+    assert len(removed) == count == len(KEYS)
+
+
+@pytest.mark.parametrize("failure_stage", ["upload", "read"])
+def test_failed_material_can_be_deleted_without_touching_sibling_knowledge(
+    client, source, knowledge, monkeypatch, failure_stage
+):
+    sibling, _ = source
+    sibling_record = record(source)
+    sibling_paths = {key: Path(sibling_record[key]).read_bytes() for key in KEYS}
+    sibling_jobs = deepcopy(db.extraction_jobs)
+    sibling_assets = deepcopy(db.knowledge_assets)
+    failed = client.post("/sources", json={
+        "library_id": sibling["library_id"], "title": "Incomplete material",
+    }).json()
+
+    if failure_stage == "upload":
+        def fail_upload(*args, **kwargs):
+            raise RuntimeError("Synthetic storage write failure.")
+        monkeypatch.setattr(source_router, "_write_source_upload", fail_upload)
+        response = client.post(f"/sources/{failed['id']}/upload", files={"file": ("broken.txt", b"content")})
+        assert response.status_code == 400
+        assert next(item for item in db.sources if item["id"] == failed["id"])["file_path"] is None
+    else:
+        assert client.post(f"/sources/{failed['id']}/upload", files={"file": ("broken.txt", b"content")}).status_code == 200
+        assert Path(next(item for item in db.sources if item["id"] == failed["id"])["file_path"]).exists()
+        monkeypatch.setattr(source_router, "extract_text_from_file", lambda **_: (_ for _ in ()).throw(ValueError("Synthetic read failure.")))
+        assert client.post(f"/sources/{failed['id']}/process").status_code == 400
+
+    removed = client.delete(f"/sources/{failed['id']}")
+    assert removed.status_code == 200
+    assert removed.json() == {"deleted_source_id": failed["id"], "deleted_output_histories": 0}
+    assert [item["id"] for item in db.sources] == [sibling["id"]]
+    assert db.extraction_jobs == sibling_jobs
+    assert db.knowledge_assets == sibling_assets == [knowledge]
+    assert {key: Path(sibling_record[key]).read_bytes() for key in KEYS} == sibling_paths
 
 
 @pytest.mark.parametrize('method', ['status', 'stat'])

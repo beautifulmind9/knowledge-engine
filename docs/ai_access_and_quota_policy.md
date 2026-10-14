@@ -14,7 +14,7 @@ Normal users do not need Google AI Studio accounts, Gemini keys, or provider con
 
 ## Immediate external acceptance
 
-Support one trusted external tester at a time using KE's server credential and a **shared hosted allowance of 20 admitted AI attempts per Pacific accounting day**. There is no personal allowance claim. Preserve $0-only operation, no paid fallback, no automatic retries, no repair calls, and no automatic continuation.
+Support one trusted external tester at a time using KE's server credential and a **shared hosted allowance of 20 admitted AI attempts per Pacific accounting day**. There is no personal allowance claim. Preserve $0-only operation and no paid fallback. There are no automatic semantic retries, repair calls, model fallbacks or prompt mutation. A user-authorized operation may make one additional identical provider attempt for an explicitly transient HTTP 503; each provider attempt is separately allowance-gated and counted, and uncertain transport outcomes are never automatically retried. There is no automatic continuation.
 
 This is a shared acceptance workspace, not a private individual account. The shared-password gate provides no individual identity, per-user authorization, ownership, data isolation, AI attribution, or quota attribution. Different browser sessions do not create separate private users. Gate participants can access shared materials/work, private backup export and shared controls, including usage resume. The owner can access tester material. Logout clears browser cookies; copied sessions require expiry or password/signing-secret rotation to revoke.
 

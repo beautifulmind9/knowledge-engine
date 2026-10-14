@@ -1,7 +1,8 @@
-"""Explicit free-project opt-in, bounded calls, no automatic quota retries."""
+"""Explicit free-project opt-in, per-attempt allowance and bounded 503 retry."""
 import json
 import logging
 import os
+import time
 from threading import Lock
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -13,6 +14,8 @@ from app.db.mock_data import usage
 logger = logging.getLogger(__name__)
 PROVIDER_QUOTA_TIMEZONE = ZoneInfo("America/Los_Angeles")
 _attempt_admission_lock = Lock()
+_MAX_PROVIDER_ATTEMPTS = 2
+_TRANSIENT_503_RETRY_DELAY_SECONDS = 2.0
 
 
 def _quota_day(now=None):
@@ -194,54 +197,71 @@ def status():
 
 def generate(model, payload, schema):
     from app.services.knowledge_extraction import persist_state
-    with _attempt_admission_lock:
-        current = status()
-        if not current["configured"]:
-            raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
-        if not current["free_tier_confirmed"]:
-            raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
-        if current["paused"]:
-            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
-        if current["calls_today"] >= current["daily_call_limit"]:
-            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
-        usage.update(day=_quota_day(), calls=current["calls_today"]+1,
-                     last_attempt_at=datetime.now(timezone.utc).isoformat())
-        persist_state()
-    try:
-        with genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={"timeout": 60000, "retry_options": {"attempts": 1}}) as client:
-            interactions = client.interactions
-            # The pinned SDK maps attempts=1 to one *retry* for Interactions,
-            # and normalizes attempts=0 back to 1. Disable that resource's
-            # retry strategy explicitly, including transport-error retries.
-            # Fail closed if this SDK surface changes; contract tests cover it.
-            interactions.sdk_configuration.retry_config.strategy = "none"
-            return interactions.create(model=model, input=json.dumps(payload, ensure_ascii=False), store=False,
-                response_format={"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)})
-    except Exception as error:
-        diagnostic = _provider_diagnostic(error)
-        logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))
-        quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
-        if quota:
-            usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")
+    # Serialize both the payload and response schema once so the bounded 503
+    # retry sends byte-for-byte equivalent provider arguments.
+    provider_input = json.dumps(payload, ensure_ascii=False)
+    response_format = {"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)}
+
+    for attempt_number in range(1, _MAX_PROVIDER_ATTEMPTS + 1):
+        # Each dispatch, including the one permitted transient retry, is a new
+        # independently admitted and persisted allowance attempt.
+        with _attempt_admission_lock:
+            current = status()
+            if not current["configured"] or not current["free_tier_confirmed"]:
+                raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
+            if current["paused"] or current["calls_today"] >= current["daily_call_limit"]:
+                raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
+            usage.update(day=_quota_day(), calls=current["calls_today"]+1,
+                         last_attempt_at=datetime.now(timezone.utc).isoformat())
             persist_state()
-            raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"}) from error
-        if diagnostic.get("status_code") == 400 and diagnostic.get("message_category") == "invalid_request_generic":
-            raise HTTPException(
-                502,
-                "The AI service could not accept this request. Your materials and saved work are unchanged.",
-                headers={"X-KE-Interruption-Category":"provider_rejected"},
-            ) from error
-        if diagnostic.get("status_code")==400:
-            category="provider_rejected"
-        elif isinstance(diagnostic.get("status_code"), int) and diagnostic["status_code"] >= 500:
-            category="provider_unavailable"
-        elif diagnostic.get("message_category")=="transport_timeout":
-            # The gateway received a definite timeout exception. The extraction
-            # service persists this attempt as failed before the API reports the
-            # interrupted run, so clients can offer explicit continuation.
-            category="request_timed_out"
-        elif "Connection" in diagnostic.get("exception_type",""):
-            category="transport_uncertain"
-        else:
-            category="transport_uncertain"
-        raise HTTPException(502, "The AI request could not be confirmed. Your materials and saved work are unchanged.", headers={"X-KE-Interruption-Category":category}) from error
+
+        retry_reason = "transient_503" if attempt_number == 2 else None
+        attempt_metadata = {
+            "attempt_number": attempt_number,
+            "max_attempts": _MAX_PROVIDER_ATTEMPTS,
+            "retry_reason": retry_reason,
+        }
+        logger.info("Gemini provider attempt admitted: %s", json.dumps(attempt_metadata, sort_keys=True))
+        try:
+            with genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={"timeout": 60000, "retry_options": {"attempts": 1}}) as client:
+                interactions = client.interactions
+                # Disable SDK-level retries; only this gateway's single
+                # confirmed-503 retry is permitted.
+                interactions.sdk_configuration.retry_config.strategy = "none"
+                return interactions.create(model=model, input=provider_input, store=False,
+                    response_format=response_format)
+        except Exception as error:
+            diagnostic = _provider_diagnostic(error)
+            diagnostic.update(attempt_metadata)
+            logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))
+            quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
+            if quota:
+                usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")
+                persist_state()
+                raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"}) from error
+
+            # Retry only a definite HTTP 503 response. Timeouts, connection
+            # failures, validation errors and every other status remain single
+            # attempts because their outcome is not the specified condition.
+            if diagnostic.get("status_code") == 503 and attempt_number == 1:
+                time.sleep(_TRANSIENT_503_RETRY_DELAY_SECONDS)
+                continue
+            if diagnostic.get("status_code") == 400 and diagnostic.get("message_category") == "invalid_request_generic":
+                raise HTTPException(
+                    502,
+                    "The AI service could not accept this request. Your materials and saved work are unchanged.",
+                    headers={"X-KE-Interruption-Category":"provider_rejected"},
+                ) from error
+            if diagnostic.get("status_code")==400:
+                category="provider_rejected"
+            elif isinstance(diagnostic.get("status_code"), int) and diagnostic["status_code"] >= 500:
+                category="provider_unavailable"
+            elif diagnostic.get("message_category")=="transport_timeout":
+                # A definite gateway timeout is persisted as failed by the
+                # extraction service, allowing explicit continuation.
+                category="request_timed_out"
+            elif "Connection" in diagnostic.get("exception_type",""):
+                category="transport_uncertain"
+            else:
+                category="transport_uncertain"
+            raise HTTPException(502, "The AI request could not be confirmed. Your materials and saved work are unchanged.", headers={"X-KE-Interruption-Category":category}) from error

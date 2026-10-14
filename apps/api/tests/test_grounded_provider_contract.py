@@ -1,6 +1,8 @@
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from app.models.workshop_generation import (
     GroundedAnswerDocument,
     GroundedAnswerSection,
@@ -10,6 +12,7 @@ from app.models.workshop_generation import (
 from app.models.grounded_answer_provider import grounded_answer_provider_schema
 from app.services import knowledge_extraction
 from app.services import ai_gateway, workshop, workshop_generation
+from app.services.workshop_generation import GroundedAnswerValidationError
 
 
 def _prepared():
@@ -199,3 +202,42 @@ def test_gateway_builds_documented_interactions_response_format_without_network(
         "store": False,
         "response_format": {"type": "text", "mime_type": "application/json", "schema": normalized},
     }]
+
+
+def test_strict_local_grounded_validation_failure_does_not_dispatch_a_second_request(
+    monkeypatch,
+):
+    calls = []
+
+    class FakeInteractions:
+        def __init__(self):
+            self.sdk_configuration = SimpleNamespace(retry_config=SimpleNamespace(strategy="default"))
+
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output_text="{}", id="synthetic-invalid-response")
+
+    class FakeClient:
+        def __init__(self, **_):
+            self.interactions = FakeInteractions()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    monkeypatch.setattr(ai_gateway.genai, "Client", FakeClient)
+    monkeypatch.setattr(knowledge_extraction, "persist_state", lambda: None)
+    monkeypatch.setattr(workshop, "evidence_base_state", lambda *_: {"selected_count": 1, "ready_count": 1})
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-key")
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
+    monkeypatch.setenv("GEMINI_DAILY_CALL_LIMIT", "450")
+
+    with pytest.raises(GroundedAnswerValidationError):
+        workshop_generation.generate_workshop_output(
+            _request("knowledge_answer"), prepared=_prepared()
+        )
+
+    assert len(calls) == 1
+    assert ai_gateway.status()["calls_today"] == 1

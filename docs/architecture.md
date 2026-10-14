@@ -87,8 +87,9 @@ Intentional reprocessing is atomic at the chunk level: a replacement must valida
 The application is designed around the zero-cost rule:
 
 - no paid fallback;
-- no automatic repair call;
-- one provider attempt per accepted UI AI action (the interpret API can still orchestrate multiple attempts; see the policy below);
+- no automatic semantic retries, repair calls, model fallbacks or prompt mutation;
+- one additional identical provider attempt is permitted only for an explicitly transient HTTP 503 within a user-authorized operation;
+- each actual provider attempt is separately allowance-gated and counted; uncertain transport outcomes are never automatically retried;
 - local daily Gemini cap;
 - free-tier confirmation must be explicitly enabled by the owner/admin;
 - Gemini asynchronous Batch API is not part of the production path because the current Developer API free tier does not provide Batch processing.

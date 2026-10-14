@@ -119,9 +119,9 @@ The current architecture deliberately favors isolation and auditability over pro
 
 - one source chunk per Gemini extraction request;
 - no shared multi-chunk model context;
-- no automatic repair calls;
-- no automatic paid fallback;
-- one provider attempt per explicit extraction/generation request;
+- no automatic semantic retries, repair calls, model fallbacks or prompt mutation;
+- a user-authorized operation may make one additional identical provider attempt for an explicitly transient HTTP 503;
+- each provider attempt is separately allowance-gated and counted; uncertain transport outcomes are never automatically retried;
 - strict local schema validation before replacement;
 - failed replacements do not supersede good active assets;
 - local daily call cap for zero-cost use.

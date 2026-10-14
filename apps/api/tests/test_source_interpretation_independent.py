@@ -1,8 +1,12 @@
 from fastapi import HTTPException
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from app.db import mock_data as db
 from app.services import source_interpretation
+from app.services import ai_gateway
 from app.services.knowledge_extraction import complete_extraction_job, create_extraction_job, get_extraction_job, mark_extraction_job_failed, persist_state
 from app.services.text_chunking import save_chunks
 
@@ -187,3 +191,60 @@ def test_confirmed_timeout_persists_and_explicit_continuation_skips_completed_pa
     assert ready['completed_parts'] == 6
     assert ready['has_usable_knowledge'] is True
     assert any(asset['id'] == knowledge['id'] and asset.get('active', True) for asset in db.knowledge_assets)
+
+
+def test_gateway_503_retry_validates_saves_chunk_and_continues_to_next_chunk(
+    client, source, asset, monkeypatch
+):
+    s, chunks = _install_chunks(source, count=2)
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-key")
+    monkeypatch.setenv("GEMINI_FREE_TIER_CONFIRMED", "true")
+    monkeypatch.setenv("GEMINI_DAILY_CALL_LIMIT", "450")
+    calls = []
+
+    class InternalServerError(Exception):
+        status_code = 503
+        code = 503
+        body = {"error": {"code": "UNAVAILABLE", "status": "UNAVAILABLE"}}
+
+    class FakeClient:
+        def __init__(self, **_):
+            self.interactions = self
+            self.sdk_configuration = SimpleNamespace(retry_config=SimpleNamespace(strategy="default"))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def create(self, **kwargs):
+            self.sdk_configuration.retry_config.strategy = "none"
+            calls.append(kwargs)
+            if len(calls) == 1:
+                raise InternalServerError("synthetic unavailable")
+            payload = json.loads(kwargs["input"])
+            if "chunk_text" not in payload:
+                raise AssertionError("synthetic request did not identify its current source text")
+            return SimpleNamespace(output_text=json.dumps({"assets": [asset]}), id=f"synthetic-{len(calls)}")
+
+    monkeypatch.setattr(ai_gateway.genai, "Client", FakeClient)
+    monkeypatch.setattr(ai_gateway.time, "sleep", lambda _: None)
+
+    result = client.post(f"/sources/{s['id']}/interpret?max_chunks=2")
+
+    assert result.status_code == 200, result.text
+    body = result.json()
+    assert body["processed_this_run"] == 2
+    assert body["stopped_reason"] is None
+    assert body["progress"]["completed_chunks"] == 2
+    assert len(calls) == 3
+    assert calls[0] == calls[1]  # The retry is the identical provider request.
+    dispatched_text = [json.loads(call["input"])["chunk_text"] for call in calls]
+    assert dispatched_text == [chunks[0]["text"], chunks[0]["text"], chunks[1]["text"]]
+    assert client.get("/usage").json()["calls_today"] == 3
+    completed = [job for job in db.extraction_jobs if job["status"] == "completed"]
+    assert {job["chunk_id"] for job in completed} == {chunk["id"] for chunk in chunks}
+    assert len(completed) == 2
+    assert all(any(item.get("extraction_job_id") == job["id"] and item.get("active", True)
+                   for item in db.knowledge_assets) for job in completed)

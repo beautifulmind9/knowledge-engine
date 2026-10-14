@@ -15,15 +15,17 @@ PRIVATE_KEY = 'PRIVATE_API_KEY_DO_NOT_LOG'
 
 
 @pytest.mark.parametrize('status', [400, 429, 503, 0])
-def test_real_sdk_failure_diagnostic_is_safe_and_single_attempt(monkeypatch, caplog, status):
+def test_real_sdk_failure_diagnostic_is_safe_and_retries_only_503(monkeypatch, caplog, status):
     original_client = genai.Client
     attempts = []
-    secret_message = f'Invalid response schema: {PRIVATE_TEXT} key={PRIVATE_KEY}'
+    secret_message = (f'Service unavailable: {PRIVATE_TEXT} key={PRIVATE_KEY}' if status == 503
+                      else f'Invalid response schema: {PRIVATE_TEXT} key={PRIVATE_KEY}')
     def transport(request):
         attempts.append(request)
         if status == 0:
             raise httpx.ReadTimeout(secret_message, request=request)
-        return httpx.Response(status, json={'error': {'code': 'INVALID_ARGUMENT', 'message': secret_message}},
+        code = 'UNAVAILABLE' if status == 503 else 'INVALID_ARGUMENT'
+        return httpx.Response(status, json={'error': {'code': code, 'status': code if status == 503 else 'INVALID_ARGUMENT', 'message': secret_message}},
                               headers={'private-header': PRIVATE_KEY})
     def factory(**kwargs):
         kwargs['http_options'].update(client_args={'transport': httpx.MockTransport(transport), 'trust_env': False},
@@ -36,17 +38,28 @@ def test_real_sdk_failure_diagnostic_is_safe_and_single_attempt(monkeypatch, cap
         with pytest.raises(HTTPException) as failure:
             ai_gateway.generate('fixture-model', {'chunk_text': PRIVATE_TEXT, 'input': PRIVATE_TEXT}, {'type': 'object'})
     assert failure.value.status_code == (429 if status == 429 else 502)
-    assert len(attempts) == 1 and ai_gateway.status()['calls_today'] == 1
+    expected_attempts = 2 if status == 503 else 1
+    assert len(attempts) == expected_attempts and ai_gateway.status()['calls_today'] == expected_attempts
     logs = [r for r in caplog.records if r.name == ai_gateway.__name__]
-    assert len(logs) == 1 and logs[0].exc_info is None
-    diagnostic = json.loads(logs[0].getMessage().split('diagnostic: ', 1)[1])
+    failures = [r for r in logs if 'failure diagnostic:' in r.getMessage()]
+    assert len(failures) == expected_attempts and all(r.exc_info is None for r in failures)
+    diagnostics = [json.loads(r.getMessage().split('diagnostic: ', 1)[1]) for r in failures]
+    diagnostic = diagnostics[-1]
     assert PRIVATE_TEXT not in caplog.text and PRIVATE_KEY not in caplog.text
     assert PRIVATE_TEXT not in failure.value.detail and PRIVATE_KEY not in failure.value.detail
     if status:
         assert diagnostic['status_code'] == status
         assert diagnostic['exception_type'] == {400: 'BadRequestError', 429: 'RateLimitError', 503: 'InternalServerError'}[status]
-        assert diagnostic['provider_code'] == 'INVALID_ARGUMENT'
-        assert diagnostic['message_category'] == 'response_schema_rejected'
+        if status == 503:
+            assert diagnostic['provider_status'] == 'UNAVAILABLE'
+            assert diagnostic['message_category'] == 'provider_message_omitted'
+            assert [d['attempt_number'] for d in diagnostics] == [1, 2]
+            assert diagnostics[0]['retry_reason'] is None
+            assert diagnostics[1]['retry_reason'] == 'transient_503'
+            assert all(d['max_attempts'] == 2 for d in diagnostics)
+        else:
+            assert diagnostic['provider_code'] == 'INVALID_ARGUMENT'
+            assert diagnostic['message_category'] == 'response_schema_rejected'
     else:
         assert diagnostic['exception_type'] == 'APITimeoutError'
         assert diagnostic['message_category'] == 'transport_timeout'

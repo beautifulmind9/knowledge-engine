@@ -43,7 +43,11 @@ rules. Individual owner/admin authorization remains deferred with the accepted
 identity architecture. Manage material, evidence and ordinary recovery remain
 available in the product.
 
-Backend models, route limits, persistence, quotas, Render configuration and
-provider retry/repair/fallback behavior are unchanged. Synthetic acceptance uses
+Backend models, route limits, persistence, quotas and Render configuration are
+unchanged. There are no automatic semantic retries, repair calls, model
+fallbacks or prompt mutation. A user-authorized operation may make one
+additional identical provider attempt for an explicitly transient HTTP 503.
+Each provider attempt is separately allowance-gated and counted. Uncertain
+transport outcomes are never automatically retried. Synthetic acceptance uses
 `scripts/test_material_add_browser.cjs` and
 `scripts/test_source_detail_browser.cjs`.

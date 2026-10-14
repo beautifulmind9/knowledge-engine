@@ -401,7 +401,9 @@ def test_real_sdk_serialization_without_network(client,knowledge,monkeypatch,pro
     monkeypatch.setenv('GEMINI_FREE_TIER_CONFIRMED','true')
     response=client.post('/workshops/generate',json=brief(knowledge['source_id']))
     assert response.status_code==expected,response.text
-    assert len(requests)==1
+    expected_attempts = 2 if provider_status == 503 else 1
+    assert len(requests) == expected_attempts
+    assert client.get('/usage').json()['calls_today'] == expected_attempts
     assert requests[0]['store'] is False
     assert requests[0]['response_format']['mime_type']=='application/json'
     if expected == 200:

@@ -1,84 +1,119 @@
 # v1 beta release decision and acceptance checklist
 
-Date: 2026-10-08. Decision: **private hosted beta live; A2 and internal hosted acceptance complete, external test and final v1 beta decision pending**.
+Date: 2026-10-15. Decision: **private hosted beta live and internally accepted; external tester evidence and final v1 beta decision remain pending**.
 
-R8-08 beta deployment/shareable access is **Complete**; R8-09 external beta test and R8-10 final release decision remain **Pending**. See the [hosted acceptance evidence](release_acceptance_backlog.md#current-release-decision) for the verified hosted workflow, usage snapshot, and regression results. The $0 target, Gemini free-tier-only rule, no paid fallback, and hosted daily app cap of 20 remain in force.
+The current private hosted beta runs on Render with Supabase Postgres + private Supabase Storage. The $0 development target, Gemini free-tier-only rule, no paid fallback, and hosted daily app cap of 20 remain in force.
 
-In scope: source upload/processing, validated knowledge extraction and reprocessing, deterministic retrieval, six output modes, saved output revisions, multi-source context, browser screens, quota controls, private local and hosted storage, beta access gate, deletion and export. Deferred: public access, user accounts/team access, embeddings, paid integrations, OCR, native mobile, and semantic contradiction guarantees.
+The latest reliability work closed the material-add/delete and hosted-state concurrency incidents that were blocking realistic multi-book use. Real hosted acceptance then confirmed the originally failing workflow: one book continued preparing while another book was added, both records survived, and the first book retained its progress. A real Gemini first-attempt HTTP 503 also recovered through the bounded identical second attempt while Render health stayed 200 and preparation continued.
 
-## Reproducible internal exercise
+The latest implementation checkpoint before those hosted acceptance runs reported **950 backend tests passed** and **172 frontend tests passed**.
 
-1. Follow the root setup instructions. Start with a new private storage directory.
-2. Run the synthetic demo seed. Expect two sources, six raw assets, candidate cross-source agreement, a playbook and two versions, with zero AI calls.
-3. Browse the evidence and preview Workshop retrieval across both sources. One source contributes practice-break guidance; the other adds an understanding check. This demonstrates additional coverage, not independently measured improvement in output quality.
-4. Open the saved playbook, edit it manually, and save another version. Reopen the original and compare.
-5. Export Markdown and verify source/chunk/asset references. Download a private backup, stop the server, restore into a new folder, and check history.
-6. Run `.venv/bin/python -m pytest apps/api/tests -q`.
+In scope: source upload/reading/chunking, validated knowledge extraction and reprocessing, deterministic retrieval, grounded multi-source reasoning, Create/Workshop outputs, saved revisions, browser UI, quota controls, local and hosted persistence, beta access gate, deletion and export.
+
+Deferred: public access, multi-user accounts/team authorization, OCR, native mobile, semantic contradiction guarantees, generalized agents, and any paid-provider fallback.
+
+## Settled reliability rules
+
+- One source chunk per Gemini extraction request.
+- No shared multi-chunk model context.
+- No automatic semantic repair calls, prompt mutation or model fallback.
+- A confirmed Gemini HTTP 503 may receive one additional identical attempt; all actual attempts are separately allowance-gated and counted.
+- HTTP 400, 429, validation failures, timeouts and uncertain transport outcomes are not automatically retried.
+- Completed knowledge and completed sibling materials survive later failures.
+- Hosted persistence keeps optimistic revision protection and only reconciles independent JSON changes. Overlapping edits fail closed.
+- Persistence reconciliation never re-enters routes/services and therefore cannot repeat Gemini, extraction, upload or other external side effects.
+- Source deletion persists the logical deletion before artifact cleanup. Failed state persistence leaves artifacts untouched; post-commit cleanup failure may leave a private orphan artifact rather than restoring a broken source record.
 
 ## Real-source extraction acceptance — completed
 
 - [x] Restore the owner's actual *Workshop Survival Guide* source and existing jobs without losing history.
-- [x] Use a billing-disabled/free-tier Gemini project with `GEMINI_FREE_TIER_CONFIRMED=true`; no paid fallback exists. The application still cannot independently inspect billing configuration.
-- [x] Finish the real source. Current state: **46/46 chunks interpreted**.
-- [x] Audit the resulting knowledge. Latest active state: **121 assets**, **0 missing evidence**, **0 missing keywords**, confidence distribution **83 at 5 / 38 at 3**.
-- [x] Review provenance defects and evidence support. Historical cross-chunk evidence leaks were reprocessed; the current cross-chunk provenance diagnostic is clean.
-- [x] Review the evidence queue. **13 items remain intentionally flagged for manual review**, but inspection found them source-supported compressed or near-exact evidence rather than known defects.
-- [x] Repair the known compound crowd-recovery asset. Chunk 025 now contains `Talking in circles to recover attention`; chunk 026 separately retains `Borrowing goodwill to reclaim attention`.
-- [x] Validate the production extraction contract with the real provider. A strict isolated single-chunk control on chunk 007 returned **5 valid assets**, matching its historical active count, all at confidence 5.
+- [x] Use a billing-disabled/free-tier Gemini project with `GEMINI_FREE_TIER_CONFIRMED=true`; no paid fallback exists.
+- [x] Finish the real source: **46/46 chunks interpreted**.
+- [x] Audit the resulting knowledge: **121 active assets**, **0 missing evidence**, **0 missing keywords**, confidence **83 at 5 / 38 at 3**.
+- [x] Review the evidence queue: **13 items** retained for manual review, inspected as source-supported compressed or near-exact evidence rather than known defects.
+- [x] Repair historical cross-chunk provenance and the known compound crowd-recovery asset.
+- [x] Validate the production extraction contract with a real strict single-chunk control.
 
 ### Extraction architecture decision
 
-Production extraction is **one chunk per Gemini request**. Source-level orchestration may select several chunks, but each chunk has its own model context and provider attempt. Shared-context multi-chunk probes produced under-extraction and cross-chunk evidence leakage, so that path is not used for production extraction.
-
-Gemini's asynchronous Batch API is also not used because the current Gemini Developer API free tier does not include Batch processing. The application remains within the zero-cost rule: no paid fallback, no automatic repair call, and no hidden application-level retry loop.
+Production extraction is **one chunk per Gemini request**. Shared-context multi-chunk probes produced under-extraction and cross-chunk evidence leakage, so that path is not used. Gemini asynchronous Batch API is also not part of the current production path because it is unavailable on the Developer API free tier used by this project.
 
 ## Real-model output acceptance — completed
 
-- [x] Generate and review at least four materially different output modes with the real provider. Accepted modes: Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis. Human review covered structure, usefulness, source claims, applied asset IDs, and design-choice separation.
-- [x] Revise at least two real generated outputs and verify lineage, provenance, and preservation of the original version. This criterion was exceeded: multiple accepted A2 artifacts were manually revised with zero additional Gemini calls while preserving original versions.
-- [x] Run one meaningful real two-source task and compare it against each single-source result. The same workshop attention/retention synthesis was run against *The Workshop Survival Guide* only, *Made to Stick* only, and both sources together.
-- [x] Record any missed semantic conflicts or false lexical agreement/tension flags instead of treating current lexical checks as proof. The combined preview reported 0 candidate agreements / 0 possible tensions, while human review found complementary scopes; the first combined output also overclaimed direct agreement and was corrected.
+- [x] Exercise at least four materially different output modes with the real provider: Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis.
+- [x] Review source claims, applied knowledge, design-choice separation and usefulness.
+- [x] Revise at least two real outputs while preserving lineage, provenance and original versions.
+- [x] Run one meaningful same-task two-source comparison.
+- [x] Record that lexical agreement/tension signals are advisory and can miss complementary relationships or overstate consensus.
+
+Human review remains part of acceptance. Deterministic grounding checks are conservative review signals, not semantic certification.
+
+## Hosted reliability acceptance — completed
+
+- [x] Private Render beta and access gate work.
+- [x] Supabase-hosted state and source artifacts survive restart.
+- [x] Material add failures remain visible and recoverable rather than being treated as success.
+- [x] Browser deletion tries ordinary source deletion first and only requests dependent-output deletion after an explicit backend conflict and user confirmation.
+- [x] Logical source deletion commits before artifact cleanup; a state-save failure cannot leave a live record pointing to a deleted artifact.
+- [x] Hosted optimistic-concurrency reconciliation preserves independent changes and fails closed on overlapping changes.
+- [x] **Production concurrency acceptance:** while Book A was actively preparing, Book B was added successfully; both survived and Book A retained progress without the prior stale-revision error.
+- [x] **Production transient-provider acceptance:** a real Gemini attempt 1 returned HTTP 503, the bounded identical second attempt succeeded, the interpretation endpoint completed 200, the source summary refreshed 200, and preparation continued.
+
+These incident paths are closed unless new production evidence contradicts the current behavior.
 
 ## Browser and external tester acceptance
 
-### Required before invitation
+### Internal browser evidence completed
 
-Use the [settled one-tester AI access policy](ai_access_and_quota_policy.md#immediate-external-acceptance): one trusted tester at a time, KE-owned server credential, shared 20 admitted attempts per Pacific day, no personal-account or personal-allowance claim. Different browser sessions do not isolate data. No tester Google AI Studio account/key is required.
+- [x] Fresh setup / desktop happy path exercised internally.
+- [x] Material preparation, pause/recovery, quota-stop, failed-job and stale-running states exercised.
+- [x] Narrow mobile-width pass completed without blocking page overflow.
+- [x] Core keyboard flow exercised in Safari, subject to Safari's keyboard-navigation settings.
+- [x] Missing-key / unavailable AI states show understandable messages without consuming a provider attempt.
+- [x] Saved-output revision, comparison, provenance and Markdown export exercised.
+- [x] Multi-book hosted concurrency and provider-503 recovery exercised in the deployed app.
 
-- [ ] Owner verifies live hosted cap/configuration and billing-disabled $0-only operation.
-- [ ] Owner verifies current provider/tester eligibility and applicable provider terms for the chosen material; external terms require current verification.
+### Required before external invitation
+
+Use the settled one-tester AI access policy: one trusted tester at a time, KE-owned server credential, shared 20 admitted attempts per Pacific day, no personal-account or personal-allowance claim. Different browser sessions do not isolate data. No tester AI Studio account/key is required.
+
+- [ ] Owner verifies current live hosted cap/configuration and billing-disabled $0-only operation before the session.
+- [ ] Owner verifies current provider/tester eligibility and applicable provider terms for the material being used.
 - [ ] Shared workspace contents are approved for tester access; no private owner material is unintentionally exposed.
 - [ ] Tester understands shared data/control access and owner visibility into their material/work.
 
-Broader external/multi-user beta requires closure of the [interpret API attempt-contract gap](ai_access_and_quota_policy.md#known-interpret-api-contract-gap). Genuine multi-user beta additionally requires the identity/ownership boundary in that policy; it is not authorized now.
-
-### Internal browser evidence completed so far
-
-- [x] Narrow mobile-width pass: Workshop, Saved outputs, and Knowledge views were checked at 393×852 without blocking overflow; stacked layouts remained usable. Navigation remains horizontally scrollable and discoverability polish is deferred.
-- [x] Core keyboard flow: source/search/Ask/Browse/filter/selection/Workshop handoff was exercised in Safari. Plain Tab behavior depends on Safari settings; Option+Tab/browser keyboard settings may be required for buttons.
-- [x] Missing-key states: Knowledge generation and Data & usage show clear unavailable/key-required messaging without a provider call.
-- [x] Storage lock prevents a duplicate server from using the same storage.
-- [x] Markdown export, manual revision, version preservation, comparison, and provenance display were exercised with real outputs.
-- [x] Internal quota-stop, failed-job recovery, and stale-running recovery acceptance completed.
-- [x] Fresh setup/full internal desktop happy path from a clean state completed.
-- [x] R8-08 hosted deployment/shareable access completed; hosted workflow and restart evidence recorded above.
-- [ ] R8-09 external beta test: another person must complete the workflow and provide feedback.
-- [ ] R8-10 final release decision remains pending.
-
 Tester: ______  Date: ______  OS/browser: ______  Result: ______
 
-- [ ] Create a library, add a source file and process it without a terminal.
-- [ ] Interpret a chunk, understand progress, and recover a failed/stale job.
-- [ ] Search within a library and select knowledge; switching libraries must clear incompatible selections.
-- [ ] Preview a brief and generate a saved output. A missing key/quota must show a clear message without losing completed work.
-- [ ] Read applied evidence separately from design choices; revise and compare history.
-- [ ] Export the result and locate usage/data controls.
-- [ ] Complete the flow using keyboard navigation with visible focus and meaningful labels.
-- [ ] Check desktop and narrow mobile widths for clipped fields, unreadable text, and horizontal page overflow.
-- [ ] Have someone other than the builder complete the main workflow and record feedback below.
+- [ ] Add material and understand save/read/preparation progress without terminal access.
+- [ ] Ask/interrogate knowledge and understand the scope/evidence being used.
+- [ ] Compare or synthesize across more than one relevant source.
+- [ ] Use Create to turn a natural request into a grounded useful output.
+- [ ] Distinguish source-grounded material from KE interpretation/design choices.
+- [ ] Save, revise, compare and export work.
+- [ ] Recover from at least one realistic interruption or unavailable state without losing completed work.
+- [ ] Complete the core flow on desktop without confusing internal/schema terminology.
+- [ ] Record qualitative feedback on usefulness, trust, speed and places where the system asks too much of the user.
 
-The automated suite exercises a live localhost server, demo seeding and server restart within its test process. Internal responsive/keyboard evidence is recorded above; external-user acceptance remains a separate manual gate.
+## Open beta usability risk — performance
 
-Feedback: task attempted, expected result, actual result, screenshot if useful, severity, and suggested change. Do not attach private source books or API keys to public issues.
+Reliability is no longer the only concern. Large-book addition/preparation and some Library/material rendering are currently slow enough to affect the beta experience.
 
-Release gate: **A2 real-output acceptance is complete.** Complete the external-tester check, resolve or explicitly defer critical defects, and then record the final v1 beta decision. The completed real-book extraction/audit work is also no longer a release blocker.
+Do not guess that paid infrastructure is the complete fix. The next technical step is to profile the pipeline by stage: upload, artifact persistence, extraction, chunking, provider latency/retries, validation, hosted-state persistence/reconciliation, source-summary aggregation and browser rendering.
+
+Use a small source, a large book and the current multi-book library as the benchmark set. See [Performance plan](performance_plan.md).
+
+Performance profiling should run alongside product-value acceptance; optimization should follow measured bottlenecks and must not weaken provenance, validation or safe recovery.
+
+## Final release gate
+
+The current product is **internally accepted as a private hosted beta**, not yet an externally validated v1 beta.
+
+Remaining material gates:
+
+1. Complete a real product-value test showing that KE materially helps a user **understand → interrogate → compare → apply** knowledge to a consequential decision, not merely summarize sources.
+2. Establish a measured performance baseline and identify the dominant latency costs before changing infrastructure or processing architecture.
+3. Have at least one external tester complete the core workflow and record feedback.
+4. Resolve or explicitly defer any critical defects or usability blockers discovered in those tests.
+5. Record the final v1 beta release decision.
+
+Release principle: a passing automated suite proves software behavior; it does not prove that the knowledge experience is useful, understandable or fast enough.

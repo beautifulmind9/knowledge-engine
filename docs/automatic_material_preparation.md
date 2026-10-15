@@ -42,6 +42,37 @@ incomplete. They do not establish a provider root cause. Durable client-stop
 diagnostics and per-attempt attribution remain outside this slice. No source text
 or provider bodies are retained in client diagnostic state.
 
+## Multi-material production observation
+
+A real hosted multi-book run on 2026-10-15 confirmed the distinction between
+**material durability** and **preparation autonomy**. Several books could be
+saved/read and their completed parts persisted successfully, but preparation was
+still dispatched serially in the foreground. During the run Render deployed a
+new service process and shut down the prior process. The active foreground
+preparation dispatcher did not survive that process lifecycle even though
+already committed source state and completed knowledge did.
+
+The user-visible result can therefore be mixed: some healthy books may reach
+**Ready**, while other healthy books remain partially prepared and require an
+explicit **Continue preparing** action. That partial state does not by itself mean
+the file, extraction or prior knowledge failed. It can simply mean the foreground
+run ended before all remaining parts were dispatched.
+
+For product language and acceptance, distinguish at least:
+
+- **Ready** — all currently required preparation is complete;
+- **Continue preparing / Partially prepared** — saved material and completed
+  knowledge are usable, but remaining parts still need dispatch;
+- **Needs attention** — an actual file, extraction, provider, storage or other
+  failure requires user action or investigation.
+
+The current implementation does not provide a durable background ingestion queue.
+A deployment, server restart, navigation away from the preparation context or
+other foreground-run termination can stop future dispatch while preserving
+completed work. Whether durable/background preparation is required for the MVP
+is a usability/performance decision to be made from measured real use, not an
+assumption that current partial states are data-loss defects.
+
 ## Hosted concurrency and recovery
 
 Hosted persistence uses an optimistic revision check. Material preparation may
@@ -79,7 +110,9 @@ more delay, while larger libraries can make summary/render paths heavier.
 Performance is now an explicit beta concern. The next step is to measure upload,
 extraction, chunking, provider, validation, persistence, aggregation and browser
 render time separately before changing architecture or paying for infrastructure.
-See [Performance plan](performance_plan.md).
+The real multi-book interruption above also means the benchmark must measure not
+only raw speed but the cost of serial foreground dispatch and recovery after a
+process/session interruption. See [Performance plan](performance_plan.md).
 
 ## Internal support
 

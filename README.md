@@ -106,6 +106,10 @@ Hosted production acceptance subsequently confirmed:
 - a real first-attempt Gemini HTTP 503 can recover through the one permitted identical retry while Render remains healthy;
 - preparation continues after that successful retry.
 
+A later real multi-book ingestion run confirmed an important remaining lifecycle limitation: **material durability is stronger than preparation autonomy**. Multiple books can be safely saved/read and completed parts remain committed, but AI preparation is still foreground and serial. A Render deployment/restart during the run stopped the active dispatcher while preserving already saved records and completed knowledge. Some healthy books reached **Ready** while other healthy books remained partially prepared until explicitly continued. That state is not, by itself, evidence that the material failed.
+
+The current product should therefore distinguish **Ready**, **Partially prepared / Continue preparing**, and genuine **Needs attention** states. KE does not yet provide a durable background ingestion queue; whether that becomes a pre-MVP requirement depends on measured multi-book usability rather than on data-loss risk.
+
 The implementation checkpoint reported **950 backend tests passed** and **172 frontend tests passed** before production acceptance.
 
 ## Current product status
@@ -120,7 +124,7 @@ The current next sequence is:
 
 **measure performance → test knowledge usefulness on a real decision → optimize measured bottlenecks → external tester → final v1 beta decision**
 
-Large-book preparation and some Library/material rendering are currently too slow for the intended experience. Do not assume paid infrastructure alone is the answer; profile upload, extraction, chunking, provider latency/retries, validation, persistence, aggregation and browser rendering first. See [Performance plan](docs/performance_plan.md).
+Large-book preparation and some Library/material rendering are currently too slow for the intended experience. Multi-material use also requires explicit continuation after some foreground/process interruptions. Do not assume paid infrastructure alone is the answer; profile upload, extraction, chunking, provider latency/retries, validation, persistence, aggregation, foreground dispatch/recovery and browser rendering first. See [Performance plan](docs/performance_plan.md).
 
 ## Current docs
 

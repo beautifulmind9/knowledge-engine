@@ -2,7 +2,7 @@
 
 Date: 2026-10-15. Decision: **private hosted beta live and internally accepted; external tester evidence and final v1 beta decision remain pending**.
 
-The current private hosted beta runs on Render with Supabase Postgres + private Supabase Storage. The $0 development target, Gemini free-tier-only rule, no paid fallback, and hosted daily app cap of 20 remain in force.
+The current private hosted beta runs on Render with Supabase Postgres + private Supabase Storage. The $0 development target, Gemini free-tier-only rule, no paid fallback, and hosted cap of 450 provider attempts per Pacific day remain in force. This leaves a 50-attempt margin below Gemini 3.1 Flash Lite's active 500 RPD AI Studio Free-tier limit; every attempt counts, including the bounded second attempt after a confirmed 503.
 
 The latest reliability work closed the material-add/delete and hosted-state concurrency incidents that were blocking realistic multi-book use. Real hosted acceptance then confirmed the originally failing workflow: one book continued preparing while another book was added, both records survived, and the first book retained its progress. A real Gemini first-attempt HTTP 503 also recovered through the bounded identical second attempt while Render health stayed 200 and preparation continued.
 
@@ -79,7 +79,7 @@ The concurrency and provider-retry incident paths are closed unless new producti
 
 ### Required before external invitation
 
-Use the settled one-tester AI access policy: one trusted tester at a time, KE-owned server credential, shared 20 admitted attempts per Pacific day, no personal-account or personal-allowance claim. Different browser sessions do not isolate data. No tester AI Studio account/key is required.
+Use the settled one-tester AI access policy: one trusted tester at a time, KE-owned server credential, shared 450 provider attempts per Pacific day, no personal-account or personal-allowance claim. Every actual provider attempt counts, including the bounded second attempt after a confirmed 503. Different browser sessions do not isolate data. No tester AI Studio account/key is required.
 
 - [ ] Owner verifies current live hosted cap/configuration and billing-disabled $0-only operation before the session.
 - [ ] Owner verifies current provider/tester eligibility and applicable provider terms for the material being used.

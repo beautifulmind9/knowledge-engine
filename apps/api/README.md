@@ -102,7 +102,7 @@ after Host validation, reflecting Render TLS termination without trusting client
 forwarding headers. Public ingress must be the HTTPS edge. Local host/scheme
 defaults remain unchanged.
 
-As of **2026-10-08**, the [private Render beta](https://knowledge-engine-sb50.onrender.com/) is live on application commit **693511e**, using **Supabase Postgres + private Supabase Storage**, with the beta gate verified. R8-08 is complete; R8-09 external testing and R8-10 final release decision remain pending. Hosted Gemini remains free-tier-only with no paid fallback, a daily app cap of 20, and a $0 target. See the [hosted acceptance evidence](../../docs/release_acceptance_backlog.md#current-release-decision).
+As of **2026-10-08**, the [private Render beta](https://knowledge-engine-sb50.onrender.com/) was live on application commit **693511e**, using **Supabase Postgres + private Supabase Storage**, with the beta gate verified. That historical deployment used a daily app cap of 20. The current Render configuration, confirmed **2026-10-15**, is 450 provider attempts per Pacific day, leaving a 50-attempt margin below the active Gemini 3.1 Flash Lite Free-tier limit of 500 RPD. Every actual attempt counts, including the bounded second attempt after a confirmed 503. R8-08 is complete; R8-09 external testing and R8-10 final release decision remain pending. Hosted Gemini remains free-tier-only with no paid fallback and a $0 target. See the [hosted acceptance evidence](../../docs/release_acceptance_backlog.md#current-release-decision).
 
 Auth tests inject a gate into the local app without
 Postgres/Storage connections. Existing offline network guards remain active.

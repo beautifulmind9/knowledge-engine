@@ -4,9 +4,9 @@
 
 **Private hosted beta live; internally accepted, not yet an externally validated v1 beta.**
 
-Verified hosted acceptance on **2026-10-08**: the private Render beta is live at [knowledge-engine-sb50.onrender.com](https://knowledge-engine-sb50.onrender.com/), deployed commit **693511e**, using **Supabase Postgres + private Supabase Storage**. The beta access gate works. Source upload, extract/chunk, one-chunk Gemini interpretation, knowledge browse/selection, Workshop generation, saved output, restart persistence, Markdown export, manual revision, version history, and comparison were exercised successfully.
+Verified hosted acceptance on **2026-10-08**: the private Render beta was live at [knowledge-engine-sb50.onrender.com](https://knowledge-engine-sb50.onrender.com/), deployed commit **693511e**, using **Supabase Postgres + private Supabase Storage**. The beta access gate works. Source upload, extract/chunk, one-chunk Gemini interpretation, knowledge browse/selection, Workshop generation, saved output, restart persistence, Markdown export, manual revision, version history, and comparison were exercised successfully.
 
-The hosted Gemini guardrail requires **free-tier confirmed only**, with **no paid fallback** and a **daily app cap of 20**. Hosted acceptance used **exactly 2 Gemini calls**; manual revisions and export did not increase usage, and restart did not reset usage accounting. The development cost target remains **$0**.
+At that historical 2026-10-08 acceptance, the hosted Gemini guardrail used a **daily app cap of 20**. Hosted acceptance used **exactly 2 Gemini calls**; manual revisions and export did not increase usage, and restart did not reset usage accounting. The current Render configuration is `GEMINI_DAILY_CALL_LIMIT=450` provider attempts per Pacific day, leaving 50 below the active 500 RPD Gemini 3.1 Flash Lite Free-tier limit. The $0 target and no-paid-fallback rule remain in force.
 
 The title-only revision regression is fixed live: **v4 compared with v1 reports only `title`**, with content and design choices unchanged. Frontend fix: **693511e**; backend fix: **971c449**. After the backend fix, the full backend suite reported **760 passed, 3 unchanged upstream dependency deprecation warnings**. After the browser fix, frontend verification reported **34 passed**, including **6 focused output-revision tests**.
 
@@ -16,7 +16,7 @@ The original Remaining Sprint 1–8 backlog remains the historical feature scope
 
 ## Product rules
 
-The [AI access and quota policy](ai_access_and_quota_policy.md) settles the immediate shared one-tester acceptance boundary and future identifiable-beta requirements. Ordinary users never need provider keys. The hosted allowance remains shared at 20 admitted attempts/Pacific day; future personal/global/minute limits are policy, not current enforcement. Track the documented `max_chunks > 1` API gap before broader external/multi-user beta: the accepted UI is single-attempt, but a direct interpret API request can orchestrate multiple attempts. No route or quota implementation change is authorized by this documentation checkpoint.
+The [AI access and quota policy](ai_access_and_quota_policy.md) settles the immediate shared one-tester acceptance boundary and future identifiable-beta requirements. Ordinary users never need provider keys. The current hosted allowance is shared at 450 provider attempts per Pacific day; future personal/global/minute limits are policy, not current enforcement. Every actual provider attempt counts, including a bounded identical retry after a confirmed 503. Track the documented `max_chunks > 1` API gap before broader external/multi-user beta: the accepted UI is single-attempt, but a direct interpret API request can orchestrate multiple attempts. No route or quota implementation change is authorized by this documentation checkpoint.
 
 - Development cost target: **$0**.
 - Paid API billing and automatic paid fallback: **off**.

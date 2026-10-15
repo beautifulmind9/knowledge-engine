@@ -45,11 +45,16 @@ and application workers are explicitly limited to one.
 | `KNOWLEDGE_ENGINE_PUBLIC_HOST` | Self-reference to `RENDER_EXTERNAL_HOSTNAME` |
 | `PORT` | Automatically supplied by Render |
 
-The live hosted beta has Gemini configured with `GEMINI_FREE_TIER_CONFIRMED=true`
-and `GEMINI_DAILY_CALL_LIMIT=20`, free-tier only with no paid fallback and a $0
-cost target. The blueprint default remains unconfirmed; AI configuration is not
-needed at startup. Without a confirmed free-tier key, AI-required actions return
-a configuration error without calling a provider.
+At the historical 2026-10-08 deployment checkpoint, the live hosted beta had
+`GEMINI_DAILY_CALL_LIMIT=20`. The current Render configuration, confirmed
+2026-10-15, is `GEMINI_DAILY_CALL_LIMIT=450` provider attempts per Pacific day.
+This leaves a deliberate 50-attempt margin below the active 500 RPD Gemini 3.1
+Flash Lite AI Studio Free-tier limit, and every actual attempt counts, including
+the bounded second attempt after a confirmed 503. The deployment remains
+free-tier-only with no paid fallback and a $0 cost target. The blueprint default
+remains unconfirmed; AI configuration is not needed at startup. Without a
+confirmed free-tier key, AI-required actions return a configuration error
+without calling a provider.
 
 ## HTTPS, hosts, and health
 

@@ -14,7 +14,7 @@ Normal users do not need Google AI Studio accounts, Gemini keys, or provider con
 
 ## Immediate external acceptance
 
-Support one trusted external tester at a time using KE's server credential and a **shared hosted allowance of 20 admitted AI attempts per Pacific accounting day**. There is no personal allowance claim. Preserve $0-only operation and no paid fallback. There are no automatic semantic retries, repair calls, model fallbacks or prompt mutation. A user-authorized operation may make one additional identical provider attempt for an explicitly transient HTTP 503; each provider attempt is separately allowance-gated and counted, and uncertain transport outcomes are never automatically retried. There is no automatic continuation.
+Support one trusted external tester at a time using KE's server credential and a **shared hosted allowance of 450 provider attempts per Pacific accounting day**. The live Render configuration sets `GEMINI_DAILY_CALL_LIMIT=450`, leaving a deliberate 50-attempt margin below the active Gemini 3.1 Flash Lite AI Studio Free-tier limit of 500 RPD. Every actual provider attempt counts, including the bounded identical second attempt after a confirmed HTTP 503. There is no personal allowance claim. Preserve $0-only operation and no paid fallback. There are no automatic semantic retries, repair calls, model fallbacks or prompt mutation. A user-authorized operation may make one additional identical provider attempt for an explicitly transient HTTP 503; each provider attempt is separately allowance-gated and counted, and uncertain transport outcomes are never automatically retried. There is no automatic continuation.
 
 This is a shared acceptance workspace, not a private individual account. The shared-password gate provides no individual identity, per-user authorization, ownership, data isolation, AI attribution, or quota attribution. Different browser sessions do not create separate private users. Gate participants can access shared materials/work, private backup export and shared controls, including usage resume. The owner can access tester material. Logout clears browser cookies; copied sessions require expiry or password/signing-secret rotation to revoke.
 
@@ -34,7 +34,7 @@ The gateway uses one workspace usage counter, persisted with state: Postgres in 
 
 The accounting day follows `America/Los_Angeles`, including daylight-saving changes. The effective count resets when the day changes; the next admitted attempt persists the new day/count. A daily-cap pause ends with that reset. A persisted provider-quota pause requires explicit resume. Resume clears pause/reason, never the count, and cannot bypass the daily cap. A provider 429 currently can pause all AI even when caused by a temporary minute limit.
 
-`GEMINI_DAILY_CALL_LIMIT` currently replaces the gateway default of 450; hosted acceptance uses 20. **450 is currently a configurable default, not a hard ceiling.** The future ceiling below is a requirement to implement later, not a claim about current enforcement. External calls using the same provider project are not measured by KE.
+The live Render deployment currently sets `GEMINI_DAILY_CALL_LIMIT=450`, matching the gateway default and leaving 50 attempts below the provider's active 500 RPD limit. This is a configurable application cap, not an independently enforced immutable hard ceiling. The separate global ceiling below remains a future requirement for identifiable multi-user quota enforcement. External calls using the same provider project are not measured by KE.
 
 ## Attempt inventory
 
@@ -85,7 +85,7 @@ Initial policy for the first identifiable invited cohort, subject to later usage
 | Layer | Policy |
 | --- | --- |
 | Provider project ceiling | Externally governed and authoritative; currently verify in provider controls |
-| KE hard global daily safety ceiling | 450 admitted provider attempts per Pacific day |
+| Future KE hard global daily safety ceiling | 450 admitted provider attempts per Pacific day |
 | Configured deployment cap | May lower the effective ceiling, never raise it above 450 |
 | Initial personal allowance | 25 admitted AI attempts per user per Pacific day |
 | Initial cohort | Up to 8 invited users |
@@ -93,7 +93,7 @@ Initial policy for the first identifiable invited cohort, subject to later usage
 
 All admin/test attempts also count toward the global ceiling. Provider quota, KE global safety quota and personal product allowance are different boundaries. KE can reach a provider limit before its own allowance is exhausted. The earlier 50/user/day proposal is not the initial policy; reconsider only after observing real usage.
 
-These multi-user limits are **not implemented or authorized by this checkpoint**. Retain the current hosted 20-attempt cap. Prefer pre-dispatch temporary rejection with an explicit later user action over queues or automatic retries.
+These multi-user limits are **not implemented or authorized by this checkpoint**. The current hosted deployment cap is 450 provider attempts per Pacific day. Prefer pre-dispatch temporary rejection with an explicit later user action over queues or automatic retries.
 
 ### Future input protection
 

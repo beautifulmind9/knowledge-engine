@@ -27,7 +27,7 @@ To verify the build:
 .venv/bin/python -m pytest apps/api/tests -q
 ```
 
-Setup installs the tested versions in `apps/api/requirements-lock.txt`. The tests use isolated temporary data and fake provider responses. They never consume an AI quota. The SDK contract test uses the installed Google SDK against an in-memory HTTP transport.
+Setup installs the tested versions in `apps/api/requirements-lock.txt`. Automated tests use isolated temporary data and fake provider responses unless a test explicitly says otherwise; the normal suite does not consume Gemini quota.
 
 ## Try it without an AI key
 
@@ -37,85 +37,100 @@ With the app running, in another terminal:
 .venv/bin/python scripts/seed_demo.py
 ```
 
-Refresh the Library screen and choose **Knowledge Engine — synthetic demo**. It contains two original sample sources, manually imported knowledge, and a saved playbook with two versions. Open Knowledge to inspect evidence; open Workshop to preview retrieval across both sources; open Saved outputs to revise or export the playbook. Re-running the seed command leaves an existing demo unchanged.
+Refresh the Library screen and choose **Knowledge Engine — synthetic demo**. It contains two original sample sources, manually imported knowledge, and saved work. The demo is explicitly synthetic and manually authored; it does not pretend to be a model response.
 
-The demo is explicitly synthetic and manually authored. It does not pretend to be a model response. See [the beta test checklist](docs/beta_test_checklist.md) for the full acceptance exercise.
+See [the beta test checklist](docs/beta_test_checklist.md) for current acceptance status.
 
 ## Use Gemini within the zero-cost rule
 
-Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FREE_TIER_CONFIRMED=true` only after checking that the key belongs to a project with billing disabled. The application cannot inspect your billing configuration.
+Copy `.env.example` to `.env` and add your own `GEMINI_API_KEY`. Set `GEMINI_FREE_TIER_CONFIRMED=true` only after checking that the key belongs to a project with billing disabled. The application cannot independently inspect billing configuration.
+
+Current provider rules:
 
 - No automatic paid upgrade or paid-model fallback.
-- Each extraction or generation request makes at most one provider attempt. For the verified local free-tier project using Gemini 3.1 Flash Lite, AI Studio showed a 500 requests/day provider limit; Knowledge Engine keeps a conservative default local guardrail of **450 attempts per provider day**, aligned with Gemini's midnight Pacific RPD reset. Override `GEMINI_DAILY_CALL_LIMIT` only after checking the limits on your own project.
-- A quota error pauses further AI calls until you explicitly resume under **Data & usage**. Resuming cannot bypass the local daily cap.
-- Browser interpretation processes one chunk per action. The API can orchestrate up to ten chunks in one explicit run, but each chunk uses its own normal Gemini request and never shares source text with another chunk.
-- Shared-context multi-chunk extraction is intentionally not used in production because live probes showed under-extraction and cross-chunk evidence leakage.
-- Gemini's asynchronous Batch API is not used because the current Gemini Developer API free tier does not include Batch processing.
+- One source chunk is sent per extraction request; chunks never share model context.
+- No automatic semantic repair call, prompt mutation, or model fallback.
+- A confirmed Gemini HTTP 503 may receive **one additional identical attempt**, for at most two provider attempts total.
+- Every actual provider attempt is separately allowance-gated and counted.
+- HTTP 400, 429, validation failures, timeouts and uncertain transport outcomes are not automatically retried.
+- A quota error pauses further AI work until the user explicitly resumes within the permitted cap.
+- Gemini's asynchronous Batch API is not used because it is not available on the Developer API free tier used by this project.
 - A revision is either a manual edit with no provider call or one explicit AI request.
-- `GEMINI_MODEL` can override the configured model. Availability and free quota must be checked in your own project; no paid provider feature is required by the application.
 
-When you choose an AI action, the relevant source chunk or retrieved evidence and brief are sent to Google. Requests set `store=false` for interaction retrieval; this is not a guarantee about all provider logging or retention policies. Manual imports and the seeded demo do not send source content to an AI provider.
+Shared-context multi-chunk extraction is intentionally not used because live probes showed under-extraction and cross-chunk provenance leakage.
+
+When an AI action is chosen, the relevant source chunk or retrieved evidence and brief are sent to Google. Manual imports and the seeded demo do not send source content to an AI provider.
 
 ## Main workflow
 
-1. Create or select a library and add a supported file.
-2. Open its source page and choose **Extract & chunk**.
-3. Interpret chunks with Gemini using independent one-chunk requests, or download a structured prompt and import your result.
-4. Inspect the source audit, search consolidated knowledge, and select useful units.
-5. Enter a Workshop brief, preview the evidence and possible source tensions, then generate and save.
-6. Reopen saved work, make a new revision, compare versions, or export Markdown.
-7. Use Data & usage for quota state, integrity checks, and a private backup.
+1. Create or select a library and add supported material.
+2. KE safely saves and deterministically reads/chunks the material.
+3. Eligible material is prepared through independent one-chunk Gemini interpretation requests.
+4. Inspect, search, browse, or ask grounded questions across the resulting knowledge.
+5. Use Create / Workshop to turn a natural request plus relevant knowledge into a grounded output.
+6. Save, revise, compare, and export the result with provenance.
+7. Use Data & usage for quota state, integrity checks, and private backup.
 
-Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CSV, and JSON, up to 50 MB (50,000,000 bytes) per file. Scanned PDFs need OCR, which is not implemented. Markdown, HTML, EPUB and DOCX headings are retained as section hints. EPUB follows spine reading order; DOCX preserves paragraph/table order. PDF chapter inference remains limited.
+Supported uploads: PDF with selectable text, EPUB, DOCX, TXT, Markdown, HTML, CSV, and JSON, up to **50,000,000 bytes per file**. Scanned PDFs need OCR, which is not implemented. Markdown, HTML, EPUB and DOCX headings are retained as section hints. PDF chapter inference remains limited.
 
 ## Architecture and storage
 
 | Location | Responsibility |
 |---|---|
 | `apps/api/app` | API, extraction, retrieval, generation, persistence and controls |
-| `apps/web` | Dependency-free browser UI and API client |
-| `apps/api/tests` | API, error-path, SDK contract, backup and restart regression tests |
-| `examples` | Original, synthetic, public-safe source material |
-| `scripts` | Setup, local launcher and no-API demo seed |
-| `docs` | Architecture, product vision, sprint status, storage decisions and beta acceptance |
+| `apps/web` | Browser UI and API client |
+| `apps/api/tests` | API, persistence, error-path, quota and regression tests |
+| `examples` | Original synthetic public-safe source material |
+| `scripts` | Setup, local launcher, browser acceptance and demo tooling |
+| `docs` | Product vision, architecture, acceptance, performance and operating decisions |
 
-In local mode, records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text, and chunks live alongside it in `apps/api/storage`, or at the absolute `KNOWLEDGE_ENGINE_STORAGE` path you configure. A first launch migrates legacy `state.json` without modifying that original file. Corrupt state stops loading rather than silently replacing data.
+In local mode, records persist as a transactionally replaced SQLite snapshot. Uploads, extracted text and chunks live under the configured private storage root.
 
-Run exactly one server worker. Locally, a process lock prevents simultaneous servers using the same storage, and requests are serialized. Long AI requests can temporarily delay other actions. Local development stays bound to localhost. Hosted mode uses a shared-password private-beta gate with signed sessions and CSRF protection, Supabase Postgres/Storage, and an explicitly configured HTTPS hostname. It has no user accounts or multi-user authorization. [Render configuration](docs/render_deployment.md) describes the live free service without a persistent disk.
+Hosted mode uses **Supabase Postgres + private Supabase Storage**. Whole-workspace state snapshots use optimistic revision protection. When independent hosted writes race, KE can conservatively rebase and retry the **state save only**; persistence reconciliation does not rerun Gemini, extraction, upload, artifact publication or allowance admission. Overlapping changes fail closed rather than silently choosing a winner.
 
-As of **2026-10-08**, the [private Render beta](https://knowledge-engine-sb50.onrender.com/) is live on application commit **693511e**, using **Supabase Postgres + private Supabase Storage**, with the beta access gate verified. R8-08 is complete; R8-09 external testing and R8-10 final release decision remain pending. The hosted app retains the **$0 target, Gemini free-tier-only, no paid fallback, and daily app cap of 20**. See the [hosted acceptance evidence](docs/release_acceptance_backlog.md#current-release-decision).
+Source deletion persists the logical deletion before artifact cleanup. If state persistence fails, artifacts are left untouched. If cleanup fails after a durable logical deletion, the source remains deleted and an orphaned private artifact may remain for later housekeeping rather than restoring a broken source record.
 
-Back up under Data & usage. The ZIP includes private source files and saved work; keep it private. Restore into a **new empty directory**, set `KNOWLEDGE_ENGINE_STORAGE` to the extracted storage folder, and start the server. Do not overwrite a live SQLite database. See [storage and privacy](docs/storage_and_privacy.md).
+See [Architecture](docs/architecture.md) for the full persistence and reconciliation rules.
 
-## Current validation snapshot
+## Hosted beta status
 
-The real *Workshop Survival Guide* source is complete at **46/46 chunks**. The latest active set contains **121 Knowledge Assets**, with **0 missing evidence**, **0 missing keywords**, and **13 evidence-review items** retained as a manual review queue rather than known defects. The confidence distribution is 83 assets at 5 and 38 at 3.
+The private Render beta is live using Supabase persistence and the shared-password beta gate. The latest reliability implementation checkpoint on `feature/knowledge-assets` closed the material lifecycle and concurrent hosted-state failures at:
 
-A live strict single-chunk control returned the expected five valid assets for chunk 007. A known compound crowd-recovery asset was repaired deterministically so `Talking in circles` and `Borrowing goodwill` are now separate atomic assets with correct chunk provenance.
+- `656406e878a73d910aa2fd1f03abec20374bdf55` — material add/delete lifecycle safety
+- `87b38de4c041bf9707339dabc8c34d882f47d9b5` — concurrent hosted-state reconciliation
 
-Shared grounding review is currently at **report version 8**. Current automated results are recorded with the [release acceptance evidence](docs/release_acceptance_backlog.md#current-verification-baseline). Real-provider A2 acceptance covered Workshop Plan, Decision Brief, Study Guide, and Research / Synthesis, including a same-task two-source comparison.
+Hosted production acceptance subsequently confirmed:
 
-For that two-source acceptance exercise, *Made to Stick* was intentionally interpreted only far enough to provide a legitimate second current-pipeline source: **10 of 91 chunks**, yielding **38 active assets / 35 consolidated Knowledge Units**. This is acceptance-scope evidence, not a claim that the full source has been interpreted or audited.
+- one book can continue preparing while another book is added without the prior stale-revision failure;
+- both books and previously saved preparation progress survive;
+- a real first-attempt Gemini HTTP 503 can recover through the one permitted identical retry while Render remains healthy;
+- preparation continues after that successful retry.
 
-## Readiness
+The implementation checkpoint reported **950 backend tests passed** and **172 frontend tests passed** before production acceptance.
 
-The implementation covers all eight remaining sprint areas. Real-source extraction/audit acceptance and **Acceptance Sprint A2 (real-model output and multi-source quality) are complete**. **The full v1 beta acceptance gates are still not closed.** Remaining material gates are A3 release-readiness work:
+## Current product status
 
-- one external tester completing the core workflow;
-- resolution or explicit deferral of critical defects followed by the final v1 beta decision.
+Real-source extraction acceptance is complete for *The Workshop Survival Guide* at **46/46 chunks** with **121 active Knowledge Assets**, zero missing evidence, zero missing keywords, and 13 manual evidence-review items retained rather than classified as known defects.
 
-Fresh setup, internal desktop/error-state acceptance, hosted workflow/restart acceptance, a narrow mobile-width pass, and the core keyboard workflow have already been exercised internally; they are not substitutes for the external-user acceptance gate.
+Real-output acceptance has covered Workshop Plan, Decision Brief, Study Guide and Research / Synthesis, including manual revision and a meaningful two-source comparison. Deterministic grounding checks remain conservative review signals rather than semantic proof.
 
-Lexical agreement/tension flags and structural output checks assist review; they do not establish semantic correctness.
+The private hosted beta is now internally reliable enough to return focus to product value. The remaining v1 beta work is not another extraction rewrite. It is to prove that the knowledge experience is useful, understandable and fast enough for real use.
 
-Workshop quality reports check top-level agenda timings and exclude nested notes and later sections. Component durations are reconciled, and differing practice/role-play timings across sections are flagged for review. Malformed timestamps require review; saved outputs can be rechecked without a Gemini call. See [timing validation](docs/workshop_timing_validation.md).
+The current next sequence is:
+
+**measure performance → test knowledge usefulness on a real decision → optimize measured bottlenecks → external tester → final v1 beta decision**
+
+Large-book preparation and some Library/material rendering are currently too slow for the intended experience. Do not assume paid infrastructure alone is the answer; profile upload, extraction, chunking, provider latency/retries, validation, persistence, aggregation and browser rendering first. See [Performance plan](docs/performance_plan.md).
+
+## Current docs
 
 - [Product vision](docs/product_vision.md)
 - [Architecture](docs/architecture.md)
-- [Item-level sprint status](docs/sprint_status.md)
+- [Automatic material preparation](docs/automatic_material_preparation.md)
+- [Performance plan](docs/performance_plan.md)
+- [Beta release checklist](docs/beta_test_checklist.md)
 - [Release acceptance backlog](docs/release_acceptance_backlog.md)
-- [Release decision and test checklist](docs/beta_test_checklist.md)
-- [Original remaining sprint backlog](docs/remaining_sprint_backlog.md)
+- [Sprint status](docs/sprint_status.md)
 
 ## Ownership and licensing
 

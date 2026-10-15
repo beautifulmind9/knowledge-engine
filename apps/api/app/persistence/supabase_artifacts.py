@@ -14,6 +14,7 @@ from tempfile import TemporaryDirectory, TemporaryFile
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+from app.services.performance_timing import start as timing_start, emit as timing_emit
 
 
 class HostedArtifactStoreError(RuntimeError):
@@ -83,22 +84,37 @@ class SupabaseArtifactStore:
         return "/object/" + quote(self._bucket, safe="") + "/" + quote(self._key(path), safe="/")
 
     def _request(self, method: str, route: str, *, data=None, payload=None, missing_ok=False):
+        started = timing_start()
         headers = {"apikey": self._secret_key}
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         elif data is not None:
             headers.update({"Content-Type": "application/octet-stream", "x-upsert": "true"})
+        request_bytes = len(data) if data is not None else 0
+        operation = ("metadata_list" if route.startswith("/object/list/") else
+                     "artifact_read" if method == "GET" else
+                     "artifact_delete" if method == "DELETE" else
+                     "artifact_write" if method == "POST" and payload is None else
+                     "metadata_request")
         request = Request(self._url + route, data=data, headers=headers, method=method)
         try:
             # No redirects: never forward privileged credentials to another origin.
             with build_opener(_NoRedirect()).open(request, timeout=30) as response:
-                return response.read()
+                body = response.read()
+                timing_emit("storage_request", started, result="success",
+                            destination_category="artifact", operation_category=operation,
+                            request_payload_bytes=request_bytes, response_payload_bytes=len(body))
+                return body
         except HTTPError as error:
             with error:
                 try:
-                    body = json.loads(error.read())
+                    error_body = error.read()
+                    body = json.loads(error_body)
                 except (HTTPException, URLError, OSError):
+                    timing_emit("storage_request", started, result="http_error",
+                                destination_category="artifact", operation_category=operation,
+                                request_payload_bytes=request_bytes, http_status=error.code)
                     raise HostedArtifactTransportError("Hosted artifact transport failed.") from None
                 except ValueError:
                     body = {}
@@ -108,9 +124,20 @@ class SupabaseArtifactStore:
                     (body.get("code") == "NoSuchKey" or
                      (not body.get("code") and body.get("error") == "not_found" and
                       body.get("message") == "Object not found"))):
+                timing_emit("storage_request", started, result="not_found",
+                            destination_category="artifact", operation_category=operation,
+                            request_payload_bytes=request_bytes, response_payload_bytes=len(error_body),
+                            http_status=error.code)
                 return None
+            timing_emit("storage_request", started, result="http_error",
+                        destination_category="artifact", operation_category=operation,
+                        request_payload_bytes=request_bytes, response_payload_bytes=len(error_body),
+                        http_status=error.code)
             raise HostedArtifactStoreError("Hosted artifact operation failed.") from None
         except (HTTPException, URLError, OSError, ValueError):
+            timing_emit("storage_request", started, result="transport_error",
+                        destination_category="artifact", operation_category=operation,
+                        request_payload_bytes=request_bytes)
             raise HostedArtifactTransportError("Hosted artifact transport failed.") from None
 
     def _list(self, prefix, *, search=None, offset=0):

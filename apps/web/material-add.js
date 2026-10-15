@@ -60,6 +60,9 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
   if (!draft.title.trim()) throw Error('Enter a title for this material.');
   if (!draft.libraryId && !draft.libraryName.trim()) throw Error('Enter a destination name.');
   if (draft.busy) return false;
+  const timingNow=()=>{try{return globalThis.performance?.now?.()??Date.now();}catch{return Date.now();}};
+  const timing=(event,start,extra={})=>{try{console.info('KE_PERF',{event,duration_ms:Math.round((timingNow()-start)*100)/100,...extra});}catch{}};
+  const flowStarted=timingNow();let savedAt=draft.__keTimingSavedAt??(draft.uploaded?flowStarted:null);
   draft.busy=true;draft.error=null;
   let stage='destination';
   try {
@@ -80,15 +83,22 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
       progress('Uploading material…');
       await api(`/sources/${draft.sourceId}/upload`,{method:'POST',body:makeUpload(draft.file)});
       draft.uploaded=true;draft.replacementSelected=false;
+      draft.__keTimingSavedAt=timingNow();
+      draft.__keTimingUploadedAt=draft.__keTimingSavedAt;
+      savedAt=draft.__keTimingSavedAt;
+      timing('material_safely_saved',flowStarted,{source_id:draft.sourceId,file_size_bytes:draft.file?.size,result:'success'});
     }
     stage='read';
     if (!draft.read) {
       progress('Reading source…');
       await api(`/sources/${draft.sourceId}/process`,{method:'POST'});
       draft.read=true;draft.readFailure=null;
+      draft.__keTimingReadAt=timingNow();
+      timing('material_read_complete',savedAt??flowStarted,{source_id:draft.sourceId,result:'success'});
     }
     return true;
   } catch(error) {
+    timing('material_add_stage',flowStarted,{source_id:draft.sourceId||undefined,stage,result:'error'});
     if(stage==='read'){
       // Trust the structured server classification, never parser-message matching.
       const summary=await api(`/sources/${draft.sourceId}/summary`).catch(()=>null);
@@ -104,10 +114,18 @@ export async function addMaterial(draft, api, makeUpload, progress=()=>{}) {
 export async function addMaterials(batch, api, makeUpload, progress=()=>{}) {
   if(batch.busy)return {added:0,failed:0,results:[]};
   batch.busy=true;
+  const perfNow=()=>{try{return globalThis.performance?.now?.()??Date.now();}catch{return Date.now();}};
+  const batchStarted=perfNow();
+  const selected=batch.items.filter(item=>!item.read).length;
+  try{console.info('KE_PERF',{event:'material_batch_start',selected_count:selected});}catch{}
   const results=[];
   let destinationUnavailable=false;
+  let queuePosition=0;
   try {
     for(const draft of batch.items.filter(item=>!item.read)){
+      queuePosition++;
+      const queuedAt=perfNow();
+      try{console.info('KE_PERF',{event:'material_batch_item',source_id:draft.sourceId||undefined,queue_position:queuePosition,selected_count:selected});}catch{}
       draft.libraryId=batch.libraryId;draft.libraryName=batch.libraryName;
       if(destinationUnavailable){
         draft.error={stage:'destination',message:'The destination could not be created. This material was not added.'};
@@ -122,7 +140,8 @@ export async function addMaterials(batch, api, makeUpload, progress=()=>{}) {
         else if(draft.error?.stage==='destination')destinationUnavailable=true;
         results.push({draft,ok:false,error});
       }
+      try{console.info('KE_PERF',{event:'material_batch_item_complete',source_id:draft.sourceId||undefined,queue_position:queuePosition,item_elapsed_ms:Math.round((perfNow()-queuedAt)*100)/100,result:draft.read?'read':'error'});}catch{}
     }
     return {added:results.filter(result=>result.ok).length,failed:results.filter(result=>!result.ok).length,results};
-  }finally{batch.busy=false;}
+  }finally{batch.busy=false;try{console.info('KE_PERF',{event:'material_batch_complete',selected_count:selected,saved_count:results.filter(x=>x.draft.uploaded).length,read_count:results.filter(x=>x.ok).length,duration_ms:Math.round((perfNow()-batchStarted)*100)/100});}catch{}}
 }

@@ -10,6 +10,7 @@ export function buildQuantity(remainingParts, usage) {
 }
 
 export function createKnowledgeBuild({sourceId, remainingParts, usage, authorizationLimit = Infinity, api, isActive = () => true, onProgress = () => {}}) {
+  const performanceNow=()=>{try{return globalThis.performance?.now?.()??Date.now();}catch{return Date.now();}};
   const authorized = Math.max(0, Math.min(buildQuantity(remainingParts, usage), authorizationLimit));
   if (!Number.isInteger(authorized)) throw Error('Build authorization must be a whole number of parts.');
   let completed = 0, started = 0, inFlight = false, stopRequested = false, status = 'idle', summary = null, summaryUnavailable = false, refreshNeeded = true, promise, interruptionCategory=null;
@@ -45,7 +46,9 @@ export function createKnowledgeBuild({sourceId, remainingParts, usage, authoriza
       else if (result?.processed_this_run !== 1) status = 'uncertain';
       else if (stopRequested) status = 'stopped';
       else if (completed === authorized) status = 'completed';
+      const interpretationReceivedAt=performanceNow();
       notify();
+      try{console.info('KE_PERF',{event:'interpretation_to_visible_progress',source_id:sourceId,result:'response_received',duration_ms:Math.round((performanceNow()-interpretationReceivedAt)*100)/100});}catch{}
       if (result?.processed_this_run === 1 && !result.stopped_reason && isActive()) {
         await refreshSummary();
         if (!isActive()) status = 'left';

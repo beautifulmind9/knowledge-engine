@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 import fcntl
+from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +12,7 @@ from app.db.persistence import STORAGE_ROOT
 from app.persistence.factory import PERSISTENCE_MODE
 from app.beta_access import BetaAccess, same_origin, router as beta_router
 from app.deployment import public_host, local_https_forwarding_host, LOCAL_HOSTS, HostedHTTPSMiddleware
+from app.services.performance_timing import start as _timing_start, emit as _timing_emit, operation_context
 
 # Validate the gate before router imports can load hosted state.
 beta_access = BetaAccess.from_environment(PERSISTENCE_MODE)
@@ -51,6 +53,30 @@ request_lock=asyncio.Lock()
 
 @app.middleware("http")
 async def local_requests(request:Request,call_next):
+    timing_started = _timing_start()
+    request_id=None
+    async def invoke_route():
+        nonlocal request_id
+        path=request.url.path
+        parts=path.split("/")
+        suffix=parts[3] if len(parts)>3 else None
+        source_id=parts[2] if len(parts)>2 and parts[1]=="sources" and parts[2]!="summaries" else None
+        categories={"interpret":"material_preparation_request","summary":"source_summary_request",
+                    "summaries":"library_source_summaries","process":"source_read_request",
+                    "extract":"source_extraction_request","chunk":"source_chunk_request",
+                    "upload":"source_upload_request"}
+        operation="library_source_summaries" if path=="/sources/summaries" else categories.get(suffix)
+        if operation:
+            try:
+                request_id=uuid4().hex
+            except Exception:
+                request_id=None
+            context={"request_id":request_id,"operation_category":operation}
+            if source_id:
+                context["source_id"]=source_id
+            with operation_context(**context):
+                return await call_next(request)
+        return await call_next(request)
     if not same_origin(request, https_forwarding_host=local_forwarding_host):
         response = JSONResponse({"detail":"Cross-origin access is disabled for this local private beta."}, status_code=403)
     else:
@@ -59,13 +85,24 @@ async def local_requests(request:Request,call_next):
         if response is None:
             if request.method == "GET" and request.url.path == "/health":
                 # Pure process liveness must remain responsive during provider work.
-                response=await call_next(request)
+                response=await invoke_route()
             else:
                 async with request_lock:
-                    response=await call_next(request)
+                    response=await invoke_route()
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["Cache-Control"]="no-store"
     response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    path=request.url.path
+    event=("material_preparation_request" if path.endswith("/interpret") else
+           "source_create_request" if path=="/sources" and request.method=="POST" else
+           "source_upload_request" if path.endswith("/upload") else
+           "source_read_request" if path.endswith("/process") else
+           "source_extraction_request_total" if path.endswith("/extract") else
+           "source_chunk_request_total" if path.endswith("/chunk") else None)
+    pieces=path.split("/")
+    source_id=pieces[2] if len(pieces)>2 and pieces[1]=="sources" else None
+    if event:
+        _timing_emit(event,timing_started,result="success" if response.status_code<400 else "http_error",method=request.method,endpoint=path,source_id=source_id,request_id=request_id)
     return response
 
 # Outer hosted ingress validation also covers early authentication responses.

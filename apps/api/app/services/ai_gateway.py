@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from google import genai
 from app.db.mock_data import usage
+from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 
 logger = logging.getLogger(__name__)
@@ -201,8 +202,11 @@ def generate(model, payload, schema):
     # retry sends byte-for-byte equivalent provider arguments.
     provider_input = json.dumps(payload, ensure_ascii=False)
     response_format = {"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)}
+    provider_input_bytes = utf8_size(provider_input)
+    response_contract_bytes = utf8_size(json.dumps(response_format))
 
     for attempt_number in range(1, _MAX_PROVIDER_ATTEMPTS + 1):
+        attempt_started = timing_start()
         # Each dispatch, including the one permitted transient retry, is a new
         # independently admitted and persisted allowance attempt.
         with _attempt_admission_lock:
@@ -222,17 +226,36 @@ def generate(model, payload, schema):
             "retry_reason": retry_reason,
         }
         logger.info("Gemini provider attempt admitted: %s", json.dumps(attempt_metadata, sort_keys=True))
+        attempt_started = timing_start()
         try:
             with genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={"timeout": 60000, "retry_options": {"attempts": 1}}) as client:
                 interactions = client.interactions
                 # Disable SDK-level retries; only this gateway's single
                 # confirmed-503 retry is permitted.
                 interactions.sdk_configuration.retry_config.strategy = "none"
-                return interactions.create(model=model, input=provider_input, store=False,
+                response = interactions.create(model=model, input=provider_input, store=False,
                     response_format=response_format)
+                timing_emit("gemini_attempt", attempt_started, source_id=payload.get("source_id"),
+                            chunk_id=payload.get("chunk_id"), attempt_number=attempt_number,
+                            attempt_kind="initial" if attempt_number == 1 else "bounded_503_retry",
+                            result="success", destination_category="gemini",
+                            provider_input_bytes=provider_input_bytes,
+                            response_contract_bytes=response_contract_bytes,
+                            estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
+                            if provider_input_bytes is not None and response_contract_bytes is not None else None)
+                return response
         except Exception as error:
             diagnostic = _provider_diagnostic(error)
             diagnostic.update(attempt_metadata)
+            timing_emit("gemini_attempt", attempt_started, source_id=payload.get("source_id"),
+                        chunk_id=payload.get("chunk_id"), attempt_number=attempt_number,
+                        attempt_kind="initial" if attempt_number == 1 else "bounded_503_retry",
+                        result="http_503_retryable" if diagnostic.get("status_code") == 503 and attempt_number == 1 else "provider_error",
+                        destination_category="gemini", http_status=diagnostic.get("status_code"),
+                        provider_input_bytes=provider_input_bytes,
+                        response_contract_bytes=response_contract_bytes,
+                        estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
+                        if provider_input_bytes is not None and response_contract_bytes is not None else None)
             logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))
             quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
             if quota:

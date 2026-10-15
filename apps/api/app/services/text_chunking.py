@@ -5,6 +5,7 @@ from pathlib import Path
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.contracts import ArtifactStore
 from app.persistence.factory import get_artifact_store
+from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 CHUNK_OUTPUT_FOLDER = STORAGE_ROOT / "chunks"
 _artifact_store: ArtifactStore = get_artifact_store()
@@ -60,13 +61,20 @@ def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int =
 
 
 def save_chunks(source_id: str, chunks):
+    started=timing_start()
     _artifact_store.create_directory(CHUNK_OUTPUT_FOLDER)
 
     output_path = CHUNK_OUTPUT_FOLDER / f"{source_id}.json"
-    _artifact_store.write_text(
-        output_path,
-        json.dumps(chunks, indent=2, ensure_ascii=False)
-    )
+    payload=json.dumps(chunks, indent=2, ensure_ascii=False)
+    try:
+        _artifact_store.write_text(output_path,payload)
+    except Exception:
+        timing_emit("artifact_write",started,result="error",source_id=source_id,
+                    destination_category="artifact",operation_category="chunks",
+                    file_size_bytes=utf8_size(payload))
+        raise
+    timing_emit("artifact_write",started,source_id=source_id,destination_category="artifact",
+                operation_category="chunks",file_size_bytes=utf8_size(payload))
 
     return str(output_path)
 

@@ -28,6 +28,7 @@ from app.services.text_extraction import (
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 from app.services.source_structure import annotate_pdf_chunks_with_outline
 from app.services.source_identity import resolve_identity
+from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 from app.models.source_summary import SourceSummary
 from app.services.source_summary import source_summaries, source_file_replacement_allowed
@@ -159,16 +160,31 @@ def get_sources(library_id: str | None = None):
 
 @router.get("/summaries", response_model=list[SourceSummary])
 def get_source_summaries(library_id: str | None = None):
-    return source_summaries(library_id=library_id)
+    started = timing_start()
+    try:
+        result = source_summaries(library_id=library_id)
+        timing_emit("library_source_summaries", started, source_count=len(result))
+        return result
+    except Exception:
+        timing_emit("library_source_summaries", started, result="error")
+        raise
 
 
 @router.get("/{source_id}/summary", response_model=SourceSummary)
 def get_source_summary(source_id: str):
-    return source_summaries(source_id=source_id)[0]
+    started = timing_start()
+    try:
+        result = source_summaries(source_id=source_id)[0]
+        timing_emit("source_summary", started, source_id=source_id)
+        return result
+    except Exception:
+        timing_emit("source_summary", started, result="error", source_id=source_id)
+        raise
 
 
 @router.post("")
 def create_source(payload: SourceCreate):
+    started = timing_start()
     if not any(l["id"] == payload.library_id for l in libraries):
         raise HTTPException(404, "Library not found.")
     source = {
@@ -192,6 +208,7 @@ def create_source(payload: SourceCreate):
     sources.append(source)
     persist_state()
 
+    timing_emit("source_create", started, source_id=source["id"], source_count=len(sources))
     return source
 
 
@@ -285,19 +302,29 @@ def recover_source_structure(source_id: str):
 
 
 def _write_source_upload(file: UploadFile, path: Path) -> None:
+    started = timing_start()
     size = 0
-    with _artifact_store.open_binary_write(path) as buffer:
-        while data := file.file.read(1024 * 1024):
-            size += len(data)
-            if size > MAX_SOURCE_UPLOAD_BYTES:
-                raise HTTPException(413, "Upload limit is 50 MB (50,000,000 bytes) per file.")
-            buffer.write(data)
-        if not size:
-            raise HTTPException(400, "The uploaded file is empty.")
+    try:
+        with _artifact_store.open_binary_write(path) as buffer:
+            while data := file.file.read(1024 * 1024):
+                size += len(data)
+                if size > MAX_SOURCE_UPLOAD_BYTES:
+                    raise HTTPException(413, "Upload limit is 50 MB (50,000,000 bytes) per file.")
+                buffer.write(data)
+            if not size:
+                raise HTTPException(400, "The uploaded file is empty.")
+        timing_emit("artifact_write", started, source_id=path.stem, destination_category="artifact",
+                    operation_category="source_upload", file_size_bytes=size)
+    except Exception as error:
+        timing_emit("artifact_write", started, result="upload_rejected" if isinstance(error, HTTPException) else "error",
+                    source_id=path.stem, destination_category="artifact",
+                    operation_category="source_upload", file_size_bytes=size)
+        raise
 
 
 @router.post("/{source_id}/upload")
 def upload_source_file(source_id: str, file: UploadFile = File(...)):
+    started = timing_start()
     source = find_source(source_id)
 
     if not source:
@@ -371,6 +398,8 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
         source.update(updated_fields)
         persist_state()
 
+    timing_emit("source_upload", started, source_id=source_id,
+                file_size_bytes=getattr(file, "size", None), receipt_boundary="handler_entry_to_response")
     return {
         "source_id": source["id"],
         "title": source["title"],
@@ -416,6 +445,7 @@ def get_source_file(source_id: str):
 
 @router.post("/{source_id}/extract")
 def extract_source_text(source_id: str):
+    started = timing_start()
     source = find_source(source_id)
 
     if not source:
@@ -436,6 +466,7 @@ def extract_source_text(source_id: str):
         )
 
     identity = None
+    extraction_started = timing_start()
     try:
         with _artifact_store.materialize(Path(file_path)) as local_path:
             extracted_text = extract_text_from_file(
@@ -443,8 +474,11 @@ def extract_source_text(source_id: str):
                 file_type=file_type
             )
             identity = resolve_identity(local_path, file_type, extracted_text)
+            timing_emit("text_extraction", extraction_started, source_id=source_id,
+                        extracted_character_count=len(extracted_text))
     except Exception as error:
         category = "ocr_required" if isinstance(error, OCRRequiredError) else "unsupported_extraction" if isinstance(error, UnsupportedExtractionTypeError) else "read_failed"
+        timing_emit("text_extraction", extraction_started, result=category, source_id=source_id)
         source["reading_failure"] = category
         source["processing_status"] = "extraction_not_supported" if category != "read_failed" else "extraction_failed"
         persist_state()
@@ -456,10 +490,13 @@ def extract_source_text(source_id: str):
         source["reading_failure"] = "read_failed"
         persist_state()
         raise HTTPException(400, "No readable text found in the file.")
+    write_started = timing_start()
     extracted_text_path = save_extracted_text(
         source_id=source_id,
         text=extracted_text
     )
+    timing_emit("artifact_write", write_started, source_id=source_id, destination_category="artifact",
+                operation_category="extracted_text", file_size_bytes=utf8_size(extracted_text))
 
     source["extracted_text_path"] = extracted_text_path
     # Legacy sources without origins are treated as user-owned. New Add flows
@@ -476,6 +513,8 @@ def extract_source_text(source_id: str):
     source["processing_status"] = "text_extracted"
     persist_state()
 
+    timing_emit("source_extract_request", started, source_id=source_id,
+                extracted_character_count=len(extracted_text))
     return {
         "source_id": source["id"],
         "title": source["title"],
@@ -518,6 +557,7 @@ def get_extracted_text(source_id: str):
 
 @router.post("/{source_id}/chunk")
 def chunk_source_text(source_id: str):
+    started = timing_start()
     source = find_source(source_id)
 
     if not source:
@@ -545,10 +585,13 @@ def chunk_source_text(source_id: str):
     if source.get("chunks_path"):
         return {"source_id":source_id,"chunk_count":len(load_chunks(source["chunks_path"])),"processing_status":source["processing_status"],"message":"Existing chunks preserved."}
     extracted_text = _artifact_store.read_text(path, errors="ignore")
+    chunk_started = timing_start()
     chunks = chunk_text(
         source_id=source_id,
         text=extracted_text
     )
+    timing_emit("chunk_construction", chunk_started, source_id=source_id, chunk_count=len(chunks),
+                extracted_character_count=len(extracted_text))
 
     structure_summary = None
     if source.get("file_type") == ".pdf" and source.get("file_path"):
@@ -560,10 +603,13 @@ def chunk_source_text(source_id: str):
             # usable outline or its bookmark metadata is malformed.
             structure_summary = None
 
+    write_started = timing_start()
     chunks_path = save_chunks(
         source_id=source_id,
         chunks=chunks
     )
+    timing_emit("artifact_publication", write_started, source_id=source_id, destination_category="artifact",
+                operation_category="chunks", chunk_count=len(chunks))
 
     source["chunks_path"] = chunks_path
     source["reading_failure"] = None
@@ -576,6 +622,7 @@ def chunk_source_text(source_id: str):
         source["structure_outline_entry_count"] = structure_summary["outline_entry_count"]
     persist_state()
 
+    timing_emit("source_chunk_request", started, source_id=source_id, chunk_count=len(chunks))
     return {
         "source_id": source["id"],
         "title": source["title"],

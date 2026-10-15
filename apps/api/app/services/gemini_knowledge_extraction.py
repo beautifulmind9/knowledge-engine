@@ -11,6 +11,7 @@ from app.services.knowledge_extraction import (
     mark_extraction_job_failed,
     mark_extraction_job_running,
 )
+from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 
 # Flash-Lite is a better fit for our current workload: short, structured
@@ -47,15 +48,22 @@ def _validation_summary(error: ValidationError, limit: int = 8) -> str:
 
 
 def validate_extraction_result(client, model: str, request: dict, interaction):
-    if not interaction.output_text:
+    started = timing_start()
+    output_text = interaction.output_text
+    if not output_text:
         raise RuntimeError("The AI returned no structured extraction output.")
 
     try:
         result = KnowledgeExtractionResultSubmission.model_validate_json(
-            interaction.output_text
+            output_text
         )
+        timing_emit("provider_response_adaptation_validation", started, source_id=request.get("source_id"),
+                    chunk_id=request.get("chunk_id"), result="valid",
+                    provider_response_utf8_bytes=utf8_size(output_text))
         return result, interaction
     except ValidationError as validation_error:
+        timing_emit("provider_response_adaptation_validation", started, source_id=request.get("source_id"),
+                    chunk_id=request.get("chunk_id"), result="invalid")
         validation_summary = _validation_summary(validation_error)
         raise ExtractionValidationError(
             "AI output failed validation: "

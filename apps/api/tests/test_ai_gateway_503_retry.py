@@ -73,11 +73,12 @@ def test_first_success_uses_one_provider_attempt(monkeypatch):
     assert ai_gateway.status()["calls_today"] == 1
 
 
-def test_one_503_then_success_repeats_identical_provider_arguments(monkeypatch):
+def test_one_503_then_success_repeats_identical_provider_arguments(monkeypatch, caplog):
+    caplog.set_level("INFO", logger="ke.performance")
     calls = install_provider(monkeypatch, [InternalServerError("unavailable"), SimpleNamespace(output_text="ok")])
     sleeps = []
     monkeypatch.setattr(ai_gateway.time, "sleep", sleeps.append)
-    payload = {"instructions": "synthetic", "evidence": ["fixture"]}
+    payload = {"instructions": "PRIVATE_PROMPT_FIXTURE", "evidence": ["PRIVATE_SOURCE_FIXTURE"]}
     schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
 
     result = ai_gateway.generate("synthetic-model", payload, schema)
@@ -91,6 +92,13 @@ def test_one_503_then_success_repeats_identical_provider_arguments(monkeypatch):
     assert calls[0]["response_format"]["schema"] == ai_gateway._gemini_response_schema(schema)
     assert calls[0]["response_format"] is calls[1]["response_format"]
     assert sleeps == [ai_gateway._TRANSIENT_503_RETRY_DELAY_SECONDS]
+    events=[record.getMessage() for record in caplog.records if '"event":"gemini_attempt"' in record.getMessage()]
+    assert len(events)==2
+    assert '"attempt_number":1' in events[0] and '"attempt_kind":"initial"' in events[0]
+    assert '"attempt_number":2' in events[1] and '"attempt_kind":"bounded_503_retry"' in events[1]
+    assert '"result":"http_503_retryable"' in events[0]
+    assert 'PRIVATE_PROMPT_FIXTURE' not in '\n'.join(events)
+    assert 'PRIVATE_SOURCE_FIXTURE' not in '\n'.join(events)
 
 
 def test_two_503_responses_stop_after_two_attempts(monkeypatch):

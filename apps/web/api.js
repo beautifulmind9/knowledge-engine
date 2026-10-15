@@ -1,5 +1,7 @@
 // Shared request transport. Create payloads are complete before reaching this layer.
 export const CSRF_COOKIE = '__Host-ke-beta-csrf';
+const now=()=>{try{return globalThis.performance?.now?.()??Date.now();}catch{return Date.now();}};
+function timing(event, durationMs, fields={}) { try { console.info('KE_PERF',{event,duration_ms:Math.round(durationMs*100)/100,...fields}); } catch {} }
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function csrfToken(cookie = globalThis.document?.cookie || '') {
@@ -25,7 +27,13 @@ export function csrfOptions(input, options = {}, {cookie = globalThis.document?.
 }
 
 export async function apiFetch(input, options = {}) {
-  const response = await globalThis.fetch(input, csrfOptions(input, options));
+  const started=now();
+  let response;
+  try { response=await globalThis.fetch(input, csrfOptions(input, options)); }
+  catch(error) { timing('api_fetch',now()-started,{result:'network_error',endpoint:String(input).split('?')[0]});throw error; }
+  const endpoint=String(input).split('?')[0];
+  if(/^\/libraries(?:$|\/)|^\/sources(?:$|\/)/.test(endpoint))
+    timing('data_fetch',now()-started,{result:response.ok?'success':'http_error',status:response.status,endpoint});
   if (response.status === 401 && globalThis.location && input !== '/login') {
     globalThis.location.assign('/login');
   }

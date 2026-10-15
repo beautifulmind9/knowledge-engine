@@ -9,6 +9,7 @@ from app.services.knowledge_extraction import (
     persist_state,
 )
 from app.services.text_chunking import load_chunks
+from app.services.performance_timing import operation_context
 
 
 # Source-level orchestration may process several chunks in one explicit run,
@@ -183,8 +184,11 @@ def interpret_source(source_id: str, max_chunks: int = 1):
     # strict single-chunk response schema. Stop on the first failure so one bad
     # response cannot automatically spend the rest of the user's daily budget.
     for job_id in selected_jobs:
+        job = next((item for item in extraction_jobs if item.get("id") == job_id), {})
         try:
-            processed_results.append(run_gemini_knowledge_extraction(job_id))
+            with operation_context(source_id=source_id, chunk_id=job.get("chunk_id"),
+                                   operation_category="interpretation_part"):
+                processed_results.append(run_gemini_knowledge_extraction(job_id))
         except Exception as error:
             if isinstance(error, HTTPException):
                 stopped_reason="Interpretation stopped after an AI service interruption."

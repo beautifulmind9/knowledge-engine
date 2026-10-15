@@ -10,6 +10,7 @@ import { PAGE_SIZE, filterUnits, createSearchController } from './knowledge-brow
 import {beginProcessingStatus,updateProcessingStatus,endProcessingStatus,getProcessingStatus,subscribeProcessingStatus,renderProcessingStatus,attachProcessingAnnouncer,announceProcessingStatus} from './processing-status.js';
 const main=document.querySelector('main'), feedback=document.querySelector('#feedback');
 const processingRegion=document.querySelector('#processing-status');
+const performanceNow=()=>{try{return globalThis.performance?.now?.()??Date.now();}catch{return Date.now();}};
 attachProcessingAnnouncer(document.querySelector('#processing-announcer'));
 subscribeProcessingStatus(status=>renderProcessingStatus(processingRegion,status));
 let interactionDraft=newInteractionDraft(),createMaterials=null,viewRevision=0,foregroundBuild=null,libraryCollectionRefresh=null,preparationBatch=null;
@@ -185,12 +186,13 @@ function materialAddSurface(libs,active){
  fileInput.onchange=()=>{const selected=Array.from(fileInput.files||[]);selectMaterialFiles(batch,selected);renderConfirmation();if(batch.invalidFiles.length)message(selected.length===1&&!batch.items.length?batch.invalidFiles[0].message:'Unsupported or empty files were left out. The valid files can still be added.',true);else message('');};
  main.refreshMaterialAdd=renderConfirmation;renderConfirmation();return surface;
 }
-async function libraryView(_id,route={}){const active=beginView();heading('LIBRARY','Your library','Material, ideas and work in one place.');const libs=await libraries();if(!active())return;
+async function libraryView(_id,route={}){const dataStarted=performanceNow();const active=beginView();heading('LIBRARY','Your library','Material, ideas and work in one place.');const libs=await libraries();if(!active())return;
  if(libs.length>1){const [l,s]=select('Filter by library',[['','All libraries'],...libs.map(l=>[l.id,l.name])],state.library||'');s.onchange=()=>{state.library=s.value||null;state.source=null;state.selected.clear();if(!materialAddDraft?.items?.length)materialAddDraft=null;run(()=>navigate('library',{replace:true}));};main.append(l);}
  const sources=libs.length?await sourceItems():[];if(!active())return;
  let summaries=[],summaryUnavailable=false;
  if(sources.length){try{summaries=await api('/sources/summaries'+(state.library?'?library_id='+encodeURIComponent(state.library):''));}catch{summaryUnavailable=true;}}
  if(!active())return;
+ const renderStarted=performanceNow();try{console.info('KE_PERF',{event:'library_data_fetch',duration_ms:Math.round((renderStarted-dataStarted)*100)/100,source_count:sources.length,library_count:libs.length});}catch{}
  const summaryById=new Map(summaries.map(summary=>[summary.source_id,summary]));
  const collection=el('section',undefined,'library-collection');
  const summaryLine=el('div',undefined,'library-summary-line');
@@ -219,13 +221,15 @@ async function libraryView(_id,route={}){const active=beginView();heading('LIBRA
   }
   grid.replaceChildren();for(const source of sources)grid.append(renderLibraryRow(source,effective(source),summaryUnavailable,preparationBatch?.outcomes.get(source.id)));
  };
- renderCards();libraryCollectionRefresh=renderCards;main.append(collection);
+ renderCards();libraryCollectionRefresh=renderCards;main.append(collection);try{console.info('KE_PERF',{event:'library_render',duration_ms:Math.round((performanceNow()-renderStarted)*100)/100,source_count:sources.length,library_source_count:sources.length});}catch{}
 }
 async function startPreparation(sourceIds){
  if(foregroundBuild)return;
  if(feedback.textContent==='Working…')message('');
  preparationBatch={sourceIds:[...new Set(sourceIds)],outcomes:new Map(),finished:false,status:'running'};
  const batchSize=preparationBatch.sourceIds.length;
+ try{console.info('KE_PERF',{event:'preparation_start',selected_count:batchSize,source_ids:preparationBatch.sourceIds});}catch{}
+ for(const item of materialAddDraft?.items||[]){if(preparationBatch.sourceIds.includes(item.sourceId)&&Number.isFinite(item.__keTimingReadAt)){try{console.info('KE_PERF',{event:'reading_to_preparation_start',source_id:item.sourceId,duration_ms:Math.round((performanceNow()-item.__keTimingReadAt)*100)/100});}catch{}}}
  const activityId=beginProcessingStatus({label:batchSize>1?'Preparing your library':'Preparing your material',detail:batchSize>1?`0 of ${batchSize} materials ready. New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.`:'New knowledge appears as it becomes available. You can keep using Knowledge Engine in this tab.',onStop:()=>{foregroundBuild?.stop();updateProcessingStatus(activityId,{stopRequested:true,onStop:null,detail:'Finishing the current step before stopping.'});}});
  let session;
  session=createMaterialPreparation({sourceIds:preparationBatch.sourceIds,api,onSource:async()=>{},onProgress:snapshot=>{
@@ -264,12 +268,14 @@ async function startPreparation(sourceIds){
 async function sourceView(id){
  const active=beginView(),previousSource=state.source;state.source=id;
  heading('LIBRARY · MATERIAL','Opening material…','');
- const [source,initialSummary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
+ const detailFetchStarted=performanceNow();const [source,initialSummary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
+ try{console.info('KE_PERF',{event:'material_detail_fetch',duration_ms:Math.round((performanceNow()-detailFetchStarted)*100)/100,source_id:id});}catch{}
  if(!active())return;
  let summary=initialSummary,usage=null,previewRevision=0,lastPreviewCount=-1;
  const canPrepare=()=>['build_knowledge','continue_building'].includes(summary.next_action)&&summary.operation!=='build_unconfirmed'&&Number.isInteger(summary.total_parts)&&summary.total_parts>summary.completed_parts;
  if(canPrepare())usage=await api('/usage').catch(()=>null);
  if(!active())return;
+ const detailRenderStarted=performanceNow();
  const addDraft=materialAddDraft?.items?.find(item=>item.sourceId===id);
  if(addDraft){addDraft.uploaded=!!source.file_path;addDraft.read=summary.read_state==='read';addDraft.readFailure=summary.attention_category;}
  heading('LIBRARY · MATERIAL',source.title,source.author||'');main.className='material-workspace';main.materialId=id;
@@ -392,6 +398,7 @@ async function sourceView(id){
 
 
  renderPreparation();
+ try{console.info('KE_PERF',{event:'material_detail_render',source_id:id,duration_ms:Math.round((performanceNow()-detailRenderStarted)*100)/100});}catch{}
 }
 async function developerSourceView(id){
  const active=beginView();heading('INTERNAL · SUPPORT','Material diagnostics','Technical tools for the workspace owner or developer.');

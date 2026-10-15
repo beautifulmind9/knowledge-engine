@@ -11,6 +11,7 @@ from app.persistence.factory import (
 )
 from app.persistence.postgres import StaleStateWriteError
 from app.persistence.reconciliation import StateReconciliationConflict, merge_state_snapshots
+from app.services.performance_timing import start as timing_start, emit as timing_emit, snapshot_utf8_size
 
 
 class StateMutationConflict(StaleStateWriteError):
@@ -18,10 +19,42 @@ class StateMutationConflict(StaleStateWriteError):
 
 
 def load_state():
-    return get_state_store().load()
+    return _load_store_state(get_state_store(), "application_load")
+
+
+def _load_store_state(store, load_kind):
+    started = timing_start() if PERSISTENCE_MODE == "hosted" else None
+    result = "success"
+    try:
+        return store.load()
+    except Exception:
+        result = "error"
+        raise
+    finally:
+        if PERSISTENCE_MODE == "hosted":
+            timing_emit("hosted_state_load", started, result=result,
+                        destination_category="state", load_kind=load_kind, payload_bytes=None,
+                        payload_size_measurement="unavailable_without_reserializing")
+
+
+def _snapshot_counts(state):
+    try:
+        state_sources = state.get("sources", [])
+        state_jobs = state.get("extraction_jobs", [])
+        state_assets = state.get("knowledge_assets", [])
+        return dict(
+            source_count=len(state_sources),
+            extraction_job_count=len(state_jobs),
+            interpreted_part_count=sum(1 for job in state_jobs if job.get("status") == "completed"),
+            active_knowledge_asset_count=sum(1 for asset in state_assets if asset.get("active", True)),
+        )
+    except Exception:
+        return dict(source_count=None, extraction_job_count=None,
+                    interpreted_part_count=None, active_knowledge_asset_count=None)
 
 
 def save_state(libraries, sources, extraction_jobs, knowledge_assets):
+    persistence_started = timing_start()
     from app.db.mock_data import outputs, usage
     state = dict(libraries=libraries, sources=sources, extraction_jobs=extraction_jobs,
                  knowledge_assets=knowledge_assets, outputs=outputs, usage=usage, schema_version=2)
@@ -48,29 +81,54 @@ def save_state(libraries, sources, extraction_jobs, knowledge_assets):
             "extraction_jobs": [], "knowledge_assets": [], "outputs": [], "usage": {},
         }
     reconciliations = 0
+    reconcile_started = None
     while True:
+        snapshot_bytes = snapshot_utf8_size(state) if PERSISTENCE_MODE == "hosted" else None
+        save_kind = "reconciliation" if reconciliations else "normal"
+        snapshot_counts = _snapshot_counts(state)
+        save_attempt_started = timing_start()
         try:
             store.save(state)
+            timing_emit("state_persistence_attempt", save_attempt_started, result="success",
+                        destination_category="state", mode=PERSISTENCE_MODE,
+                        save_kind=save_kind, attempt_number=reconciliations + 1,
+                        snapshot_utf8_bytes=snapshot_bytes, **snapshot_counts)
+            timing_emit("state_persistence", persistence_started, result="success",
+                        mode=PERSISTENCE_MODE,
+                        source_count=len(sources),
+                        active_knowledge_asset_count=snapshot_counts["active_knowledge_asset_count"],
+                        reconciliation_count=reconciliations)
+            if reconcile_started is not None:
+                timing_emit("hosted_state_reconciliation", reconcile_started, result="success",
+                            reconciliation_count=reconciliations)
             if reconciliations:
                 _restore_live_state(state, libraries, sources, extraction_jobs, knowledge_assets)
             return
         except StaleStateWriteError:
+            timing_emit("state_persistence_attempt", save_attempt_started, result="stale_revision",
+                        destination_category="state", mode=PERSISTENCE_MODE,
+                        save_kind=save_kind, attempt_number=reconciliations + 1,
+                        snapshot_utf8_bytes=snapshot_bytes, **snapshot_counts)
+            if reconcile_started is None:
+                reconcile_started = timing_start()
             # Only JSON snapshot persistence is repeated here. The route/service
             # mutation and any external upload, extraction, or provider work have
             # already happened and are never invoked by this reconciliation.
             if reconciliations >= 2:
-                latest = store.load()
+                latest = _load_store_state(store, "reconciliation")
                 if isinstance(latest, dict):
                     _restore_live_state(
                         latest, libraries, sources, extraction_jobs, knowledge_assets,
                         preserve_record_objects=False,
                     )
+                timing_emit("hosted_state_reconciliation", reconcile_started, result="exhausted",
+                            reconciliation_count=reconciliations)
                 raise StateMutationConflict(
                     "Hosted state changed repeatedly; this update could not be saved safely. Reload and try again."
                 ) from None
             if not isinstance(baseline, dict):
                 raise
-            latest = store.load()
+            latest = _load_store_state(store, "reconciliation")
             if not isinstance(latest, dict):
                 raise
             try:
@@ -80,11 +138,19 @@ def save_state(libraries, sources, extraction_jobs, knowledge_assets):
                     latest, libraries, sources, extraction_jobs, knowledge_assets,
                     preserve_record_objects=False,
                 )
+                timing_emit("hosted_state_reconciliation", reconcile_started, result="conflict",
+                            reconciliation_count=reconciliations)
                 raise StateMutationConflict(
                     "Hosted state changed concurrently; this update could not be reconciled safely. Reload and try again."
                 ) from None
             baseline = getattr(store, "loaded_snapshot", None)
             reconciliations += 1
+        except Exception:
+            timing_emit("state_persistence_attempt", save_attempt_started, result="error",
+                        destination_category="state", mode=PERSISTENCE_MODE,
+                        save_kind=save_kind, attempt_number=reconciliations + 1,
+                        snapshot_utf8_bytes=snapshot_bytes, **snapshot_counts)
+            raise
 
 
 def _restore_live_state(state, libraries, sources, extraction_jobs, knowledge_assets,

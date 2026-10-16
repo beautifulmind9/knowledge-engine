@@ -31,6 +31,7 @@ class FakeConnection:
         self.state = None
         self.reservations = None
         self.result = None
+        self.has_reservation_insert = False
 
     def __enter__(self):
         self.database.lock.acquire()
@@ -42,13 +43,13 @@ class FakeConnection:
         lose_ack = False
         fail_commit = False
         if exc_type is None:
-            if self.database.fail_next_commit:
+            if self.database.fail_next_commit and self.has_reservation_insert:
                 self.database.fail_next_commit = False
                 fail_commit = True
             else:
                 self.database.state = self.state
                 self.database.reservations = self.reservations
-            if self.database.lose_next_ack and not fail_commit:
+            if self.database.lose_next_ack and self.has_reservation_insert and not fail_commit:
                 self.database.lose_next_ack = False
                 lose_ack = True
         self.database.lock.release()
@@ -85,6 +86,7 @@ class FakeConnection:
             self.state.update(day=day, calls=calls, last_attempt_at=last_attempt,
                               last_reservation_id=reservation_id)
         elif normalized.startswith("INSERT INTO knowledge_engine.allowance_reservations"):
+            self.has_reservation_insert = True
             workspace, reservation_id, day, attempt_number, admitted_at = params
             key = (workspace, reservation_id)
             if key in self.reservations:
@@ -139,6 +141,14 @@ def test_migration_does_not_seed_below_same_day_snapshot_count(ledger):
     state = store.ensure_migrated({"day": "2026-10-15", "calls": 449})
     assert state["day"] == "2026-10-15" and state["calls"] == 449
     assert reserve(store, "after-migration")["attempt_number"] == 450
+
+
+def test_existing_ledger_is_not_reseeded_and_ahead_snapshot_fails_closed(ledger):
+    store, database = ledger
+    store.ensure_migrated({"day": "2026-10-15", "calls": 40})
+    with pytest.raises(allowance.AllowanceMigrationError):
+        store.ensure_migrated({"day": "2026-10-15", "calls": 41})
+    assert database.state["calls"] == 40
 
 
 def test_simultaneous_first_reads_create_one_idempotent_ledger(ledger):

@@ -107,6 +107,16 @@ class PostgresAllowanceStore:
                     observed = {key: state[key] for key in expected}
                     if observed != expected:
                         raise AllowanceMigrationError("Hosted allowance migration verification failed.")
+                elif (seed["accounting_day"] is not None
+                      and seed["accounting_day"].isoformat() == state["day"]
+                      and seed["admitted_attempts"] > state["calls"]):
+                    # The ledger is authoritative after migration and is never
+                    # overwritten from a later snapshot. A same-day snapshot
+                    # ahead of it signals an unsafe cutover or stale writer;
+                    # fail closed rather than admit against a lower count.
+                    raise AllowanceMigrationError(
+                        "Hosted allowance ledger is behind the same-day snapshot."
+                    )
                 return state
         except AllowancePersistenceError:
             raise

@@ -270,7 +270,9 @@ def generate(model, payload, schema):
                 reservation_started = timing_start()
                 reservation_result = "persistence_error"
                 try:
-                    reservation = get_allowance_store().reserve_attempt(
+                    allowance_store = get_allowance_store()
+                    allowance_store.ensure_migrated(usage)
+                    reservation = allowance_store.reserve_attempt(
                         reservation_id=reservation_id, day=attempt_day,
                         limit=max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "450"))),
                         attempted_at=attempted_at,

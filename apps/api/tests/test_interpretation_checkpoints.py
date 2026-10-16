@@ -25,6 +25,9 @@ class HostedAllowance:
                 "paused": self.paused, "reason": self.reason,
                 "last_attempt_at": None, "migration_version": 1}
 
+    def ensure_migrated(self, legacy):
+        return self.read(legacy)
+
     def reserve_attempt(self, *, reservation_id, day, limit, attempted_at):
         if self.paused or (self.calls if self.read({})["day"] == day else 0) >= limit:
             return {"admitted": False}

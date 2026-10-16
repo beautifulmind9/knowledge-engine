@@ -114,11 +114,15 @@ migration does not add a pause endpoint:
 3. Apply
    [`apps/api/schema/create_knowledge_engine_allowance_ledger.sql`](../apps/api/schema/create_knowledge_engine_allowance_ledger.sql)
    to the existing Supabase Postgres project. It creates additive tables only.
-4. Deploy the new build while Gemini-backed actions remain quiesced. Its first allowance
-   read/reservation seeds the ledger from the loaded snapshot `usage` state and
-   records migration version 1 in the same transaction. The transaction
-   verifies Pacific day, admitted count, pause state/reason, and last-attempt
-   time; it does not reset the current day's count.
+4. Deploy the new build while Gemini-backed actions remain quiesced. Its first
+   allowance read, or the migration check before an attempt reservation, seeds
+   the ledger from the loaded snapshot `usage` state and records migration
+   version 1 in that ledger transaction. Reservation is a separate atomic
+   transaction. Initialization verifies Pacific day, admitted count, pause
+   state/reason, and last-attempt time; it does not reset the current day's
+   count. Later reads never reseed
+   an initialized ledger. If a same-day snapshot is ahead of the ledger, the
+   app fails closed for allowance admission so a stale cutover cannot undercount.
 5. Before allowing AI actions again, inspect the single workspace row in
    `knowledge_engine.allowance_state`. Confirm version 1 and compare
    `accounting_day`, `admitted_attempts`, `paused`, `pause_reason`, and

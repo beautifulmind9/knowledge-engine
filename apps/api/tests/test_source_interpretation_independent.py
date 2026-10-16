@@ -1,11 +1,13 @@
 from fastapi import HTTPException
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from app.db import mock_data as db
 from app.services import source_interpretation
+from app.persistence.factory import get_artifact_store
 from app.services import ai_gateway
 from app.services.knowledge_extraction import complete_extraction_job, create_extraction_job, get_extraction_job, mark_extraction_job_failed, persist_state
 from app.services.text_chunking import save_chunks
@@ -240,6 +242,14 @@ def test_gateway_503_retry_validates_saves_chunk_and_continues_to_next_chunk(
 
     monkeypatch.setattr(ai_gateway.genai, "Client", FakeClient)
     monkeypatch.setattr(ai_gateway.time, "sleep", lambda _: None)
+    store = get_artifact_store()
+    original_read_text = store.read_text
+    artifact_reads = []
+    def counted_read_text(path, *args, **kwargs):
+        if Path(path) == Path(db.sources[0]["chunks_path"]):
+            artifact_reads.append(path)
+        return original_read_text(path, *args, **kwargs)
+    monkeypatch.setattr(store, "read_text", counted_read_text)
 
     result = client.post(f"/sources/{s['id']}/interpret?max_chunks=2")
 
@@ -249,6 +259,7 @@ def test_gateway_503_retry_validates_saves_chunk_and_continues_to_next_chunk(
     assert body["stopped_reason"] is None
     assert body["progress"]["completed_chunks"] == 2
     assert len(calls) == 3
+    assert len(artifact_reads) == 1
     assert calls[0] == calls[1]  # The retry is the identical provider request.
     dispatched_text = [json.loads(call["input"])["chunk_text"] for call in calls]
     assert dispatched_text == [chunks[0]["text"], chunks[0]["text"], chunks[1]["text"]]
@@ -258,3 +269,33 @@ def test_gateway_503_retry_validates_saves_chunk_and_continues_to_next_chunk(
     assert len(completed) == 2
     assert all(any(item.get("extraction_job_id") == job["id"] and item.get("active", True)
                    for item in db.knowledge_assets) for job in completed)
+
+
+def test_each_interpretation_request_loads_its_own_chunk_context(source, monkeypatch):
+    from app.services.knowledge_extraction import complete_extraction_job
+
+    s, chunks = _install_chunks(source, count=2)
+    store = get_artifact_store()
+    original_read_text = store.read_text
+    reads = []
+    def counted_read_text(path, *args, **kwargs):
+        if Path(path) == Path(db.sources[0]["chunks_path"]):
+            reads.append(path)
+        return original_read_text(path, *args, **kwargs)
+    monkeypatch.setattr(store, "read_text", counted_read_text)
+    contexts = []
+
+    def complete_one(job_id, *, chunk_context=None, **_):
+        contexts.append(chunk_context)
+        return complete_extraction_job(job_id, [], chunk_context=chunk_context, update_source=False)
+
+    monkeypatch.setattr(source_interpretation, "run_gemini_knowledge_extraction", complete_one)
+    first = source_interpretation.interpret_source(s["id"], max_chunks=1)
+    assert first["processed_this_run"] == 1 and len(reads) == 1
+    reads.clear()
+    second = source_interpretation.interpret_source(s["id"], max_chunks=1)
+    assert second["processed_this_run"] == 1 and len(reads) == 1
+    assert contexts[0] is not contexts[1]
+    assert [context.get(s["id"], db.sources[0]["chunks_path"], chunk["id"],
+                        db.sources[0].get("chunk_manifest"))["text"]
+            for context, chunk in zip(contexts, chunks)] == [chunk["text"] for chunk in chunks]

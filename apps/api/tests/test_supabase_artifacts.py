@@ -93,6 +93,28 @@ def test_text_workspace_and_normalization(storage):
     assert store.read_text(Path('invalid.txt'), errors='ignore') == 'a'
 
 
+def test_request_chunk_context_reads_supabase_content_once(storage, monkeypatch):
+    from app.services import text_chunking
+    from app.services import request_chunk_context
+    from app.services.request_chunk_context import load_request_chunk_context
+
+    store, api = storage
+    source_id = 'source_supabase_context'
+    path = Path('chunks') / f'{source_id}.json'
+    chunks = [{'id': f'chunk_{source_id}_001', 'source_id': source_id,
+               'text': 'Synthetic provider input', 'chapter_or_section': 'Opening'}]
+    store.write_text(path, json.dumps(chunks))
+    source = {'id': source_id, 'chunks_path': str(path), 'chunk_manifest': {
+        'version': 1, 'total_parts': 1, 'chunk_ids': [chunks[0]['id']]}}
+    monkeypatch.setattr(text_chunking, '_artifact_store', store)
+    monkeypatch.setattr(request_chunk_context, 'get_artifact_store', lambda: store)
+
+    context = load_request_chunk_context(source)
+    assert context.get(source_id, path, chunks[0]['id'], source['chunk_manifest']) == chunks[0]
+    assert context.get(source_id, path, chunks[0]['id'], source['chunk_manifest']) == chunks[0]
+    assert sum(method == 'GET' and route.startswith('/object/') for method, route in api.calls) == 1
+
+
 @pytest.mark.parametrize('locator', ['../escape', 'a/../escape', '/outside/file', 'a\\b', 'a%2Fb', 'a:b', 'a\x00b'])
 @pytest.mark.parametrize('operation', ['create_directory', 'status', 'remove', 'write_text', 'materialize'])
 def test_invalid_locators_never_call_api(storage, locator, operation):

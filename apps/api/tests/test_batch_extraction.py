@@ -21,6 +21,9 @@ def batch(source, asset):
     s, c = source
     chunks = [{**c, 'id': f'chunk_batch_{i}', 'text': f'Original chunk {i}: practice breaks.'} for i in range(10)]
     db.sources[0]['chunks_path'] = save_chunks(s['id'], chunks)
+    # This synthetic legacy fixture replaces chunk IDs without publishing a
+    # corresponding current manifest.
+    db.sources[0].pop('chunk_manifest', None)
     jobs = [create_extraction_job(s['id'], c['id']) for c in chunks]
     groups = [{'chunk_id': c['id'], 'assets': [{**asset, 'title': f'Chunk {i}',
                 'source_id': 'untrusted-source', 'chunk_id': 'untrusted-chunk'}]} for i, c in enumerate(chunks)]

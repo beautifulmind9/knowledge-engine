@@ -75,7 +75,8 @@ def validate_extraction_result(client, model: str, request: dict, interaction):
 
 
 def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: bool = False,
-                                   rollback_state=None, on_checkpoint=None):
+                                   rollback_state=None, on_checkpoint=None,
+                                   chunk_context=None):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -83,7 +84,7 @@ def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: boo
         )
 
     model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
-    request = get_extraction_request(job_id)
+    request = get_extraction_request(job_id, chunk_context=chunk_context)
 
     mark_extraction_job_running(
         job_id=job_id,
@@ -137,6 +138,7 @@ def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: boo
             model_response_id=getattr(final_interaction, "id", None),
             persist=not coalesce_interpretation,
             update_source=not coalesce_interpretation,
+            chunk_context=chunk_context,
         )
 
     except Exception as error:

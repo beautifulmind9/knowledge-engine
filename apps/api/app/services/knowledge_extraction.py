@@ -47,7 +47,7 @@ def find_source(source_id: str):
     return None
 
 
-def find_chunk(source_id: str, chunk_id: str):
+def find_chunk(source_id: str, chunk_id: str, *, chunk_context=None):
     source = find_source(source_id)
     if not source:
         raise ValueError("Source not found.")
@@ -56,6 +56,12 @@ def find_chunk(source_id: str, chunk_id: str):
     if not chunks_path:
         raise ValueError("This source has not been chunked yet.")
 
+    if chunk_context is not None:
+        chunk = chunk_context.get(source_id, chunks_path, chunk_id, source.get("chunk_manifest"))
+        if chunk is not None:
+            return chunk
+        raise ValueError("Chunk not found for this source.")
+
     for chunk in load_chunks(chunks_path):
         if chunk.get("id") == chunk_id:
             return chunk
@@ -63,8 +69,9 @@ def find_chunk(source_id: str, chunk_id: str):
     raise ValueError("Chunk not found for this source.")
 
 
-def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False, *, persist: bool = True):
-    find_chunk(source_id=source_id, chunk_id=chunk_id)
+def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False, *, persist: bool = True,
+                          chunk_context=None):
+    find_chunk(source_id=source_id, chunk_id=chunk_id, chunk_context=chunk_context)
 
     prior = [j for j in extraction_jobs if j["source_id"] == source_id and j["chunk_id"] == chunk_id]
     for existing in reversed(prior):
@@ -103,16 +110,17 @@ def get_extraction_job(job_id: str):
     return job
 
 
-def get_extraction_chunk(job_id: str):
+def get_extraction_chunk(job_id: str, *, chunk_context=None):
     job = get_extraction_job(job_id)
     return find_chunk(
         source_id=job["source_id"],
         chunk_id=job["chunk_id"],
+        chunk_context=chunk_context,
     )
 
 
-def get_extraction_request(job_id: str):
-    chunk = get_extraction_chunk(job_id)
+def get_extraction_request(job_id: str, *, chunk_context=None):
+    chunk = get_extraction_chunk(job_id, chunk_context=chunk_context)
     return build_knowledge_extraction_request(chunk)
 
 
@@ -144,13 +152,14 @@ def mark_extraction_job_failed(job_id: str, error: str, *, persist: bool = True)
 
 
 def complete_extraction_job(job_id: str, assets, model_response_id: str | None = None, *,
-                            persist: bool = True, update_source: bool = True):
+                            persist: bool = True, update_source: bool = True,
+                            chunk_context=None):
     job = get_extraction_job(job_id)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
         raise ValueError("This knowledge extraction job is already completed.")
 
-    chunk = get_extraction_chunk(job_id)
+    chunk = get_extraction_chunk(job_id, chunk_context=chunk_context)
     stored_assets = []
 
     for asset in assets:

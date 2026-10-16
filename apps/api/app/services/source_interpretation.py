@@ -17,6 +17,7 @@ from app.services.text_chunking import load_chunks
 from app.services.chunk_manifest import valid_manifest
 from app.persistence.factory import get_artifact_store
 from app.services.performance_timing import operation_context
+from app.services.request_chunk_context import load_request_chunk_context
 
 
 # Source-level orchestration may process several chunks in one explicit run,
@@ -68,7 +69,7 @@ def _pending_or_running_job(source_id: str, chunk_id: str):
     return candidates[-1] if candidates else None
 
 
-def get_source_interpretation_summary(source_id: str):
+def get_source_interpretation_summary(source_id: str, *, chunk_context=None):
     source = find_source(source_id)
     if not source:
         raise ValueError("Source not found.")
@@ -76,12 +77,19 @@ def get_source_interpretation_summary(source_id: str):
     if source.get("chunks_path") and valid_manifest(source_id, manifest):
         # Metadata avoids downloading chunk contents, but never substitutes for
         # live artifact-presence verification.
+        if chunk_context is not None:
+            chunk_context.ensure_identity(source_id, Path(source["chunks_path"]), manifest)
         if get_artifact_store().status_many([Path(source["chunks_path"])])[Path(source["chunks_path"])] != "artifact":
             raise ValueError("Chunks file not found on disk. Restore the source data before continuing.")
         chunk_ids = set(manifest["chunk_ids"])
         total_chunks = manifest["total_parts"]
     else:
-        source, chunks = get_source_chunks(source_id)
+        if chunk_context is not None:
+            chunks_path = Path(source.get("chunks_path") or "")
+            chunk_context.ensure_current_artifact(source_id, chunks_path, manifest)
+            chunks = chunk_context.chunks
+        else:
+            source, chunks = get_source_chunks(source_id)
         chunk_ids = {chunk.get("id") for chunk in chunks}
         total_chunks = len(chunks)
     source_jobs = [
@@ -166,7 +174,11 @@ def interpret_source(source_id: str, max_chunks: int = 1):
             f"max_chunks must be between 1 and {MAX_CHUNKS_PER_RUN}."
         )
 
-    source, chunks = get_source_chunks(source_id)
+    source = find_source(source_id)
+    if not source:
+        raise ValueError("Source not found.")
+    chunk_context = load_request_chunk_context(source)
+    chunks = chunk_context.chunks
     if not chunks:
         raise ValueError("This source has no chunks to interpret.")
 
@@ -192,6 +204,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
             source_id=source_id,
             chunk_id=chunk_id,
             persist=False,
+            chunk_context=chunk_context,
         )
 
         selected_jobs.append(job["id"])
@@ -210,6 +223,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
                     job_id, coalesce_interpretation=True,
                     rollback_state=durable_state,
                     on_checkpoint=lambda state: durable_state.update(state),
+                    chunk_context=chunk_context,
                 )
                 processed_results.append(result)
         except Exception as error:
@@ -234,7 +248,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
 
     try:
         source["stopped_reason"] = stopped_reason
-        summary = get_source_interpretation_summary(source_id)
+        summary = get_source_interpretation_summary(source_id, chunk_context=chunk_context)
         source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
         durable_state = persist_interpretation_checkpoint(durable_state)
     except StateMutationConflict:

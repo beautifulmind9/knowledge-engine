@@ -10,6 +10,7 @@ from app.db import persistence as persistence_facade
 from app.persistence.postgres import StaleStateWriteError
 from app.persistence.reconciliation import merge_state_snapshots
 from app.persistence.factory import STORAGE_ROOT
+from app.persistence.factory import get_artifact_store
 from app.services import ai_gateway, knowledge_extraction
 
 
@@ -93,6 +94,21 @@ def count_full_snapshot_writes(monkeypatch):
     return writes
 
 
+def count_chunk_content_reads(monkeypatch, source_id):
+    store = get_artifact_store()
+    original = store.read_text
+    reads = []
+
+    def counted(path, *args, **kwargs):
+        path = Path(path)
+        if path.name == f"{source_id}.json" and "chunks" in path.parts:
+            reads.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(store, "read_text", counted)
+    return reads
+
+
 def test_hosted_one_attempt_success_has_two_snapshots_and_one_reservation(
     client, source, asset, monkeypatch, caplog
 ):
@@ -101,13 +117,19 @@ def test_hosted_one_attempt_success_has_two_snapshots_and_one_reservation(
     calls = install_hosted_provider(monkeypatch, allowance, [SimpleNamespace(
         output_text=json.dumps({"assets": [asset]}), id="synthetic-model-response"
     )])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200, response.text
     assert response.json()["processed_this_run"] == 1
     assert len(calls) == 1 and len(allowance.reservations) == 1
+    assert len(reads) == 1
     assert len(writes) == 2
     assert sum(1 for item in mock_data.knowledge_assets if item.get("active", True)) == 1
+    accepted = next(item for item in mock_data.knowledge_assets if item.get("active", True))
+    assert accepted["source_id"] == source[0]["id"]
+    assert accepted["chunk_id"] == source[1]["id"]
+    assert json.loads(calls[0]["input"])["chunk_text"] == source[1]["text"]
     events = [json.loads(record.message.removeprefix("PERF ")) for record in caplog.records
               if record.message.startswith("PERF ")]
     reservations = [event for event in events if event["event"] == "allowance_reservation"]
@@ -124,11 +146,14 @@ def test_hosted_503_retry_success_has_two_snapshots_and_two_reservations(
     calls = install_hosted_provider(monkeypatch, allowance, [Provider503("busy"), SimpleNamespace(
         output_text=json.dumps({"assets": [asset]}), id="synthetic-model-response"
     )])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200, response.text
     assert response.json()["processed_this_run"] == 1
     assert len(calls) == 2 and allowance.calls == 2
+    assert len(reads) == 1
+    assert calls[0] == calls[1]
     assert len({item[0] for item in allowance.reservations}) == 2
     assert len(writes) == 2
     events = [json.loads(record.message.removeprefix("PERF ")) for record in caplog.records
@@ -141,11 +166,13 @@ def test_two_503_failures_have_two_snapshots_two_reservations_and_failed_job(
 ):
     allowance = HostedAllowance()
     calls = install_hosted_provider(monkeypatch, allowance, [Provider503("one"), Provider503("two")])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200, response.text
     assert response.json()["processed_this_run"] == 0
     assert len(calls) == allowance.calls == 2 and len(writes) == 2
+    assert len(reads) == 1
     assert mock_data.extraction_jobs[-1]["status"] == "failed"
 
 
@@ -154,11 +181,13 @@ def test_strict_validation_failure_settles_without_accepting_assets(client, sour
     calls = install_hosted_provider(monkeypatch, allowance, [SimpleNamespace(
         output_text='{"assets":[{"asset_type":"not_a_type"}]}', id="invalid"
     )])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200
     assert response.json()["interruption_category"] == "validation_failed"
     assert len(calls) == allowance.calls == 1 and len(writes) == 2
+    assert len(reads) == 1
     assert not mock_data.knowledge_assets
     assert mock_data.extraction_jobs[-1]["status"] == "failed"
 
@@ -171,6 +200,7 @@ def test_failed_coalesced_replacement_keeps_prior_accepted_asset(source, asset, 
         capture_interpretation_state, complete_extraction_job,
         create_extraction_job, persist_interpretation_checkpoint,
     )
+    from app.services.request_chunk_context import load_request_chunk_context
 
     source_id, chunk_id = source[0]["id"], source[1]["id"]
     original_job = create_extraction_job(source_id, chunk_id)
@@ -178,13 +208,16 @@ def test_failed_coalesced_replacement_keeps_prior_accepted_asset(source, asset, 
         original_job["id"], [TypeAdapter(KnowledgeAsset).validate_python(asset)]
     )["assets"][0]
     durable = capture_interpretation_state()
-    replacement = create_extraction_job(source_id, chunk_id, reprocess=True, persist=False)
+    chunk_context = load_request_chunk_context(mock_data.sources[0])
+    replacement = create_extraction_job(source_id, chunk_id, reprocess=True, persist=False,
+                                        chunk_context=chunk_context)
     allowance = HostedAllowance()
     calls = install_hosted_provider(monkeypatch, allowance, [SimpleNamespace(output_text="not-json")])
     with pytest.raises(gemini_knowledge_extraction.ExtractionValidationError):
         gemini_knowledge_extraction.run_gemini_knowledge_extraction(
             replacement["id"], coalesce_interpretation=True,
             rollback_state=durable, on_checkpoint=lambda state: durable.update(state),
+            chunk_context=chunk_context,
         )
 
     assert len(calls) == allowance.calls == 1
@@ -200,23 +233,105 @@ def test_allowance_exhaustion_before_dispatch_has_two_checkpoints_and_no_call(
 ):
     allowance = HostedAllowance(calls=450)
     calls = install_hosted_provider(monkeypatch, allowance, [SimpleNamespace(output_text="unused")])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200
     assert response.json()["interruption_category"] == "allowance_exhausted"
     assert calls == [] and allowance.calls == 450 and len(writes) == 2
+    assert len(reads) == 1
     assert mock_data.extraction_jobs[-1]["status"] == "failed"
 
 
 def test_provider_429_counts_attempt_pauses_allowance_and_settles_once(client, source, monkeypatch):
     allowance = HostedAllowance()
     calls = install_hosted_provider(monkeypatch, allowance, [Provider429("quota")])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     writes = count_full_snapshot_writes(monkeypatch)
     response = client.post(f"/sources/{source[0]['id']}/interpret?max_chunks=1")
     assert response.status_code == 200
     assert response.json()["interruption_category"] == "allowance_exhausted"
     assert len(calls) == allowance.calls == 1 and allowance.paused
+    assert len(reads) == 1
     assert len(writes) == 2
+
+
+def test_missing_chunks_artifact_fails_before_provider_dispatch(source, monkeypatch):
+    from app.services.source_interpretation import interpret_source
+
+    source_record = mock_data.sources[0]
+    store = get_artifact_store()
+    store.remove(Path(source_record["chunks_path"]))
+    calls = install_hosted_provider(monkeypatch, HostedAllowance(), [])
+    with pytest.raises(ValueError, match="Chunks file not found"):
+        interpret_source(source_record["id"], max_chunks=1)
+    assert calls == []
+
+
+def test_malformed_chunks_artifact_fails_after_one_content_read(source, monkeypatch):
+    from app.services.source_interpretation import interpret_source
+
+    source_record = mock_data.sources[0]
+    store = get_artifact_store()
+    store.write_text(Path(source_record["chunks_path"]), "{malformed")
+    reads = count_chunk_content_reads(monkeypatch, source_record["id"])
+    calls = install_hosted_provider(monkeypatch, HostedAllowance(), [])
+    with pytest.raises(json.JSONDecodeError):
+        interpret_source(source_record["id"], max_chunks=1)
+    assert calls == [] and len(reads) == 1
+
+
+def test_chunk_source_or_recognized_manifest_mismatch_fails_closed(source, monkeypatch):
+    from app.services.source_interpretation import interpret_source
+
+    source_record = mock_data.sources[0]
+    store = get_artifact_store()
+    path = Path(source_record["chunks_path"])
+    chunks = json.loads(store.read_text(path))
+    chunks[0]["source_id"] = "source_unrelated"
+    store.write_text(path, json.dumps(chunks))
+    reads = count_chunk_content_reads(monkeypatch, source_record["id"])
+    calls = install_hosted_provider(monkeypatch, HostedAllowance(), [])
+    with pytest.raises(ValueError, match="does not match"):
+        interpret_source(source_record["id"], max_chunks=1)
+    assert calls == [] and len(reads) == 1
+
+
+def test_valid_but_stale_manifest_fails_closed_before_provider(source, monkeypatch):
+    from app.services.source_interpretation import interpret_source
+
+    source_record = mock_data.sources[0]
+    actual_id = source[1]["id"]
+    source_record["chunk_manifest"] = {
+        "version": 1, "total_parts": 1,
+        "chunk_ids": [f"chunk_{source_record['id']}_999"],
+    }
+    reads = count_chunk_content_reads(monkeypatch, source_record["id"])
+    calls = install_hosted_provider(monkeypatch, HostedAllowance(), [])
+    with pytest.raises(ValueError, match="manifest"):
+        interpret_source(source_record["id"], max_chunks=1)
+    assert actual_id != source_record["chunk_manifest"]["chunk_ids"][0]
+    assert calls == [] and len(reads) == 1
+
+
+@pytest.mark.parametrize("manifest_kind", ["unsupported", "malformed"])
+def test_unrecognized_manifest_uses_validated_legacy_content_once(client, source, monkeypatch, manifest_kind):
+    from app.services.source_interpretation import interpret_source
+
+    source_record = mock_data.sources[0]
+    chunk_id = source[1]["id"]
+    source_record["chunk_manifest"] = (
+        {"version": 99, "total_parts": 0, "chunk_ids": []}
+        if manifest_kind == "unsupported" else
+        {"version": 1, "total_parts": 2, "chunk_ids": [chunk_id, chunk_id]}
+    )
+    allowance = HostedAllowance()
+    calls = install_hosted_provider(monkeypatch, allowance, [Provider503("one"), Provider503("two")])
+    reads = count_chunk_content_reads(monkeypatch, source_record["id"])
+    result = interpret_source(source_record["id"], max_chunks=1)
+    assert result["processed_this_run"] == 0
+    assert len(calls) == allowance.calls == 2
+    assert len(reads) == 1
 
 
 def test_process_loss_after_provider_dispatch_leaves_durable_unconfirmed_job(
@@ -407,6 +522,7 @@ def test_stale_reconciliation_at_each_checkpoint_never_repeats_provider(
     calls = install_hosted_provider(monkeypatch, allowance, [SimpleNamespace(
         output_text=json.dumps({"assets": [asset]}), id="synthetic"
     )])
+    reads = count_chunk_content_reads(monkeypatch, source[0]["id"])
     state_store = RacingStateStore(_hosted_snapshot(), stale_on)
     monkeypatch.setattr(persistence_facade, "PERSISTENCE_MODE", "hosted")
     monkeypatch.setattr(persistence_facade, "get_state_store", lambda: state_store)
@@ -416,6 +532,7 @@ def test_stale_reconciliation_at_each_checkpoint_never_repeats_provider(
     assert response.status_code == 200, response.text
     assert response.json()["processed_this_run"] == 1
     assert len(calls) == allowance.calls == 1
+    assert len(reads) == 1
     assert state_store.save_count == 3  # one stale CAS, its persistence-only rebase, then the other checkpoint
     assert any(item["id"] == "library_concurrent" for item in state_store.latest["libraries"])
     assert any(item.get("active", True) for item in state_store.latest["knowledge_assets"])

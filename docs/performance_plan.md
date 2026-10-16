@@ -98,3 +98,50 @@ The MVP question is not whether every large book becomes ready instantly. It is 
 The next overall sequence is:
 
 **measure performance → test knowledge usefulness on a real decision → optimize the measured bottlenecks → external tester → final v1 beta decision**.
+
+## Deferred performance and platform backlog
+
+Every item below is **deferred, not rejected**. Revisit items against hosted
+measurements, MVP acceptance, provider/platform capability, and product-value
+evidence. This is the owning backlog for performance and platform follow-up;
+do not create a parallel performance roadmap.
+
+### Deferred performance and infrastructure work
+
+- Repeated Supabase artifact reads and source-summary efficiency.
+- Gemini model identifier and token instrumentation gap.
+- Controlled Gemini 3.1 Flash Lite versus 3.5 Flash-Lite benchmark.
+- Broader Google AI Studio and Gemini platform capability audit.
+- Embeddings and semantic retrieval evaluation.
+- Frontend and Library rendering performance.
+- Wider network and upload efficiency.
+- Supabase architecture and cost remeasurement after persistence optimization.
+- Render paid-infrastructure decision after measured optimization.
+- Remaining hosted Performance Benchmarks A–E in
+  [Performance Baseline v1](performance_baseline_v1.md).
+
+### Deferred preparation and workflow decisions
+
+- Durable/background material preparation.
+- Webhook/completion signalling.
+- Limited AI concurrency while preserving one chunk per Gemini request.
+- Multi-book queue/autonomy.
+- Preparation-state UX refinement.
+- Explicit MVP background-autonomy decision based on interruption and
+  continuation evidence.
+
+### Deferred persistence options
+
+These are later alternatives beyond the accepted dedicated allowance ledger and
+coalesced interpretation checkpoints:
+
+- **C.** Independent source/job persistence.
+- **D.** Partitioned Knowledge Asset/state persistence.
+- **E.** Normalized/granular persistence.
+
+### Deferred product acceptance and learning loop
+
+- Real product-value acceptance on useful decisions and outputs.
+- External-user acceptance.
+- Longer-term learning loop:
+  **Read → understand → interrogate → compare → apply → specify → build/test → reflect.**

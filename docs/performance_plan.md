@@ -30,6 +30,30 @@ A real hosted multi-book run also exposed an orchestration cost that raw per-chu
 
 The hosted service also runs on Render's free instance, so cold starts and limited compute can contribute to latency. Supabase Postgres and private Storage provide hosted persistence. These infrastructure limits must be measured separately from application design costs.
 
+### Read-path/storage amplification: implemented locally; hosted acceptance pending
+
+Production measurements for a 33-source Library showed a source-summary
+duration of approximately **41.6 seconds**, about **40 Storage metadata
+operations**, and about **20 chunk artifact GETs** reading approximately **9.7
+MB**. Settings integrity verification produced about **105 Storage metadata
+operations**. These measurements motivated a read-path change; they do not yet
+establish a hosted latency improvement.
+
+The following changes are implemented locally and await hosted acceptance:
+
+- Request-scoped bulk artifact presence through `ArtifactStore.status_many`.
+- Versioned source chunk manifests for summary and progress calculation.
+- Explicit Settings integrity verification rather than an automatic audit on
+  Settings entry.
+
+Hosted acceptance will check whether a representative Library summary uses
+roughly **2/few parent inventories** and, after existing-source backfill, **zero
+chunk-content GETs**, subject to Storage pagination. Opening Settings should make
+**zero automatic integrity-audit calls**. An explicitly requested integrity
+audit should use roughly **3/few parent inventories**, subject to pagination,
+while preserving the existing verification results. These are request-shape
+targets, not latency claims; hosted duration must be measured after deployment.
+
 ## Measurement before optimization
 
 Instrument or otherwise capture elapsed time for these boundaries without logging private source text or provider bodies:
@@ -108,7 +132,13 @@ do not create a parallel performance roadmap.
 
 ### Deferred performance and infrastructure work
 
-- Repeated Supabase artifact reads and source-summary efficiency.
+- Request-scoped chunk-content reuse inside `/interpret` (not implemented; a
+  separately measured follow-up).
+- Persisted artifact availability (deferred; live request-scoped presence
+  checks remain authoritative).
+- Larger persistence partitioning or normalization.
+- Further Supabase artifact-read and source-summary efficiency work beyond the
+  implemented bulk-presence and chunk-manifest changes above.
 - Gemini model identifier and token instrumentation gap.
 - Controlled Gemini 3.1 Flash Lite versus 3.5 Flash-Lite benchmark.
 - Broader Google AI Studio and Gemini platform capability audit.

@@ -146,3 +146,36 @@ build is to be restored later, keep admissions quiesced and add a versioned
 reconciliation step that seeds/verifies the ledger from the then-current
 snapshot before reopening; simply reusing migration version 1 would retain the
 old ledger count.
+
+## Chunk-manifest backfill
+
+The read-path release adds versioned chunk manifests as additive fields in
+source state. No SQL or database schema migration is required. Deploy the
+compatible code before running the existing-source backfill. Legacy sources
+without a recognized valid manifest continue through the existing chunk
+artifact read and validation path until backfilled.
+
+Run the backfill from the repository root with application writes idle. The
+command defaults to a dry run and does not call Gemini:
+
+```sh
+python apps/api/scripts/backfill_chunk_manifests.py
+```
+
+Review the reported update and skip counts. Missing, malformed, or inconsistent
+artifacts are skipped and reported; the command never invents a manifest for
+them. If the dry run is acceptable, apply the valid additions:
+
+```sh
+python apps/api/scripts/backfill_chunk_manifests.py --apply
+```
+
+The backfill stages validated manifests and persists them using the existing
+optimistic-concurrency safeguard. If a concurrency conflict occurs, stop; once
+application writes have ceased, rerun the dry run, review the new counts, and
+retry the apply. Finish with another dry run and verify it reports zero
+remaining updates. No Gemini calls are involved.
+
+For rollback, older code ignores the additive manifest fields. Sources with no
+valid recognized manifest continue to use the legacy artifact path, so the
+backfill can be left in place when reverting application code.

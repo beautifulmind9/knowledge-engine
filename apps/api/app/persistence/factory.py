@@ -6,7 +6,7 @@ facade remains responsible for load/save timing. Restart to change configuration
 import os
 from pathlib import Path
 
-from app.persistence.contracts import ArtifactStore, StateStore
+from app.persistence.contracts import ArtifactStore, StateStore, PartitionStore
 from app.persistence.local_artifacts import LocalArtifactStore
 from app.persistence.sqlite import SQLiteStateStore
 
@@ -72,3 +72,21 @@ def get_allowance_store():
             os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
         )
     return _allowance_store
+
+
+_partition_store = None
+
+
+def get_partition_store() -> PartitionStore:
+    """Dormant hosted primitives. No IO or authority switch until explicitly used."""
+    if PERSISTENCE_MODE != "hosted":
+        raise RuntimeError("Narrow partition storage is available only in hosted mode.")
+    global _partition_store
+    if _partition_store is None:
+        from app.persistence.partitions import PostgresPartitionStore
+
+        _partition_store = PostgresPartitionStore(
+            os.environ.get("KNOWLEDGE_ENGINE_DATABASE_URL", ""),
+            os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
+        )
+    return _partition_store

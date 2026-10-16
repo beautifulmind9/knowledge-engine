@@ -1,5 +1,5 @@
 from contextlib import AbstractContextManager
-from typing import Any, BinaryIO, Literal, Protocol
+from typing import Any, BinaryIO, Literal, Mapping, Protocol
 from pathlib import Path
 
 
@@ -29,6 +29,10 @@ class ArtifactStore(Protocol):
 
         Only genuine absence is missing; permission and storage failures raise.
         """
+        ...
+
+    def status_many(self, paths: list[Path]) -> Mapping[Path, Literal["artifact", "missing", "other"]]:
+        """Check exact locators in one request scope; failures are never absence."""
         ...
 
     def open_binary_read(self, path: Path) -> AbstractContextManager[BinaryIO]: ...

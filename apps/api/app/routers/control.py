@@ -29,11 +29,15 @@ def integrity():
     library_ids={l["id"] for l in libraries}
     output_ids={o["id"] for o in outputs}
     issues=[]
+    artifact_paths = [Path(source[key]) for source in sources
+                      for key in ("file_path", "chunks_path", "extracted_text_path")
+                      if source.get(key)]
+    artifact_status = _artifact_store.status_many(artifact_paths)
     for source in sources:
         if source["library_id"] not in library_ids:
             issues.append({"id":source["id"],"problem":"orphaned library"})
         for key in ("file_path","chunks_path","extracted_text_path"):
-            if source.get(key) and _artifact_store.status(Path(source[key])) != "artifact":
+            if source.get(key) and artifact_status[Path(source[key])] != "artifact":
                 issues.append({"id":source["id"],"problem":"missing "+key})
     for item in extraction_jobs+knowledge_assets:
         if item["source_id"] not in source_ids:

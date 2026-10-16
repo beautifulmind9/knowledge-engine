@@ -22,6 +22,16 @@ def test_default_artifact_folders():
     assert text_chunking.CHUNK_OUTPUT_FOLDER == STORAGE_ROOT / "chunks"
 
 
+def test_local_status_many_deduplicates_and_keeps_storage_errors(tmp_path,monkeypatch):
+    store=LocalArtifactStore();target=tmp_path/'file';target.write_text('x')
+    calls=[];original=store.status
+    monkeypatch.setattr(store,'status',lambda path:(calls.append(path),original(path))[1])
+    assert store.status_many([target,target])=={target:'artifact'} and calls==[target]
+    monkeypatch.setattr(store,'status',lambda path:(_ for _ in ()).throw(OSError('unavailable')))
+    with pytest.raises(OSError,match='unavailable'):
+        store.status_many([tmp_path/'missing'])
+
+
 @pytest.mark.parametrize("text", ["", "Café 学習 🌱\n", " first\r\nsecond\rthird\n\n\t", "a\x00b"])
 def test_extracted_text_bytes_contents_and_path(artifact_folders, text):
     expected = artifact_folders / "reference.txt"

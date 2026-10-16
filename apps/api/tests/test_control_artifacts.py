@@ -46,6 +46,20 @@ def test_integrity_storage_failure_is_not_missing(client, source, monkeypatch):
         client.get('/data/integrity')
 
 
+def test_integrity_uses_one_bulk_presence_inventory(client, source, monkeypatch):
+    calls=[];original=control._artifact_store
+    class TrackingStore:
+        def status_many(self,paths):
+            paths=list(paths);calls.append(paths)
+            return original.status_many(paths)
+        def status(self,path):pytest.fail('integrity must use bulk presence')
+        def read_text(self,path,**kwargs):pytest.fail('integrity must not read artifact content')
+        def open_binary_read(self,path):pytest.fail('integrity must not read artifact content')
+    monkeypatch.setattr(control,'_artifact_store',TrackingStore())
+    assert client.get('/data/integrity').json()=={'ok':True,'issues':[]}
+    assert len(calls)==1 and len(calls[0])==3 and len(set(calls[0]))==3
+
+
 def test_export_matches_original_zip_and_does_not_mutate_live_state(client, source, monkeypatch):
     before = snapshot()
     expected_state = deepcopy(before)

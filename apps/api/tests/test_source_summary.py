@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 import pytest
 from app.db import mock_data as db
@@ -17,6 +18,7 @@ def install_parts(source, count=3):
     s, _ = source
     record = db.sources[0]
     record['chunks_path'] = save_chunks(s['id'], [{'id': f'p{i}', 'text': 'Grounded practice.', 'source_id': s['id']} for i in range(count)])
+    record.pop('chunk_manifest',None)
     return record
 
 
@@ -57,6 +59,7 @@ def test_partial_failure_preserves_grounded_knowledge_and_retrieval(client, sour
     s= db.sources[0]
     original=client.get(f"/sources/{s['id']}/chunks").json()['items'][0]
     s['chunks_path']=save_chunks(s['id'],[original,{'id':'later','source_id':s['id'],'text':'More practice.'}])
+    s.pop('chunk_manifest',None)
     before=[dict(a) for a in db.knowledge_assets]
     def fail(jid):
         next(j for j in db.extraction_jobs if j['id']==jid)['status']='failed'
@@ -121,6 +124,14 @@ def test_missing_chunks_retains_useful_knowledge_and_unknown_counts(client,sourc
     assert facts['total_parts'] is None and facts['completed_parts'] is None
     assert facts['readiness']=='unknown'
     assert facts['attention_category']=='artifact_unavailable' and facts['has_usable_knowledge']
+
+
+def test_summary_storage_inventory_failure_is_unavailable_not_missing_or_ready(client,source,monkeypatch):
+    def fail(paths):raise OSError('synthetic storage unavailable')
+    monkeypatch.setattr(source_summary.get_artifact_store(),'status_many',fail)
+    facts=summary(client,source[0]['id'])
+    assert facts['file_state']=='unknown' and facts['read_state']=='unavailable'
+    assert facts['readiness']=='unknown' and facts['attention_category']=='artifact_unavailable'
 
 
 @pytest.mark.parametrize('category',['ocr_required','unsupported_extraction','read_failed'])
@@ -189,11 +200,72 @@ def test_invalid_provider_output_uses_one_attempt_even_with_flag(client,source,k
 
 
 def test_corrupt_parts_are_unknown_not_complete(client,source,monkeypatch):
-    monkeypatch.setattr(source_summary,'load_chunks',lambda path:[{'id':'p0'},{'id':'p0'}])
+    db.sources[0].pop('chunk_manifest',None)
+    store=source_summary.get_artifact_store()
+    monkeypatch.setattr(store,'read_text',lambda path:'[{"id":"p0"},{"id":"p0"}]')
     facts=summary(client,source[0]['id'])
     assert facts['total_parts'] is None and facts['completed_parts'] is None
     assert facts['readiness']=='unknown'
     assert facts['attention_category']=='artifact_unavailable'
+
+
+def test_valid_manifest_avoids_chunk_get_and_uses_exact_job_ids(client,source,monkeypatch):
+    s,part=source;s=db.sources[0]
+    ids=[part['id'],f"chunk_{s['id']}_later"]
+    s['chunk_manifest']={'version':1,'total_parts':2,'chunk_ids':ids}
+    job(s,ids[0],'completed');job(s,ids[0],'completed');job(s,'unrelated','completed')
+    store=source_summary.get_artifact_store();reads=[]
+    monkeypatch.setattr(store,'read_text',lambda path:(reads.append(path),pytest.fail('manifest summary must not GET chunks'))[0])
+    facts=summary(client,s['id'])
+    assert (facts['completed_parts'],facts['total_parts'],facts['readiness'])==(1,2,'partly_ready')
+    assert reads==[]
+
+
+def test_valid_manifest_does_not_hide_missing_chunk_artifact(client,source):
+    s,part=source;s=db.sources[0]
+    s['chunks_path']='/definitely/missing/chunks.json'
+    s['chunk_manifest']={'version':1,'total_parts':1,'chunk_ids':[part['id']]}
+    facts=summary(client,s['id'])
+    assert facts['readiness']=='unknown' and facts['total_parts'] is None
+    assert facts['attention_category']=='artifact_unavailable'
+
+
+def test_unsupported_manifest_falls_back_to_legacy_artifact_read(client,source,monkeypatch):
+    s,part=source;s=db.sources[0];s['chunk_manifest']={'version':99,'total_parts':1,'chunk_ids':[part['id']]}
+    store=source_summary.get_artifact_store();reads=[];original=store.read_text
+    def tracked(path):reads.append(path);return original(path)
+    monkeypatch.setattr(store,'read_text',tracked)
+    facts=summary(client,s['id'])
+    assert facts['total_parts']==1 and reads==[Path(s['chunks_path'])]
+
+
+def test_malformed_manifest_falls_back_to_legacy_artifact_read(client,source,monkeypatch):
+    s,part=source;s=db.sources[0]
+    s['chunk_manifest']={'version':1,'total_parts':2,'chunk_ids':[part['id'],part['id']]}
+    store=source_summary.get_artifact_store();reads=[];original=store.read_text
+    def tracked(path):reads.append(path);return original(path)
+    monkeypatch.setattr(store,'read_text',tracked)
+    facts=summary(client,s['id'])
+    assert facts['total_parts']==1 and facts['completed_parts']==0 and reads==[Path(s['chunks_path'])]
+
+
+def test_summary_batches_presence_for_many_sources_and_skips_manifest_chunk_get(client,source,monkeypatch):
+    from copy import deepcopy
+    original=source_summary.get_artifact_store();calls=[]
+    class Store:
+        def status_many(self,paths):
+            calls.append(list(paths));return {path:'artifact' for path in paths}
+        def status(self,path):pytest.fail('summary must not make individual status calls')
+        def read_text(self,path):pytest.fail('valid manifests must avoid chunk GETs')
+    source_id,part=source[0]['id'],source[1]
+    base=deepcopy(db.sources[0]);base['chunk_manifest']={'version':1,'total_parts':1,'chunk_ids':[part['id']]}
+    clones=[]
+    for index in range(32):
+        clone=deepcopy(base);clone['id']=f'source_synthetic_{index:02}';clone['chunk_manifest']={'version':1,'total_parts':1,'chunk_ids':[f"chunk_{clone['id']}_001"]};clones.append(clone)
+    db.sources.extend(clones)
+    monkeypatch.setattr(source_summary,'get_artifact_store',lambda:Store())
+    result=source_summary.source_summaries(library_id=base['library_id'])
+    assert len(result)==33 and len(calls)==1 and len(calls[0])==66
 
 
 def test_known_empty_parts_are_added(client,source):

@@ -23,6 +23,7 @@ def _install_chunks(source, count=3):
         for index in range(count)
     ]
     db.sources[0]["chunks_path"] = save_chunks(s["id"], chunks)
+    db.sources[0].pop("chunk_manifest",None)
     persist_state()
     return s, chunks
 
@@ -124,6 +125,15 @@ def test_provider_503_is_returned_as_safe_known_interruption_without_retry(clien
     summary = client.get(f"/sources/{s['id']}/summary").json()
     assert summary["attention_category"] == "build_stopped"
     assert summary["completed_parts"] == 0
+
+
+def test_interpretation_summary_uses_manifest_without_chunk_content_get(source,monkeypatch):
+    from app.services.chunk_manifest import manifest_from_chunks
+    s,chunk=source;s=db.sources[0]
+    s['chunk_manifest']=manifest_from_chunks(s['id'],[chunk])
+    monkeypatch.setattr(source_interpretation,'get_source_chunks',lambda source_id:pytest.fail('manifest summary must not GET chunk content'))
+    summary=source_interpretation.get_source_interpretation_summary(s['id'])
+    assert summary['total_chunks']==1 and summary['completed_chunks']==0 and summary['status']=='ready'
 
 
 @pytest.mark.parametrize('completed_before_timeout', [0, 3, 5])

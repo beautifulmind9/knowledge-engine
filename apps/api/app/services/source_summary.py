@@ -1,12 +1,13 @@
 """Compact inventory facts. No audit, consolidation, retrieval or provider IO."""
 from collections import defaultdict
+import json
 from pathlib import Path
 
 from app.db.mock_data import sources, extraction_jobs, knowledge_assets
 from app.models.source_summary import SourceSummary, RecoverySummary
 from app.persistence.factory import get_artifact_store
 from app.services.knowledge_extraction import recovery_eligibility
-from app.services.text_chunking import load_chunks
+from app.services.chunk_manifest import valid_manifest
 
 MESSAGES = {
     "missing_file": "Attach a file to this material.",
@@ -36,18 +37,22 @@ def source_summaries(library_id=None, source_id=None, now=None):
     for asset in knowledge_assets:
         if asset.get("active", True):
             usable.add(asset["source_id"])
-    return [_summarize(s, jobs[s["id"]], s["id"] in usable, now) for s in chosen]
-
-
-def _summarize(source, jobs, usable, now):
     store = get_artifact_store()
+    paths = [Path(s[key]) for s in chosen for key in ("file_path", "chunks_path") if s.get(key)]
+    try:
+        presence = store.status_many(paths)
+    except Exception:
+        # A failed inventory is unknown, never evidence that artifacts are absent.
+        presence = {}
+    return [_summarize(s, jobs[s["id"]], s["id"] in usable, now, store, presence) for s in chosen]
+
+
+def _summarize(source, jobs, usable, now, store, presence):
     attention = None
     file_state = "unattached"
     if source.get("file_path"):
-        try:
-            file_state = "available" if store.status(Path(source["file_path"])) == "artifact" else "missing"
-        except Exception:
-            file_state = "unknown"
+        checked = presence.get(Path(source["file_path"]))
+        file_state = "available" if checked == "artifact" else "unknown" if checked is None else "missing"
         if file_state != "available":
             attention = "artifact_unavailable"
     else:
@@ -57,13 +62,23 @@ def _summarize(source, jobs, usable, now):
     current_ids = set()
     if source.get("chunks_path"):
         try:
-            chunks = load_chunks(source["chunks_path"])
-            if not isinstance(chunks, list) or any(not isinstance(c, dict) or not isinstance(c.get("id"), str) or not c["id"] for c in chunks):
-                raise ValueError("Invalid processing parts.")
-            current_ids = {c["id"] for c in chunks}
-            if len(current_ids) != len(chunks):
-                raise ValueError("Duplicate processing parts.")
-            total = len(current_ids)
+            chunks_path = Path(source["chunks_path"])
+            checked = presence.get(chunks_path)
+            if checked != "artifact":
+                raise OSError("Chunk artifact is unavailable.")
+            manifest = source.get("chunk_manifest")
+            if valid_manifest(source["id"], manifest):
+                current_ids = set(manifest["chunk_ids"])
+                total = manifest["total_parts"]
+            else:
+                raw = store.read_text(chunks_path)
+                chunks = json.loads(raw)
+                if not isinstance(chunks, list) or any(not isinstance(c, dict) or not isinstance(c.get("id"), str) or not c["id"] for c in chunks):
+                    raise ValueError("Invalid processing parts.")
+                current_ids = {c["id"] for c in chunks}
+                if len(current_ids) != len(chunks):
+                    raise ValueError("Duplicate processing parts.")
+                total = len(current_ids)
             completed = len({j["chunk_id"] for j in jobs if j["chunk_id"] in current_ids and j["status"] == "completed"})
             read_state = "read" if total else "read_failed"
             if not total:

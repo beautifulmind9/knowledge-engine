@@ -157,9 +157,11 @@ class SupabaseArtifactStore:
     def create_directory(self, path: Path) -> None:
         self.relative_locator(path)
 
-    def status(self, path: Path):
+    def status(self, path: Path, *, _list_counter=None):
         relative = self.relative_locator(path)
         if relative == Path("."):
+            if _list_counter:
+                _list_counter()
             self._list(self._workspace_key)  # Validate access even for the logical root.
             return "other"
         key = self._key(path)
@@ -167,6 +169,8 @@ class SupabaseArtifactStore:
         offset = 0
         found_prefix = False
         while True:
+            if _list_counter:
+                _list_counter()
             items = self._list(parent, search=name, offset=offset)
             for item in items:
                 if item["name"] == name:
@@ -176,6 +180,88 @@ class SupabaseArtifactStore:
             if len(items) < 100:
                 return "other" if found_prefix else "missing"
             offset += len(items)
+
+    def status_many(self, paths):
+        started = timing_start()
+        requested = [Path(path) for path in paths]
+        unique = list(dict.fromkeys(requested))
+        groups = {}
+        roots = []
+        for path in unique:
+            relative = self.relative_locator(path)
+            if relative == Path("."):
+                roots.append(path)
+                continue
+            parent, name = self._key(path).rsplit("/", 1)
+            groups.setdefault(parent, {}).setdefault(name, []).append(path)
+
+        result = {}
+        list_requests = 0
+        exact_fallbacks = 0
+        individual_status_calls = 0
+        def count_list_request():
+            nonlocal list_requests
+            list_requests += 1
+        try:
+            for root in roots:
+                count_list_request()
+                self._list(self._workspace_key)
+                result[root] = "other"
+            for parent, by_name in groups.items():
+                if len(by_name) == 1:
+                    # A filtered exact query is cheaper than inventorying an
+                    # arbitrarily large parent when only one locator is needed.
+                    _name, locators = next(iter(by_name.items()))
+                    for path in locators:
+                        individual_status_calls += 1
+                        result[path] = self.status(path, _list_counter=count_list_request)
+                    continue
+                wanted = set(by_name)
+                found = {}
+                offset = 0
+                page_count = 0
+                while wanted:
+                    count_list_request()
+                    items = self._list(parent, offset=offset)
+                    page_count += 1
+                    for item in items:
+                        name = item["name"]
+                        if name in wanted:
+                            state = "artifact" if item.get("id") is not None else "other"
+                            if state == "artifact" or name not in found:
+                                found[name] = state
+                            if state == "artifact":
+                                wanted.discard(name)
+                    if not wanted or len(items) < 100:
+                        break
+                    offset += len(items)
+
+                # An absent item after offset pagination may have moved between
+                # pages during concurrent mutation. Recheck exact paths through
+                # the established status behavior before declaring absence.
+                for name in wanted:
+                    for path in by_name[name]:
+                        if page_count > 1:
+                            exact_fallbacks += 1
+                            result[path] = self.status(path, _list_counter=count_list_request)
+                        else:
+                            result[path] = found.get(name, "missing")
+                for name, state in found.items():
+                    for path in by_name[name]:
+                        result[path] = state
+        except Exception:
+            timing_emit("storage_status_many", started, result="error",
+                        requested_path_count=len(requested), unique_path_count=len(unique),
+                        parent_group_count=len(groups) + len(roots), list_request_count=list_requests,
+                        exact_fallback_count=exact_fallbacks,
+                        individual_status_count=individual_status_calls)
+            raise
+        timing_emit("storage_status_many", started, result="success",
+                    requested_path_count=len(requested), unique_path_count=len(unique),
+                    parent_group_count=len(groups) + len(roots), list_request_count=list_requests,
+                    exact_fallback_count=exact_fallbacks,
+                    individual_status_count=individual_status_calls)
+        return result
 
     def exists(self, path: Path) -> bool:
         return self.status(path) != "missing"

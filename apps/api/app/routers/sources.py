@@ -28,6 +28,7 @@ from app.services.text_extraction import (
 from app.services.text_chunking import chunk_text, load_chunks, save_chunks
 from app.services.source_structure import annotate_pdf_chunks_with_outline
 from app.services.source_identity import resolve_identity
+from app.services.chunk_manifest import manifest_from_chunks
 from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 from app.models.source_summary import SourceSummary
@@ -124,6 +125,9 @@ def _recover_pdf_structure(source: dict):
     )
     source["structure_section_count"] = summary["section_count"]
     source["structure_outline_entry_count"] = summary["outline_entry_count"]
+    # PDF outline annotation may enrich chunks but must retain the exact chunk
+    # identity set used by progress and recovery calculations.
+    source["chunk_manifest"] = manifest_from_chunks(source["id"], chunks)
     persist_state()
 
     return {
@@ -202,6 +206,7 @@ def create_source(payload: SourceCreate):
         "file_type": None,
         "extracted_text_path": None,
         "chunks_path": None,
+        "chunk_manifest": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
@@ -357,6 +362,7 @@ def upload_source_file(source_id: str, file: UploadFile = File(...)):
     updated_fields = dict(
         file_name=file.filename, file_path=str(file_path), file_type=file_extension,
         processing_status="uploaded", extracted_text_path=None, chunks_path=None,
+        chunk_manifest=None,
         reading_failure=None, stopped_reason=None,
         structure_status=None, structure_section_count=0, structure_outline_entry_count=0,
     )
@@ -611,7 +617,11 @@ def chunk_source_text(source_id: str):
     timing_emit("artifact_publication", write_started, source_id=source_id, destination_category="artifact",
                 operation_category="chunks", chunk_count=len(chunks))
 
+    source_fields = ("chunks_path", "chunk_manifest", "reading_failure", "processing_status",
+                     "structure_status", "structure_section_count", "structure_outline_entry_count")
+    previous_state = {key: source.get(key) for key in source_fields}
     source["chunks_path"] = chunks_path
+    source["chunk_manifest"] = manifest_from_chunks(source_id, chunks)
     source["reading_failure"] = None
     source["processing_status"] = "chunked"
     if structure_summary is not None:
@@ -620,7 +630,21 @@ def chunk_source_text(source_id: str):
         )
         source["structure_section_count"] = structure_summary["section_count"]
         source["structure_outline_entry_count"] = structure_summary["outline_entry_count"]
-    persist_state()
+    # The artifact has been safely published, but the source reference and its
+    # manifest become visible together at this durable snapshot boundary.
+    try:
+        persist_state()
+    except StateMutationConflict:
+        # Persistence has reconciled the live collections to the latest durable
+        # state. Do not write the stale pre-checkpoint values back into it.
+        raise
+    except Exception:
+        for key, value in previous_state.items():
+            if value is None:
+                source.pop(key, None)
+            else:
+                source[key] = value
+        raise
 
     timing_emit("source_chunk_request", started, source_id=source_id, chunk_count=len(chunks))
     return {

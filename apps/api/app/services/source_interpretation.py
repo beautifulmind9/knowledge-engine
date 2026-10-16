@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from pathlib import Path
 
 from app.db.persistence import StateMutationConflict
 from app.db.mock_data import extraction_jobs, knowledge_assets
@@ -13,6 +14,8 @@ from app.services.knowledge_extraction import (
     restore_interpretation_state,
 )
 from app.services.text_chunking import load_chunks
+from app.services.chunk_manifest import valid_manifest
+from app.persistence.factory import get_artifact_store
 from app.services.performance_timing import operation_context
 
 
@@ -66,8 +69,21 @@ def _pending_or_running_job(source_id: str, chunk_id: str):
 
 
 def get_source_interpretation_summary(source_id: str):
-    source, chunks = get_source_chunks(source_id)
-    chunk_ids = {chunk.get("id") for chunk in chunks}
+    source = find_source(source_id)
+    if not source:
+        raise ValueError("Source not found.")
+    manifest = source.get("chunk_manifest")
+    if source.get("chunks_path") and valid_manifest(source_id, manifest):
+        # Metadata avoids downloading chunk contents, but never substitutes for
+        # live artifact-presence verification.
+        if get_artifact_store().status_many([Path(source["chunks_path"])])[Path(source["chunks_path"])] != "artifact":
+            raise ValueError("Chunks file not found on disk. Restore the source data before continuing.")
+        chunk_ids = set(manifest["chunk_ids"])
+        total_chunks = manifest["total_parts"]
+    else:
+        source, chunks = get_source_chunks(source_id)
+        chunk_ids = {chunk.get("id") for chunk in chunks}
+        total_chunks = len(chunks)
     source_jobs = [
         job
         for job in _jobs_for_source(source_id)
@@ -81,7 +97,6 @@ def get_source_interpretation_summary(source_id: str):
     }
 
     completed_count = len(completed_chunk_ids)
-    total_chunks = len(chunks)
     remaining_count = max(total_chunks - completed_count, 0)
 
     if total_chunks == 0:

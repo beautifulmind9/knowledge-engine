@@ -88,7 +88,41 @@ def test_replacement_removes_prior_artifacts_before_interpretation(client, sourc
     assert path.read_bytes() == b"replacement"
     assert all(not old.exists() for old in old_paths if old != path)
     assert current["extracted_text_path"] is None and current["chunks_path"] is None
+    assert current.get("chunk_manifest") is None
     assert current["processing_status"] == "uploaded"
+
+
+def test_chunk_publication_persists_versioned_exact_manifest_and_restart_state(source):
+    from app.persistence.factory import get_state_store
+    from app.services.text_chunking import load_chunks
+    record, _ = source
+    current=stored(record);chunks=load_chunks(current["chunks_path"])
+    assert current["chunk_manifest"]=={
+        "version":1,"total_parts":len(chunks),"chunk_ids":[chunk["id"] for chunk in chunks]}
+    snapshot=get_state_store().load()
+    persisted=next(item for item in snapshot["sources"] if item["id"]==record["id"])
+    assert persisted["chunk_manifest"]==current["chunk_manifest"]
+
+
+def test_chunk_artifact_write_failure_never_publishes_manifest(client, source, monkeypatch):
+    from app.services import text_chunking
+    record,_=source;current=stored(record);current["chunks_path"]=None;current.pop("chunk_manifest",None)
+    class FailingStore(LocalArtifactStore):
+        def write_text(self,path,text):
+            if path.parent.name=="chunks":raise OSError("synthetic artifact write failure")
+            super().write_text(path,text)
+    monkeypatch.setattr(text_chunking,"_artifact_store",FailingStore())
+    with pytest.raises(OSError,match="synthetic artifact write failure"):
+        router.chunk_source_text(record["id"])
+    assert current.get("chunks_path") is None and current.get("chunk_manifest") is None
+
+
+def test_chunk_state_persistence_failure_restores_unpublished_source_reference(client, source, monkeypatch):
+    record,_=source;current=stored(record);current["chunks_path"]=None;current.pop("chunk_manifest",None)
+    monkeypatch.setattr(router,"persist_state",lambda:(_ for _ in ()).throw(OSError("synthetic state failure")))
+    with pytest.raises(OSError,match="synthetic state failure"):
+        router.chunk_source_text(record["id"])
+    assert current.get("chunks_path") is None and current.get("chunk_manifest") is None
 
 
 def test_interpretation_history_blocks_replacement(client, source, knowledge):

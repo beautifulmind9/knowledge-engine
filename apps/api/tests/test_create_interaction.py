@@ -75,7 +75,10 @@ def test_create_reports_real_partial_section_coverage(client, knowledge, source)
     s = next(s for s in db.sources if s['id'] == knowledge['source_id'])
     chunks = load_chunks(s['chunks_path'])
     # One completed extraction; a second section has not been interpreted.
-    save_chunks(s['id'], chunks + [{**chunks[0], 'id': 'unprepared-second-section', 'chunk_index': 2}])
+    chunks = chunks + [{**chunks[0], 'id': f"chunk_{s['id']}_002", 'chunk_index': 2}]
+    save_chunks(s['id'], chunks)
+    from app.services.chunk_manifest import manifest_from_chunks
+    s['chunk_manifest'] = manifest_from_chunks(s['id'], chunks)
     prepared = client.post('/workshops/prepare', json=_preview_payload(knowledge))
     assert prepared.status_code == 200, prepared.text
     assert prepared.json()['source_coverage'] == [{

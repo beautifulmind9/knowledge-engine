@@ -5,6 +5,7 @@ from os import stat_result
 from stat import S_ISREG
 from typing import Literal
 from zipfile import ZipInfo
+from app.services.performance_timing import start as timing_start, emit as timing_emit
 
 
 class LocalArtifactStore:
@@ -26,6 +27,24 @@ class LocalArtifactStore:
         except (FileNotFoundError, NotADirectoryError):
             return "missing"
         return "artifact" if S_ISREG(metadata.st_mode) else "other"
+
+    def status_many(self, paths):
+        started = timing_start()
+        requested = [Path(path) for path in paths]
+        unique = list(dict.fromkeys(requested))
+        try:
+            result = {path: self.status(path) for path in unique}
+        except Exception:
+            timing_emit("storage_status_many", started, result="error",
+                        requested_path_count=len(requested), unique_path_count=len(unique),
+                        parent_group_count=len({path.parent for path in unique}),
+                        list_request_count=0, exact_fallback_count=0)
+            raise
+        timing_emit("storage_status_many", started, result="success",
+                    requested_path_count=len(requested), unique_path_count=len(unique),
+                    parent_group_count=len({path.parent for path in unique}),
+                    list_request_count=0, exact_fallback_count=0)
+        return result
 
     def resolve(self, path: Path) -> Path:
         return path.resolve()

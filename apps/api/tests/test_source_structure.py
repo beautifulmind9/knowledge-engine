@@ -32,6 +32,7 @@ def test_recover_structure_backfills_existing_chunks_and_assets(client, source, 
     source_record, chunk = source
     stored = next(item for item in db.sources if item["id"] == source_record["id"])
     stored["file_type"] = ".pdf"
+    original_manifest = stored["chunk_manifest"].copy()
 
     # The normal Markdown fixture already carries the '# Focus' heading into both
     # the chunk and the extracted asset. This test is specifically for the legacy
@@ -58,6 +59,7 @@ def test_recover_structure_backfills_existing_chunks_and_assets(client, source, 
     payload = response.json()
     assert payload["updated_asset_count"] == 1
     assert payload["structure_status"] == "pdf_outline_recovered"
+    assert stored["chunk_manifest"] == original_manifest
 
     refreshed_chunk = client.get(f"/sources/{source_record['id']}/chunks").json()["items"][0]
     assert refreshed_chunk["chapter_or_section"] == "Recovered chapter"

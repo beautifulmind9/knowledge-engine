@@ -150,6 +150,133 @@ def test_presence_and_removal(storage):
     assert not store.exists(path)
 
 
+def test_status_many_batches_parent_inventory_and_deduplicates(storage):
+    store, api = storage
+    store.write_text(Path('uploads/a'), 'a')
+    store.write_text(Path('uploads/b'), 'b')
+    api.calls.clear()
+    paths = [Path('uploads/a'), Path('uploads/a'), Path('uploads/b')]
+    assert store.status_many(paths) == {Path('uploads/a'): 'artifact', Path('uploads/b'): 'artifact'}
+    assert len([call for call in api.calls if call[0] == 'POST' and '/object/list/' in call[1]]) == 1
+
+
+def test_status_many_perf_event_is_aggregated_and_contains_no_locators(storage, caplog):
+    import logging
+    from app.services import performance_timing
+    store,api=storage
+    path=Path('uploads/private-name-uuid.txt');store.write_text(path,'x');api.calls.clear()
+    logger=performance_timing.logger;old=(logger.level,logger.propagate,list(logger.handlers))
+    logger.setLevel(logging.INFO);logger.propagate=False;logger.addHandler(caplog.handler)
+    try:
+        store.status_many([path,path])
+        events=[json.loads(record.message.removeprefix('PERF ')) for record in caplog.records
+                if record.message.startswith('PERF ') and 'storage_status_many' in record.message]
+        assert len(events)==1
+        assert events[0]['event']=='storage_status_many'
+        assert events[0]['requested_path_count']==2 and events[0]['unique_path_count']==1
+        assert events[0]['parent_group_count']==1 and events[0]['list_request_count']==1
+        assert 'private-name' not in caplog.text and 'uploads' not in caplog.text
+    finally:
+        logger.removeHandler(caplog.handler);logger.setLevel(old[0]);logger.propagate=old[1]
+
+
+def test_status_many_exact_match_object_prefix_and_legacy_parent(storage):
+    store, api = storage
+    store.write_text(Path('legacy/archive/name.txt'), 'value')
+    store.write_text(Path('legacy/archive/name.txt.backup'), 'similar')
+    store.write_text(Path('legacy/archive/folder/child'), 'nested')
+    result = store.status_many([Path('legacy/archive/name.txt'), Path('legacy/archive/name.txt.bak'),
+                                Path('legacy/archive/folder'), Path('legacy/archive/name.txt.backup')])
+    assert result == {Path('legacy/archive/name.txt'): 'artifact',
+                      Path('legacy/archive/name.txt.bak'): 'missing',
+                      Path('legacy/archive/folder'): 'other',
+                      Path('legacy/archive/name.txt.backup'): 'artifact'}
+
+
+@pytest.mark.parametrize(('count','target_index','expected_list_calls'), [(37,36,1),(100,99,1),(101,100,2),(200,199,2)])
+def test_status_many_paginates_safely(storage, count, target_index, expected_list_calls):
+    store, api = storage
+    for index in range(count):
+        store.write_text(Path(f'chunks/item-{index:03}'), 'x')
+    api.calls.clear()
+    paths=[Path(f'chunks/item-{index:03}') for index in range(count)]
+    target = Path(f'chunks/item-{target_index:03}')
+    result=store.status_many(paths)
+    assert result[target] == 'artifact' and len(result)==count
+    list_calls = [call for call in api.calls if call[0] == 'POST' and '/object/list/' in call[1]]
+    assert len(list_calls) == expected_list_calls
+
+
+def test_status_many_absence_after_multiple_pages_uses_exact_fallback(storage):
+    store, api = storage
+    for index in range(200):
+        store.write_text(Path(f'chunks/item-{index:03}'), 'x')
+    api.calls.clear()
+    missing = Path('chunks/not-present')
+    existing=Path('chunks/item-199')
+    result=store.status_many([missing,existing])
+    assert result[missing] == 'missing'
+    list_calls = [call for call in api.calls if call[0] == 'POST' and '/object/list/' in call[1]]
+    # Two full inventory pages, terminal empty page, then exact status check.
+    assert len(list_calls) == 4
+    assert json.loads(api.requests[-1].data)['search'] == 'not-present'
+
+
+def test_status_many_failure_is_not_partial_absence(storage):
+    store, api = storage
+    api.failure = (503, {'code': 'Unavailable'})
+    with pytest.raises(HostedArtifactStoreError):
+        store.status_many([Path('uploads/missing')])
+
+
+def test_status_many_later_page_failure_never_returns_partial_missing(storage):
+    store, api = storage
+    for index in range(150):
+        store.write_text(Path(f'chunks/item-{index:03}'), 'x')
+    original=api.open
+    def fail_after_first_page(request,timeout):
+        route=unquote(urlsplit(request.full_url).path).removeprefix('/storage/v1')
+        if route.startswith('/object/list/') and int(json.loads(request.data)['offset'])==100:
+            raise URLError('private listing failure')
+        return original(request,timeout)
+    api.open=fail_after_first_page
+    with pytest.raises(HostedArtifactStoreError):
+        store.status_many([Path('chunks/not-present'),Path('chunks/item-149')])
+
+
+def test_status_many_validates_every_locator_before_listing(storage):
+    store, api = storage
+    with pytest.raises(ValueError):
+        store.status_many([Path('uploads/valid'), Path('../escape')])
+    assert not api.calls
+
+
+def test_library_summary_for_33_sources_uses_two_parent_inventories(storage, monkeypatch):
+    from app.db import mock_data as db
+    from app.services import source_summary
+    store,api=storage
+    library_id='library_bulk_summary'
+    db.libraries.append({'id':library_id,'name':'Synthetic library'})
+    for index in range(33):
+        source_id=f'source_bulk_{index:02}'
+        upload=Path(f'uploads/{source_id}-uuid-suffix.txt')
+        chunks=Path(f'chunks/{source_id}.json')
+        chunk_id=f'chunk_{source_id}_001'
+        store.write_text(upload,'synthetic upload')
+        store.write_text(chunks,json.dumps([{'id':chunk_id,'source_id':source_id,'text':'content'}]))
+        db.sources.append({'id':source_id,'library_id':library_id,'title':'Synthetic',
+                           'file_path':upload.as_posix(),'chunks_path':chunks.as_posix(),
+                           'chunk_manifest':{'version':1,'total_parts':1,'chunk_ids':[chunk_id]},
+                           'processing_status':'chunked'})
+    monkeypatch.setattr(source_summary,'get_artifact_store',lambda:store)
+    api.calls.clear()
+    summaries=source_summary.source_summaries(library_id=library_id)
+    calls=[call for call in api.calls if call[0]=='POST' and '/object/list/' in call[1]]
+    assert len(summaries)==33 and all(item.total_parts==1 for item in summaries)
+    assert len(calls)==2 and {json.loads(request.data)['prefix'] for request in api.requests if request.method=='POST' and '/object/list/' in unquote(urlsplit(request.full_url).path)} >= {'workspace-a/uploads','workspace-a/chunks'}
+    assert not any(call[0]=='GET' for call in api.calls)
+
+
 @pytest.mark.parametrize('failure', [(403, {'code': 'AccessDenied'}), (401, {}), (500, {}),
                                      (404, {'code': 'NoSuchBucket'}), (404, {}),
                                      (400, {'code': 'InvalidJWT'}), URLError('secret')])
@@ -248,6 +375,9 @@ def test_hosted_product_flows(client, monkeypatch):
     assert client.get(f'/sources/{sid}/file').content == content.encode()
     assert client.get(f'/sources/{sid}/extracted-text').status_code == 200
     item = next(s for s in db.sources if s['id'] == sid)
+    assert Path(item['file_path']).name.startswith(sid + '-')
+    live = store.status_many([Path(item[key]) for key in ('file_path','chunks_path','extracted_text_path')])
+    assert set(live.values()) == {'artifact'}
     for key in ('file_path', 'extracted_text_path', 'chunks_path'):
         assert store.status(Path(item[key])) == 'artifact'
         assert not (STORAGE_ROOT / item[key]).exists()

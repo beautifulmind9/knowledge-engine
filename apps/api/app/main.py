@@ -66,11 +66,14 @@ async def local_requests(request:Request,call_next):
                     "extract":"source_extraction_request","chunk":"source_chunk_request",
                     "upload":"source_upload_request"}
         operation="library_source_summaries" if path=="/sources/summaries" else categories.get(suffix)
+        if path == "/workshops/generate":
+            operation = "workshop_generate_request"
         if operation:
             try:
                 request_id=uuid4().hex
             except Exception:
                 request_id=None
+            request.state.request_id = request_id
             context={"request_id":request_id,"operation_category":operation}
             if source_id:
                 context["source_id"]=source_id

@@ -1,5 +1,7 @@
 """Explicit free-project opt-in, per-attempt allowance and bounded 503 retry."""
 import json
+import hashlib
+from importlib.metadata import PackageNotFoundError, version as package_version
 import logging
 import os
 import time
@@ -21,6 +23,14 @@ PROVIDER_QUOTA_TIMEZONE = ZoneInfo("America/Los_Angeles")
 _attempt_admission_lock = Lock()
 _MAX_PROVIDER_ATTEMPTS = 2
 _TRANSIENT_503_RETRY_DELAY_SECONDS = 2.0
+
+
+def _sdk_version():
+    """Read the installed SDK version from local package metadata only."""
+    try:
+        return package_version("google-genai")
+    except PackageNotFoundError:
+        return None
 
 
 def _quota_day(now=None):
@@ -253,8 +263,18 @@ def generate(model, payload, schema):
     # retry sends byte-for-byte equivalent provider arguments.
     provider_input = json.dumps(payload, ensure_ascii=False)
     response_format = {"type":"text", "mime_type":"application/json", "schema":_gemini_response_schema(schema)}
+    response_contract = json.dumps(response_format)
     provider_input_bytes = utf8_size(provider_input)
-    response_contract_bytes = utf8_size(json.dumps(response_format))
+    response_contract_bytes = utf8_size(response_contract)
+    request_fingerprints = {
+        "model": model,
+        "provider_input_sha256": hashlib.sha256(provider_input.encode("utf-8")).hexdigest(),
+        "response_format_sha256": hashlib.sha256(response_contract.encode("utf-8")).hexdigest(),
+        "api_surface": "interactions",
+        "sdk_version": _sdk_version(),
+        "provider_input_bytes": provider_input_bytes,
+        "response_contract_bytes": response_contract_bytes,
+    }
 
     for attempt_number in range(1, _MAX_PROVIDER_ATTEMPTS + 1):
         attempt_started = timing_start()
@@ -322,6 +342,7 @@ def generate(model, payload, schema):
             "attempt_number": attempt_number,
             "max_attempts": _MAX_PROVIDER_ATTEMPTS,
             "retry_reason": retry_reason,
+            **request_fingerprints,
         }
         logger.info("Gemini provider attempt admitted: %s", json.dumps(attempt_metadata, sort_keys=True))
         attempt_started = timing_start()
@@ -340,6 +361,9 @@ def generate(model, payload, schema):
                             reservation_id=reservation_id if PERSISTENCE_MODE == "hosted" else None,
                             provider_input_bytes=provider_input_bytes,
                             response_contract_bytes=response_contract_bytes,
+                            model=model, api_surface="interactions", sdk_version=request_fingerprints["sdk_version"],
+                            provider_input_sha256=request_fingerprints["provider_input_sha256"],
+                            response_format_sha256=request_fingerprints["response_format_sha256"],
                             estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
                             if provider_input_bytes is not None and response_contract_bytes is not None else None)
                 return response
@@ -354,6 +378,9 @@ def generate(model, payload, schema):
                         reservation_id=reservation_id if PERSISTENCE_MODE == "hosted" else None,
                         provider_input_bytes=provider_input_bytes,
                         response_contract_bytes=response_contract_bytes,
+                        model=model, api_surface="interactions", sdk_version=request_fingerprints["sdk_version"],
+                        provider_input_sha256=request_fingerprints["provider_input_sha256"],
+                        response_format_sha256=request_fingerprints["response_format_sha256"],
                         estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
                         if provider_input_bytes is not None and response_contract_bytes is not None else None)
             logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))

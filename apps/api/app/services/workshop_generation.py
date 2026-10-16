@@ -25,6 +25,10 @@ DEFAULT_MODEL = "gemini-3.1-flash-lite"
 class GroundedAnswerValidationError(RuntimeError):
     """A provider response failed local grounded-answer validation."""
 
+    def __init__(self, message: str, *, category: str = "domain_document_validation_failed"):
+        super().__init__(message)
+        self.category = category
+
 
 _BROAD_COVERAGE_CLAIM = re.compile(
     r"\b(?:the|this|your) corpus\b|"
@@ -44,16 +48,23 @@ def _adapt_grounded_answer_provider_json(
     try:
         provider_answer = GroundedAnswerProviderResponse.model_validate_json(output_text)
     except (ValidationError, ValueError, TypeError) as error:
-        raise GroundedAnswerValidationError("The AI response could not be validated. No answer was accepted.") from error
+        category = "provider_dto_validation_failed"
+        if isinstance(error, ValidationError) and any(
+            detail.get("type") == "json_invalid" for detail in error.errors(include_input=False)
+        ):
+            category = "provider_json_invalid"
+        raise GroundedAnswerValidationError(
+            "The AI response could not be validated. No answer was accepted.", category=category
+        ) from error
 
     allowed_kinds = set(get_args(GroundedAnswerSection.model_fields["kind"].annotation))
     sections = []
     for section in provider_answer.sections:
         if section.kind not in allowed_kinds:
-            raise GroundedAnswerValidationError("The AI response used an unsupported answer section. No answer was accepted.")
+            raise GroundedAnswerValidationError("The AI response used an unsupported answer section. No answer was accepted.", category="unsupported_section_kind")
         invalid = set(section.evidence_refs) - available_asset_ids
         if invalid:
-            raise GroundedAnswerValidationError("The grounded answer referenced knowledge that was not supplied. No answer was accepted.")
+            raise GroundedAnswerValidationError("The grounded answer referenced knowledge that was not supplied. No answer was accepted.", category="unknown_evidence_reference")
         sections.append({
             "kind": section.kind,
             "heading": section.heading,
@@ -63,7 +74,7 @@ def _adapt_grounded_answer_provider_json(
 
     applied = [item.model_dump(mode="json") for item in provider_answer.applied_knowledge]
     if any(item["asset_id"] not in available_canonical_ids for item in applied):
-        raise GroundedAnswerValidationError("The generated output referenced a knowledge asset that was not supplied to the Workshop.")
+        raise GroundedAnswerValidationError("The generated output referenced a knowledge asset that was not supplied to the Workshop.", category="invalid_applied_asset_reference")
 
     try:
         return GroundedAnswerDocument.model_validate({
@@ -74,7 +85,7 @@ def _adapt_grounded_answer_provider_json(
             "design_choices": provider_answer.design_choices,
         })
     except (ValidationError, ValueError, TypeError) as error:
-        raise GroundedAnswerValidationError("The AI response could not be validated. No answer was accepted.") from error
+        raise GroundedAnswerValidationError("The AI response could not be validated. No answer was accepted.", category="domain_document_validation_failed") from error
 
 
 def _compact_knowledge_unit(group: dict) -> dict:
@@ -292,11 +303,11 @@ Grounded reasoning requirements for this answer:
                     source_ids_by_asset[asset_id] = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
         for section in generated.reasoning_sections:
             if section.kind in {"source_principle", "source_tactic", "mechanism", "interpretation", "challenge", "agreement", "disagreement"} and not section.supporting_asset_ids:
-                raise GroundedAnswerValidationError("A source-related answer section lacked supporting knowledge. No answer was accepted.")
+                raise GroundedAnswerValidationError("A source-related answer section lacked supporting knowledge. No answer was accepted.", category="source_section_missing_evidence")
             if section.kind in {"agreement", "disagreement"}:
                 cited_sources = set().union(*(source_ids_by_asset.get(asset_id, set()) for asset_id in section.supporting_asset_ids))
                 if len(cited_sources) < 2:
-                    raise GroundedAnswerValidationError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.")
+                    raise GroundedAnswerValidationError("A cross-source claim lacked evidence from distinct materials. No answer was accepted.", category="cross_source_evidence_insufficient")
         cited_source_ids = set().union(*(
             source_ids_by_asset.get(asset_id, set())
             for section in generated.reasoning_sections
@@ -317,7 +328,7 @@ Grounded reasoning requirements for this answer:
         if _BROAD_COVERAGE_CLAIM.search(answer_text) and (
             not scope_is_complete or len(cited_source_ids) < evidence_base.get("selected_count", 0)
         ):
-            raise GroundedAnswerValidationError("The answer claimed broader source coverage than its cited evidence supports. No answer was accepted.")
+            raise GroundedAnswerValidationError("The answer claimed broader source coverage than its cited evidence supports. No answer was accepted.", category="unsupported_broad_coverage_claim")
         content_parts = []
         if generated.introduction:
             content_parts.append(generated.introduction.strip())

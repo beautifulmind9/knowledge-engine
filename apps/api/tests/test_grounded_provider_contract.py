@@ -241,3 +241,25 @@ def test_strict_local_grounded_validation_failure_does_not_dispatch_a_second_req
 
     assert len(calls) == 1
     assert ai_gateway.status()["calls_today"] == 1
+
+
+@pytest.mark.parametrize(("raw", "category"), [
+    ("not-json", "provider_json_invalid"),
+    (json.dumps({"title": "x"}), "provider_dto_validation_failed"),
+    (json.dumps({"title": "Answer", "introduction": "", "sections": [{"kind": "unknown", "heading": "Heading", "content": "Text", "evidence_refs": []}], "applied_knowledge": [], "design_choices": []}), "unsupported_section_kind"),
+    (json.dumps({"title": "Answer", "introduction": "", "sections": [{"kind": "analysis", "heading": "Heading", "content": "Text", "evidence_refs": ["private-unknown-asset"]}], "applied_knowledge": [], "design_choices": []}), "unknown_evidence_reference"),
+    (json.dumps({"title": "Answer", "introduction": "", "sections": [], "applied_knowledge": [{"asset_id": "private-unknown-asset", "usage_note": "Use"}], "design_choices": []}), "invalid_applied_asset_reference"),
+])
+def test_grounded_provider_validation_categories(raw, category):
+    with pytest.raises(GroundedAnswerValidationError) as failure:
+        workshop_generation._adapt_grounded_answer_provider_json(raw, {"asset_synthetic"}, {"asset_synthetic"})
+    assert failure.value.category == category
+
+
+def test_grounded_domain_validation_category():
+    raw = json.dumps({"title": "Answer", "introduction": "", "sections": [],
+                      "applied_knowledge": [{"asset_id": "asset_synthetic", "usage_note": "Use"}],
+                      "design_choices": []})
+    with pytest.raises(GroundedAnswerValidationError) as failure:
+        workshop_generation._adapt_grounded_answer_provider_json(raw, {"asset_synthetic"}, {"asset_synthetic"})
+    assert failure.value.category == "domain_document_validation_failed"

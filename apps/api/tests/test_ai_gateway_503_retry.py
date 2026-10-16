@@ -1,4 +1,5 @@
 import json
+import hashlib
 from types import SimpleNamespace
 
 import pytest
@@ -99,6 +100,25 @@ def test_one_503_then_success_repeats_identical_provider_arguments(monkeypatch, 
     assert '"result":"http_503_retryable"' in events[0]
     assert 'PRIVATE_PROMPT_FIXTURE' not in '\n'.join(events)
     assert 'PRIVATE_SOURCE_FIXTURE' not in '\n'.join(events)
+    assert 'PRIVATE_PROMPT_FIXTURE' not in caplog.text
+    assert 'PRIVATE_SOURCE_FIXTURE' not in caplog.text
+    parsed = [json.loads(event.split("PERF ", 1)[1]) for event in events]
+    assert parsed[0]["provider_input_sha256"] == parsed[1]["provider_input_sha256"]
+    assert parsed[0]["response_format_sha256"] == parsed[1]["response_format_sha256"]
+    assert parsed[0]["provider_input_sha256"] == hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    expected_contract = {"type": "text", "mime_type": "application/json",
+                         "schema": ai_gateway._gemini_response_schema(schema)}
+    assert parsed[0]["response_format_sha256"] == hashlib.sha256(
+        json.dumps(expected_contract).encode("utf-8")
+    ).hexdigest()
+    for event in parsed:
+        assert event["model"] == "synthetic-model"
+        assert event["api_surface"] == "interactions"
+        assert event["sdk_version"]
+        assert event["provider_input_bytes"] == len(json.dumps(payload, ensure_ascii=False).encode())
+        assert event["response_contract_bytes"] == len(json.dumps(expected_contract).encode())
 
 
 def test_two_503_responses_stop_after_two_attempts(monkeypatch):

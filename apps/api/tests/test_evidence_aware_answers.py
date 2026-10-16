@@ -215,7 +215,10 @@ def test_invalid_structured_answer_fails_locally_after_one_attempt(monkeypatch):
     assert len(calls) == 1
 
 
-def test_invalid_grounded_answer_has_safe_http_response_and_is_not_saved(monkeypatch):
+def test_invalid_grounded_answer_has_safe_http_response_and_is_not_saved(monkeypatch, caplog):
+    import json as json_module
+    import logging
+    from starlette.requests import Request
     from app.routers.workshop_output import generate_workshop
     from app.services import outputs
 
@@ -227,12 +230,22 @@ def test_invalid_grounded_answer_has_safe_http_response_and_is_not_saved(monkeyp
     monkeypatch.setattr(workshop_generation, "prepare_workshop", lambda *_: _prepared())
     monkeypatch.setattr(outputs, "save_output", lambda result: saves.append(result))
 
-    with pytest.raises(HTTPException) as response:
-        generate_workshop(_payload().model_copy(update={"save": True}))
+    request = Request({"type": "http", "method": "POST", "path": "/workshops/generate",
+                       "headers": [], "query_string": b"", "server": ("test", 80),
+                       "scheme": "http", "client": ("test", 1), "root_path": ""})
+    request.state.request_id = "synthetic-request-id"
+    with pytest.raises(HTTPException) as response, caplog.at_level(logging.WARNING, logger="app.routers.workshop_output"):
+        generate_workshop(_payload().model_copy(update={"save": True}), request)
     assert response.value.status_code == 502
     assert response.value.detail == "The AI response could not be validated. No answer was saved."
     assert len(calls) == 1
     assert saves == []
+    diagnostic = next(json_module.loads(record.getMessage().split(": ", 1)[1])
+                      for record in caplog.records if "rejected after provider success" in record.getMessage())
+    assert diagnostic == {"request_id": "synthetic-request-id", "validation_category": "unsupported_section_kind",
+                          "model": workshop_generation.DEFAULT_MODEL,
+                          "result": "rejected_after_provider_success"}
+    assert "invented_kind" not in caplog.text and "asset_synthetic" not in caplog.text
 
 
 def test_evidence_base_state_counts_ready_preparing_attention_and_unknown(monkeypatch):

@@ -74,7 +74,7 @@ def test_first_success_uses_one_provider_attempt(monkeypatch):
 
 
 def test_one_503_then_success_repeats_identical_provider_arguments(monkeypatch, caplog):
-    caplog.set_level("INFO", logger="ke.performance")
+    caplog.set_level("INFO", logger="uvicorn.error")
     calls = install_provider(monkeypatch, [InternalServerError("unavailable"), SimpleNamespace(output_text="ok")])
     sleeps = []
     monkeypatch.setattr(ai_gateway.time, "sleep", sleeps.append)

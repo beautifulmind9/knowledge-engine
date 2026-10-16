@@ -5,7 +5,9 @@ import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-logger = logging.getLogger("ke.performance")
+# Uvicorn's default config routes this logger through its configured stdout
+# handler. The root logger has no handler in the hosted startup configuration.
+logger = logging.getLogger("uvicorn.error")
 _operation_context = ContextVar("ke_performance_operation", default={})
 
 

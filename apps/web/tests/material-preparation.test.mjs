@@ -16,7 +16,11 @@ function fixture({ids=['one','two'],parts=3,limit=450,failures={},throwAt=null,s
    if(throwAt===posts)throw Error('Uncertain transport');
    if((failures[id]||[]).includes(attempt)){
     summary.attention_category='build_stopped';summary.readiness=summary.completed_parts?'partly_ready':'ready_to_build';summary.next_action=summary.completed_parts?'continue_building':'build_knowledge';
-    return {processed_this_run:0,stopped_reason:'Private diagnostic',interruption_category:failures.category||'provider_unavailable'};
+    const interruptionCategory=failures.category||'provider_unavailable';
+    // Model the backend's confirmed-503 result: one logical /interpret request
+    // may consume two allowance attempts before the frontend receives it.
+    if(interruptionCategory==='provider_unavailable')usage.calls_today++;
+    return {processed_this_run:0,stopped_reason:'Private diagnostic',interruption_category:interruptionCategory};
    }
    summary.completed_parts++;summary.has_usable_knowledge=summary.completed_parts>0;summary.readiness=summary.completed_parts===parts?'ready':'partly_ready';summary.next_action=summary.readiness==='ready'?'use_knowledge':'continue_building';summary.attention_category=null;
    usage.daily_limit_reached=usage.calls_today>=usage.daily_call_limit;
@@ -32,33 +36,34 @@ test('one Add authorization sequentially prepares all six selected materials',as
  assert.ok(f.posts().every(c=>c.path.endsWith('/interpret?max_chunks=1')));
  assert.deepEqual([...new Set(f.posts().map(c=>c.path.split('/')[2]))],ids);
 });
-test('provider 503 on material two is not retried and does not strand materials three through six',async()=>{
- const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,failures:{two:[1],category:'provider_unavailable'}});const result=await f.run.run();
- assert.equal(result.status,'incomplete');assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,1);
- assert.deepEqual(f.opened,ids);assert.equal(f.summaries.get('two').completed_parts,0);
- assert.ok(['three','four','five','six'].every(id=>f.summaries.get(id).readiness==='ready'));
- assert.equal(result.outcomes.get('two').category,'provider_unavailable');
+test('provider outage on first material stops a three-material batch without failing queued siblings',async()=>{
+ const ids=['one','two','three'],f=fixture({ids,parts:2,failures:{one:[1],category:'provider_unavailable'}});const result=await f.run.run();
+ assert.equal(result.status,'provider_unavailable');assert.equal(f.posts().length,1);
+ assert.deepEqual(f.opened,['one']);assert.equal(f.summaries.get('one').completed_parts,0);
+ assert.equal(f.summaries.get('two').readiness,'ready_to_build');assert.equal(f.summaries.get('three').readiness,'ready_to_build');
+ assert.equal(result.outcomes.get('one').category,'provider_unavailable');
+ assert.equal(result.outcomes.get('two').category,'not_started');assert.equal(result.outcomes.get('three').category,'not_started');
+ assert.equal(f.usage.calls_today,2,'the bounded 503 retry consumes two real allowance attempts');
 });
 test('Continue incomplete materials is a fresh explicit attempt for only the incomplete material',async()=>{
  const summaries=new Map(['one','two','three'].map(id=>[id,{readiness:'ready_to_build',completed_parts:0,total_parts:1,has_usable_knowledge:false,operation:'idle',next_action:'build_knowledge'}]));let calls=0,fail=true;
  const api=async(path,options)=>{if(path==='/usage')return {configured:true,free_tier_confirmed:true,daily_call_limit:450,calls_today:calls};const id=path.split('/')[2];if(!options)return {...summaries.get(id)};calls++;if(id==='two'&&fail)return {processed_this_run:0,stopped_reason:'stopped',interruption_category:'provider_unavailable'};const s=summaries.get(id);s.completed_parts=1;s.readiness='ready';s.next_action='use_knowledge';return {processed_this_run:1};};
- const first=await createMaterialPreparation({sourceIds:['one','two','three'],api}).run();assert.equal(first.status,'incomplete');assert.equal(calls,3);
- fail=false;const continued=await createMaterialPreparation({sourceIds:['two'],api}).run();assert.equal(continued.status,'completed');assert.equal(calls,4);assert.equal(summaries.get('one').completed_parts,1);assert.equal(summaries.get('three').completed_parts,1);assert.equal(summaries.get('two').readiness,'ready');
+ const first=await createMaterialPreparation({sourceIds:['one','two','three'],api}).run();assert.equal(first.status,'provider_unavailable');assert.equal(calls,2);assert.equal(first.outcomes.get('three').category,'not_started');
+ fail=false;const continued=await createMaterialPreparation({sourceIds:['two'],api}).run();assert.equal(continued.status,'completed');assert.equal(calls,3);assert.equal(summaries.get('one').completed_parts,1);assert.equal(summaries.get('three').completed_parts,0);assert.equal(summaries.get('two').readiness,'ready');
 });
-test('two independent failures retain their progress while unaffected siblings complete',async()=>{
- const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,failures:{two:[1],five:[2]}});const result=await f.run.run();
- assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('two').category,'provider_unavailable');assert.equal(result.outcomes.get('five').category,'provider_unavailable');
- assert.equal(f.summaries.get('two').completed_parts,0);assert.equal(f.summaries.get('five').completed_parts,1);
- assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('three').readiness,'ready');assert.equal(f.summaries.get('six').readiness,'ready');
- assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,1);assert.equal(f.posts().filter(c=>c.path.includes('/five/')).length,2);
+test('provider outage preserves prior completed sibling and leaves later siblings unattempted',async()=>{
+ const ids=['one','two','three'],f=fixture({ids,parts:1,failures:{two:[1],category:'provider_unavailable'}});const result=await f.run.run();
+ assert.equal(result.status,'provider_unavailable');assert.equal(result.outcomes.get('one').category,'completed');assert.equal(result.outcomes.get('two').category,'provider_unavailable');assert.equal(result.outcomes.get('three').category,'not_started');
+ assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('one').completed_parts,1);assert.equal(f.summaries.get('two').completed_parts,0);assert.equal(f.summaries.get('three').completed_parts,0);
+ assert.equal(f.posts().filter(c=>c.path.includes('/one/')).length,1);assert.equal(f.posts().filter(c=>c.path.includes('/two/')).length,1);assert.equal(f.posts().filter(c=>c.path.includes('/three/')).length,0);
 });
 test('shared allowance exhaustion stops dispatching new material while preserving earlier successes',async()=>{
  const ids=['one','two','three','four','five','six'],f=fixture({ids,parts:2,limit:5});const result=await f.run.run();
  assert.equal(result.status,'daily_allowance');assert.equal(f.posts().length,5);assert.equal(f.summaries.get('one').readiness,'ready');assert.equal(f.summaries.get('two').readiness,'ready');assert.equal(f.summaries.get('three').completed_parts,1);
  assert.equal(result.outcomes.get('three').category,'daily_allowance');
 });
-test('a failed attempt ends only that material and the next authorized material proceeds',async()=>{
- const f=fixture({failures:{one:[2]}}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'provider_unavailable');assert.equal(result.outcomes.get('two').category,'completed');assert.equal(f.posts().length,5);assert.deepEqual(f.opened,['one','two']);
+test('material-specific strict validation failure does not stop sibling evaluation',async()=>{
+ const f=fixture({failures:{one:[1],category:'failed'}}),result=await f.run.run();assert.equal(result.status,'incomplete');assert.equal(result.outcomes.get('one').category,'failed');assert.equal(result.outcomes.get('two').category,'completed');assert.equal(f.posts().length,4);assert.deepEqual(f.opened,['one','two']);
 });
 test('a single material retains its exact safe interruption category for source detail',async()=>{
  const f=fixture({ids:['one'],failures:{one:[2],category:'provider_unavailable'}}),result=await f.run.run();assert.equal(result.status,'provider_unavailable');assert.equal(result.outcomes.get('one').category,'provider_unavailable');assert.equal(f.posts().length,2);

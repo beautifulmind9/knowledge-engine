@@ -60,10 +60,10 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
       if(finishedSummary?.has_usable_knowledge&&!firstUsableAt.has(plan.id)){firstUsableAt.set(plan.id,perfNow());perf('material_first_usable',{source_id:plan.id,queue_position:index+1,elapsed_ms:Math.round((perfNow()-runStarted)*100)/100});}
       if(finishedSummary?.readiness==='ready'&&!readyAt.has(plan.id)){readyAt.set(plan.id,perfNow());perf('material_ready',{source_id:plan.id,queue_position:index+1,elapsed_ms:Math.round((perfNow()-runStarted)*100)/100,source_preparation_ms:Math.round((perfNow()-sourceStarted)*100)/100});}
       emit();
-      // A material failure ends that material's attempt, never the independent
-      // materials already covered by this same explicit Add authorization.
-      // Only batch-wide conditions prevent dispatching a sibling.
-      if(['daily_allowance','allowance_unavailable','left','stopped'].includes(result.status)){
+      // A confirmed provider outage applies to the current foreground
+      // authorization. Keep later materials saved and not_started for an
+      // explicit continuation after the provider is available again.
+      if(['provider_unavailable','daily_allowance','allowance_unavailable','left','stopped'].includes(result.status)){
         status=result.status;break;
       }
       status='running';
@@ -84,10 +84,10 @@ export function createMaterialPreparation({sourceIds, api, onSource=async()=>{},
     for(const id of ids){
       const outcome=outcomes.get(id);
       if(!outcome)outcomes.set(id,{category:status,summary:null});
-      else if(outcome.category==='not_started')outcome.category=status;
+      else if(outcome.category==='not_started'&&status!=='provider_unavailable')outcome.category=status;
       else if(status==='daily_allowance'&&outcome.category==='completed'&&outcome.summary?.readiness!=='ready')outcome.category='daily_allowance';
     }
-    if(ids.length>1&&!['left','stopped','daily_allowance','allowance_unavailable'].includes(status)){
+    if(ids.length>1&&!['provider_unavailable','left','stopped','daily_allowance','allowance_unavailable'].includes(status)){
       const failures=[...outcomes.values()].filter(outcome=>['provider_unavailable','preparation_timeout','failed','uncertain','status_unavailable'].includes(outcome.category));
       if(failures.length)status='incomplete';
     }

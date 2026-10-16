@@ -18,7 +18,7 @@ from app.services.performance_timing import start as timing_start, emit as timin
 
 # Flash-Lite is a better fit for our current workload: short, structured
 # extraction jobs where we want to stay within a free development setup.
-DEFAULT_MODEL = "gemini-3.1-flash-lite"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
 
 class ExtractionValidationError(RuntimeError):

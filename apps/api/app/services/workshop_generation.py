@@ -19,7 +19,7 @@ from app.models.workshop_generation import (
 from app.services.workshop import prepare_workshop
 
 
-DEFAULT_MODEL = "gemini-3.1-flash-lite"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
 
 class GroundedAnswerValidationError(RuntimeError):

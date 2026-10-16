@@ -110,7 +110,7 @@ The current automatic extraction path uses the Gemini API free tier. The provide
 
 Free-tier model access can have lower rate limits and different data-use terms than paid plans, so that trade-off should remain visible when choosing what source material to process.
 
-The current default extraction model is `gemini-3.1-flash-lite`, chosen for lightweight, high-frequency structured extraction work.
+The current default extraction model is `gemini-3.5-flash-lite`, chosen for lightweight, high-frequency structured extraction work.
 
 ## Current pipeline
 
@@ -177,3 +177,29 @@ A source interpretation run can:
 - report total, completed, and remaining chunks
 
 The model provider is kept behind a service boundary so it can be changed later without redesigning Knowledge Assets or the Workshop.
+
+## Beta model acceptance — 2026-10-16
+
+`gemini-3.5-flash-lite` is the beta production default for extraction and Workshop.
+`GEMINI_MODEL` continues to override both defaults. This decision follows the
+operator-reported production canary evidence; no additional provider experiments
+were performed for this repository change.
+
+- 3.1 repeatedly returned unrecovered HTTP 503s in the observed production runs.
+  This does not establish that 3.1 is permanently defective.
+- 3.5 passed a minimal synthetic Interactions structured-output test and the exact
+  current extraction response contract (approximately 20,834 bytes). Strict local
+  `KnowledgeExtractionResultSubmission` validation passed.
+- Production extraction succeeded across multiple real chunks. One transient 3.5
+  HTTP 503 recovered through the existing single identical bounded retry; later
+  extraction requests succeeded.
+- A real Workshop generation succeeded, completing production acceptance of the
+  request-specific evidence-reference contract.
+
+This is a model selection decision, not a relaxation of KE reliability rules.
+Free-tier-only operation, the 450-attempt default daily cap, separate accounting
+for every actual attempt, and the existing single identical retry for confirmed
+HTTP 503 remain unchanged. There is no added semantic retry, repair, model
+fallback, schema relaxation, SDK upgrade, or prompt change. Provider model quotas
+remain independently configured; this acceptance does not establish a new 3.5
+quota entitlement.

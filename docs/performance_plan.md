@@ -30,7 +30,7 @@ A real hosted multi-book run also exposed an orchestration cost that raw per-chu
 
 The hosted service also runs on Render's free instance, so cold starts and limited compute can contribute to latency. Supabase Postgres and private Storage provide hosted persistence. These infrastructure limits must be measured separately from application design costs.
 
-### Hosted-state write amplification: fixed and production-accepted
+### Hosted-state writes: coalesced and production-accepted; payload cost remains open
 
 Performance Baseline v1 exposed whole-workspace snapshot persistence as a major bandwidth and latency amplifier. In the measured failed one-chunk/two-attempt path, the workspace snapshot was about **4.65 MB** and the request produced **7 full snapshot writes**, approximately **32.56 MB** of snapshot payload, while the two Gemini request payload estimates totaled only about **71 KB**.
 
@@ -42,6 +42,12 @@ The accepted MVP persistence change separated provider-attempt admission into a 
 - no provider replay from persistence reconciliation.
 
 This is approximately a **71% reduction in snapshot payload** for the measured two-attempt failure path. Request duration also fell in the observed sample, but that timing is not treated as a clean A/B because provider latency differed between runs.
+
+#### New hosted bandwidth evidence — 2026-10-16
+
+The accepted checkpoint coalescing reduced the number of full-workspace writes, but a later production measurement shows that each write is now much larger as the workspace grows. The current hosted snapshot is approximately **5.34 MB**. One one-chunk interpretation outcome still emits two logical full-workspace checkpoints: a **5,342,105-byte** pre-provider snapshot and a **5,342,244-byte** settlement snapshot, or approximately **10.68 MB** of state payload per chunk outcome. At 50 chunks, that is approximately **534 MB** of state payload before other traffic.
+
+Render recorded **14.69 GB** of Service-Initiated traffic this month and suspended the Hobby workspace at its free-bandwidth limit. Payment/overage restored service. This production evidence moves partitioned interpretation and state persistence from a speculative optimization to a demonstrated bandwidth/cost concern. It does not change the accepted two-checkpoint correctness boundary, and no persistence redesign is being undertaken while the current functional Gemini and Workshop blockers remain unresolved.
 
 The allowance ledger migration is live and authoritative for hosted provider admission. The original snapshot usage state remains rollback-compatible rather than being used as the hosted admission counter.
 
@@ -95,7 +101,7 @@ The audit therefore retains live verification semantics but no longer imposes ro
 
 ### Current performance conclusion
 
-The two largest measured non-provider amplifiers are now production-accepted as corrected:
+The accepted changes reduced the largest measured non-provider amplifiers, but the 2026-10-16 snapshot and Render bandwidth observations show that full-state payload remains a production cost concern:
 
 1. whole-workspace snapshot write amplification;
 2. Library/Settings Storage read and metadata amplification.
@@ -181,7 +187,7 @@ Every item below is **deferred, not rejected**. Revisit items against hosted mea
 
 - Request-scoped chunk-content reuse inside `/interpret` (not implemented; a separately measured follow-up).
 - Persisted artifact availability (deferred; live request-scoped presence checks remain authoritative).
-- Larger persistence partitioning or normalization.
+- Larger persistence partitioning or normalization. This is now a production-evidenced bandwidth/cost concern: the current approximately 5.34 MB workspace produces about 10.68 MB of full-state payload per one-chunk interpretation outcome and about 534 MB across 50 chunks. Keep it deferred until the functional Gemini and Workshop blockers are resolved; do not change the two-checkpoint persistence design as part of unrelated work.
 - Further Supabase artifact-read and source-summary efficiency work only if new hosted evidence exposes another material read-path bottleneck.
 - Gemini model identifier and token instrumentation gap.
 - Controlled Gemini 3.1 Flash Lite versus 3.5 Flash-Lite benchmark.

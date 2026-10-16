@@ -99,7 +99,7 @@ def test_service_keeps_ordinary_and_grounded_provider_contracts_distinct(monkeyp
                     "kind": "source_principle",
                     "heading": "Synthetic principle",
                     "content": "A synthetic claim supported by the fixture.",
-                    "evidence_refs": ["asset_synthetic"],
+                    "evidence_refs": ["asset_member"],
                 }],
                 "applied_knowledge": [{"asset_id": "asset_synthetic", "usage_note": "Supports the synthetic claim."}],
                 "design_choices": [],
@@ -120,11 +120,18 @@ def test_service_keeps_ordinary_and_grounded_provider_contracts_distinct(monkeyp
     for output_type in ("general", "knowledge_answer"):
         prepared = _prepared()
         prepared["brief"]["output_type"] = output_type
+        prepared["knowledge_units"][0]["asset_ids"].append("asset_member")
         workshop_generation.generate_workshop_output(_request(output_type), prepared=prepared)
 
     assert len(captured) == 2
     assert captured[0][2] == WorkshopGeneratedOutput.model_json_schema()
-    assert captured[1][2] == grounded_answer_provider_schema()
+    assert captured[1][2] == grounded_answer_provider_schema(
+        {"asset_synthetic", "asset_member"}, {"asset_synthetic"}
+    )
+    refs = captured[1][2]["properties"]["sections"]["items"]["properties"]["evidence_refs"]["items"]
+    applied_ids = captured[1][2]["properties"]["applied_knowledge"]["items"]["properties"]["asset_id"]
+    assert refs["enum"] == ["asset_member", "asset_synthetic"]
+    assert applied_ids["enum"] == ["asset_synthetic"]
     assert "Grounded reasoning requirements" not in captured[0][1]["instructions"]
     assert "Grounded reasoning requirements" in captured[1][1]["instructions"]
     assert captured[0][1]["knowledge_units"] == captured[1][1]["knowledge_units"]
@@ -162,6 +169,17 @@ def test_compatibility_schema_is_shallow_and_internal_model_stays_strict():
         assert "provider_private_field" in str(error)
     else:
         raise AssertionError("The internal grounded answer model must reject unexpected fields.")
+
+
+def test_grounded_provider_schema_limits_references_to_supplied_ids():
+    schema = grounded_answer_provider_schema(
+        {"canonical", "member", "canonical"}, {"canonical"}
+    )
+    properties = schema["properties"]
+    evidence_enum = properties["sections"]["items"]["properties"]["evidence_refs"]["items"]["enum"]
+    applied_enum = properties["applied_knowledge"]["items"]["properties"]["asset_id"]["enum"]
+    assert evidence_enum == ["canonical", "member"]
+    assert applied_enum == ["canonical"]
 
 
 def test_gateway_builds_documented_interactions_response_format_without_network(monkeypatch):

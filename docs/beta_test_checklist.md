@@ -72,7 +72,7 @@ Human review remains part of acceptance. Deterministic grounding checks are cons
 - [x] **Production Library read-path acceptance:** the 33-source Library summary fell from approximately 41.6 seconds to **1.441 seconds**, using 2 grouped Storage inventory requests and 0 chunk-content GETs for backfilled sources. This is about 29× faster / approximately 96.5% lower observed summary latency.
 - [x] **Production Settings acceptance:** a fresh Settings navigation calls `/usage` without automatically calling `/data/integrity`. The explicit integrity action checked 105 referenced paths through 3 grouped inventory requests in approximately **2.152 seconds** and returned 200 OK.
 
-The concurrency, provider-retry, measured persistence-amplification and measured Library/Settings read-path incidents are closed unless new production evidence contradicts the current behavior. Foreground preparation autonomy and remaining interpretation latency remain open usability/performance questions, not data-loss defects.
+The concurrency, provider-retry, persistence write-count reduction, and measured Library/Settings read-path improvements remain accepted. New 2026-10-16 production evidence shows that the current full-workspace snapshot size still creates a material bandwidth/cost concern; larger partitioned persistence is recorded as deferred work in the [performance plan](performance_plan.md#deferred-persistence-options). The evidence does not change the two-checkpoint correctness boundary. Foreground preparation autonomy and remaining interpretation latency remain open usability/performance questions, not data-loss defects.
 
 ## Browser and external tester acceptance
 

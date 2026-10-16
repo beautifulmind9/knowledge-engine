@@ -243,6 +243,13 @@ Rules:
     from app.services.ai_gateway import generate
     knowledge_answer = payload.output_type == "knowledge_answer"
     schema_model = GroundedAnswerDocument if knowledge_answer else WorkshopGeneratedOutput
+    available_asset_ids = {
+        asset_id
+        for unit in knowledge_units
+        for asset_id in ([unit.get("asset_id")] + list(unit.get("asset_ids") or []))
+        if asset_id
+    }
+    available_canonical_ids = {unit.get("asset_id") for unit in knowledge_units if unit.get("asset_id")}
     if knowledge_answer:
         model_input["instructions"] += """
 
@@ -262,19 +269,15 @@ Grounded reasoning requirements for this answer:
 - Use only the established section kinds: source_principle, source_tactic, mechanism, interpretation, assumption, experiment, challenge, agreement, disagreement, applicability, open_question, analysis.
 - Keep each section's evidence_refs limited to supplied asset IDs that actually support that section. Do not output source IDs, chunk IDs, asset IDs, or provider identifiers in prose.
 """
-    provider_schema = grounded_answer_provider_schema() if knowledge_answer else schema_model.model_json_schema()
+    provider_schema = (
+        grounded_answer_provider_schema(available_asset_ids, available_canonical_ids)
+        if knowledge_answer else schema_model.model_json_schema()
+    )
     interaction = generate(model, model_input, provider_schema)
 
     if not interaction.output_text:
         raise RuntimeError("The AI returned no Workshop output.")
 
-    available_asset_ids = {
-        asset_id
-        for unit in knowledge_units
-        for asset_id in ([unit.get("asset_id")] + list(unit.get("asset_ids") or []))
-        if asset_id
-    }
-    available_canonical_ids = {unit.get("asset_id") for unit in knowledge_units if unit.get("asset_id")}
     if knowledge_answer:
         generated = _adapt_grounded_answer_provider_json(
             interaction.output_text,

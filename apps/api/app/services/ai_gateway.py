@@ -3,12 +3,16 @@ import json
 import logging
 import os
 import time
+from copy import deepcopy
 from threading import Lock
 from datetime import datetime, timezone
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from google import genai
 from app.db.mock_data import usage
+from app.persistence.factory import PERSISTENCE_MODE, get_allowance_store
+from app.persistence.allowance import AllowancePersistenceError, legacy_usage_from_state
 from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
 
@@ -184,16 +188,63 @@ def _gemini_response_schema(value):
 
 def status():
     limit = max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "450")))
-    calls = usage.get("calls", 0) if usage.get("day") == _quota_day() else 0
+    current_usage = usage
+    if PERSISTENCE_MODE == "hosted":
+        try:
+            current_usage = get_allowance_store().read(usage)
+        except AllowancePersistenceError:
+            raise HTTPException(503, "The shared AI allowance could not be confirmed.",
+                                headers={"X-KE-Interruption-Category": "allowance_unavailable"}) from None
+    calls = current_usage.get("calls", 0) if current_usage.get("day") == _quota_day() else 0
     capped = calls >= limit
     return {"configured": bool(os.getenv("GEMINI_API_KEY")),
             "free_tier_confirmed": os.getenv("GEMINI_FREE_TIER_CONFIRMED") == "true",
             "daily_call_limit": limit,
             "calls_today": calls, "daily_limit_reached": capped,
-            "paused": usage.get("paused", False) or capped,
-            "reason": usage.get("reason") or ("Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used." if capped else None),
-            "last_attempt_at": usage.get("last_attempt_at"),
+            "paused": current_usage.get("paused", False) or capped,
+            "reason": current_usage.get("reason") or ("Local daily call limit reached. Resume after the next Pacific daily reset; no paid fallback is used." if capped else None),
+            "last_attempt_at": current_usage.get("last_attempt_at"),
             "note": "The application cannot verify Google's billing settings. Use a project with billing disabled."}
+
+
+def current_usage_state():
+    if PERSISTENCE_MODE == "hosted":
+        try:
+            return deepcopy(get_allowance_store().read(usage))
+        except AllowancePersistenceError:
+            raise HTTPException(503, "The shared AI allowance could not be confirmed.",
+                                headers={"X-KE-Interruption-Category": "allowance_unavailable"}) from None
+    return deepcopy(usage)
+
+
+def resume_usage():
+    if PERSISTENCE_MODE == "hosted":
+        try:
+            get_allowance_store().read(usage)
+            get_allowance_store().set_paused(False)
+        except AllowancePersistenceError:
+            raise HTTPException(503, "The shared AI allowance could not be updated.",
+                                headers={"X-KE-Interruption-Category": "allowance_unavailable"}) from None
+        return status()
+    usage.update(paused=False, reason=None)
+    from app.services.knowledge_extraction import persist_state
+    persist_state()
+    return status()
+
+
+def copy_allowance_to_legacy_snapshot():
+    """Controlled rollback step: copy authoritative hosted usage into snapshot."""
+    if PERSISTENCE_MODE != "hosted":
+        raise RuntimeError("Allowance copy-back is only used for hosted rollback.")
+    try:
+        state = get_allowance_store().read(usage)
+    except AllowancePersistenceError:
+        raise RuntimeError("Hosted allowance state could not be confirmed for rollback.") from None
+    usage.clear()
+    usage.update(deepcopy(legacy_usage_from_state(state)))
+    from app.services.knowledge_extraction import persist_state
+    persist_state()
+    return deepcopy(usage)
 
 
 def generate(model, payload, schema):
@@ -207,17 +258,62 @@ def generate(model, payload, schema):
 
     for attempt_number in range(1, _MAX_PROVIDER_ATTEMPTS + 1):
         attempt_started = timing_start()
+        reservation_id = uuid4().hex
+        attempted_at = datetime.now(timezone.utc)
+        attempt_day = _quota_day(attempted_at)
         # Each dispatch, including the one permitted transient retry, is a new
-        # independently admitted and persisted allowance attempt.
+        # independently admitted and durably reserved allowance attempt.
         with _attempt_admission_lock:
-            current = status()
-            if not current["configured"] or not current["free_tier_confirmed"]:
+            if not os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_FREE_TIER_CONFIRMED") != "true":
                 raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
-            if current["paused"] or current["calls_today"] >= current["daily_call_limit"]:
-                raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
-            usage.update(day=_quota_day(), calls=current["calls_today"]+1,
-                         last_attempt_at=datetime.now(timezone.utc).isoformat())
-            persist_state()
+            if PERSISTENCE_MODE == "hosted":
+                reservation_started = timing_start()
+                reservation_result = "persistence_error"
+                try:
+                    reservation = get_allowance_store().reserve_attempt(
+                        reservation_id=reservation_id, day=attempt_day,
+                        limit=max(0, int(os.getenv("GEMINI_DAILY_CALL_LIMIT", "450"))),
+                        attempted_at=attempted_at,
+                    )
+                except AllowancePersistenceError:
+                    timing_emit("allowance_reservation", reservation_started,
+                                result=reservation_result, destination_category="state",
+                                operation_category="provider_attempt_admission",
+                                reservation_id=reservation_id,
+                                attempt_number=attempt_number,
+                                approximate_payload_bytes=utf8_size(json.dumps({
+                                    "reservation_id": reservation_id,
+                                    "accounting_day": attempt_day,
+                                    "attempted_at": attempted_at.isoformat(),
+                                })))
+                    raise HTTPException(503, "The shared AI allowance could not be confirmed; no provider request was sent.",
+                                        headers={"X-KE-Interruption-Category": "allowance_unavailable"}) from None
+                reservation_result = "admitted" if reservation.get("admitted") else "denied"
+                if reservation.get("duplicate"):
+                    reservation_result = "duplicate"
+                timing_emit("allowance_reservation", reservation_started,
+                            result=reservation_result, destination_category="state",
+                            operation_category="provider_attempt_admission",
+                            reservation_id=reservation_id, attempt_number=attempt_number,
+                            approximate_payload_bytes=utf8_size(json.dumps({
+                                "reservation_id": reservation_id,
+                                "accounting_day": attempt_day,
+                                "attempted_at": attempted_at.isoformat(),
+                            })))
+                if not reservation.get("admitted"):
+                    raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
+                if not reservation.get("dispatch_allowed"):
+                    raise HTTPException(503, "This provider attempt reservation was already used; no provider request was sent.",
+                                        headers={"X-KE-Interruption-Category": "allowance_unavailable"})
+            else:
+                current = status()
+                if not current["configured"] or not current["free_tier_confirmed"]:
+                    raise HTTPException(503, "AI is not available in this workspace.", headers={"X-KE-Interruption-Category":"ai_unavailable"})
+                if current["paused"] or current["calls_today"] >= current["daily_call_limit"]:
+                    raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"})
+                usage.update(day=attempt_day, calls=current["calls_today"]+1,
+                             last_attempt_at=attempted_at.isoformat())
+                persist_state()
 
         retry_reason = "transient_503" if attempt_number == 2 else None
         attempt_metadata = {
@@ -239,6 +335,7 @@ def generate(model, payload, schema):
                             chunk_id=payload.get("chunk_id"), attempt_number=attempt_number,
                             attempt_kind="initial" if attempt_number == 1 else "bounded_503_retry",
                             result="success", destination_category="gemini",
+                            reservation_id=reservation_id if PERSISTENCE_MODE == "hosted" else None,
                             provider_input_bytes=provider_input_bytes,
                             response_contract_bytes=response_contract_bytes,
                             estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
@@ -252,6 +349,7 @@ def generate(model, payload, schema):
                         attempt_kind="initial" if attempt_number == 1 else "bounded_503_retry",
                         result="http_503_retryable" if diagnostic.get("status_code") == 503 and attempt_number == 1 else "provider_error",
                         destination_category="gemini", http_status=diagnostic.get("status_code"),
+                        reservation_id=reservation_id if PERSISTENCE_MODE == "hosted" else None,
                         provider_input_bytes=provider_input_bytes,
                         response_contract_bytes=response_contract_bytes,
                         estimated_request_payload_bytes=(provider_input_bytes+response_contract_bytes)
@@ -259,8 +357,16 @@ def generate(model, payload, schema):
             logger.warning("Gemini provider failure diagnostic: %s", json.dumps(diagnostic, sort_keys=True))
             quota = getattr(error, "code", None) == 429 or any(s in str(error).lower() for s in ("429", "quota", "resource_exhausted"))
             if quota:
-                usage.update(paused=True, reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly.")
-                persist_state()
+                pause_reason="Gemini quota exhausted. Progress is saved. Wait for quota to reset, then resume explicitly."
+                if PERSISTENCE_MODE == "hosted":
+                    try:
+                        get_allowance_store().set_paused(True, pause_reason)
+                    except AllowancePersistenceError:
+                        raise HTTPException(503, "The shared AI allowance state could not be updated.",
+                                            headers={"X-KE-Interruption-Category": "allowance_unavailable"}) from None
+                else:
+                    usage.update(paused=True, reason=pause_reason)
+                    persist_state()
                 raise HTTPException(429, "The shared AI allowance is currently unavailable.", headers={"X-KE-Interruption-Category":"allowance_exhausted"}) from error
 
             # Retry only a definite HTTP 503 response. Timeouts, connection

@@ -5,12 +5,12 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs, usage
+from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_assets, outputs
 from app.db.persistence import STORAGE_ROOT, StateMutationConflict
 from app.persistence.factory import get_artifact_store
 from app.persistence.artifact_paths import contained_locator, archive_entry
 from app.services.knowledge_extraction import find_source, persist_state
-from app.services.ai_gateway import status
+from app.services.ai_gateway import status, resume_usage, current_usage_state
 
 router=APIRouter(tags=["data control"])
 _artifact_store = get_artifact_store()
@@ -21,9 +21,7 @@ def usage_status():
 
 @router.post("/usage/resume")
 def resume():
-    usage.update(paused=False, reason=None)
-    persist_state()
-    return status()
+    return resume_usage()
 
 @router.get("/data/integrity")
 def integrity():
@@ -73,7 +71,8 @@ def export_data():
                             copyfileobj(artifact, target, 1024 * 8)
                     source[key]=relative
         archive.writestr("storage/state.json",json.dumps(dict(libraries=libraries,sources=source_copy,
-            extraction_jobs=extraction_jobs,knowledge_assets=knowledge_assets,outputs=outputs,usage=usage),indent=2))
+            extraction_jobs=extraction_jobs,knowledge_assets=knowledge_assets,outputs=outputs,
+            usage=current_usage_state()),indent=2))
         archive.writestr("RESTORE.txt","Private backup. Stop the server. Extract storage into a NEW empty directory. Set KNOWLEDGE_ENGINE_STORAGE to that storage directory, then start the app. Never overwrite a live database.\n")
     return Response(buffer.getvalue(),media_type="application/zip",headers={"Content-Disposition":'attachment; filename="knowledge-engine-backup.zip"'})
 

@@ -41,6 +41,7 @@ else:
         os.environ.get("KNOWLEDGE_ENGINE_STORAGE_BUCKET", ""),
         os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
     )
+    _allowance_store = None
 
 
 def get_state_store() -> StateStore:
@@ -56,3 +57,18 @@ def get_local_artifact_store() -> LocalArtifactStore:
     if not isinstance(_artifact_store, LocalArtifactStore):
         raise RuntimeError("Local artifact capabilities are unavailable in hosted mode.")
     return _artifact_store
+
+
+def get_allowance_store():
+    """Return the separate atomic allowance store in hosted mode only."""
+    if PERSISTENCE_MODE != "hosted":
+        raise RuntimeError("A separate allowance store is available only in hosted mode.")
+    global _allowance_store
+    if _allowance_store is None:
+        from app.persistence.allowance import PostgresAllowanceStore
+
+        _allowance_store = PostgresAllowanceStore(
+            os.environ.get("KNOWLEDGE_ENGINE_DATABASE_URL", ""),
+            os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
+        )
+    return _allowance_store

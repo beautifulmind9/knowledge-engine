@@ -89,6 +89,11 @@ def test_real_hosted_app_boot_health_auth_static_and_ai_disabled_without_disk(tm
         root = Path(os.environ['KNOWLEDGE_ENGINE_STORAGE'])
         with patch('app.persistence.postgres.PostgresStateStore.load', return_value=None) as load, \
              patch('app.persistence.postgres.PostgresStateStore.save') as save, \
+             patch('app.persistence.allowance.PostgresAllowanceStore.ensure_migrated', return_value={
+                 'day': None, 'calls': 0, 'paused': False, 'reason': None,
+                 'last_attempt_at': None, 'last_reservation_id': None,
+                 'migration_version': 1,
+             }), \
              patch('app.persistence.sqlite.SQLiteStateStore.__init__', side_effect=AssertionError('local state')), \
              patch('app.persistence.local_artifacts.LocalArtifactStore.__init__', side_effect=AssertionError('local artifacts')), \
              patch('app.services.ai_gateway.genai.Client', side_effect=AssertionError('Gemini IO')) as provider:

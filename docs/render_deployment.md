@@ -91,3 +91,54 @@ preserves usage accounting. See the
 for the detailed workflow, call snapshot, and regression evidence. R8-08 is
 complete; R8-09 external testing and R8-10 final release decision remain pending.
 Free services may sleep or restart; no paid fallback is configured.
+
+## Hosted allowance ledger migration and rollback
+
+The hosted provider-attempt allowance is stored separately from the workspace
+snapshot so each admitted attempt does not rewrite the whole workspace. The
+legacy `usage` object remains in snapshots as a rollback copy, but after the
+versioned migration the ledger is authoritative for hosted admission and
+`/usage/status` reads.
+
+Before deploying a build that uses the ledger, quiesce AI use for this
+single-user private beta. The app has no durable background worker and this
+migration does not add a pause endpoint:
+
+1. The user stops initiating Gemini-backed actions. Wait for any current
+   `/interpret`, grounded-answer/Create, or other provider request to finish.
+   Do not use the app during the SQL migration and deployment. Health checks and
+   ordinary non-AI Render traffic may continue.
+2. Keep Gemini-backed actions quiesced through deployment so snapshot-based
+   admission and ledger-based admission never run concurrently. Do not use a
+   rolling deployment with both code versions serving provider requests.
+3. Apply
+   [`apps/api/schema/create_knowledge_engine_allowance_ledger.sql`](../apps/api/schema/create_knowledge_engine_allowance_ledger.sql)
+   to the existing Supabase Postgres project. It creates additive tables only.
+4. Deploy the new build while Gemini-backed actions remain quiesced. Its first allowance
+   read/reservation seeds the ledger from the loaded snapshot `usage` state and
+   records migration version 1 in the same transaction. The transaction
+   verifies Pacific day, admitted count, pause state/reason, and last-attempt
+   time; it does not reset the current day's count.
+5. Before allowing AI actions again, inspect the single workspace row in
+   `knowledge_engine.allowance_state`. Confirm version 1 and compare
+   `accounting_day`, `admitted_attempts`, `paused`, `pause_reason`, and
+   `last_attempt_at` with the pre-cutover snapshot backup. Resolve any mismatch
+   while AI actions remain quiesced. Then check `/usage/status` and resume use.
+
+For rollback, use the same quiescence procedure: stop new Gemini-backed actions
+and wait for any current provider request to finish. Run
+`app.services.ai_gateway.copy_allowance_to_legacy_snapshot()` from the deployed
+hosted application context (with the normal hosted environment and loaded
+workspace state) and confirm its returned day/count/pause/last-attempt values
+match the ledger. This performs one ordinary snapshot save. Only after that
+save succeeds should the old snapshot-authoritative build be deployed. Do not
+use the app during that deployment. Keep the ledger tables intact for
+audit/retry; do not clear or reseed them during rollback. If copy-back cannot
+be confirmed, keep Gemini-backed actions quiesced rather than reverting to a
+potentially stale snapshot. Ordinary health checks and non-AI Render traffic
+may continue.
+Treat this rollback as a move back to snapshot authority. If the ledger-enabled
+build is to be restored later, keep admissions quiesced and add a versioned
+reconciliation step that seeds/verifies the ledger from the then-current
+snapshot before reopening; simply reusing migration version 1 would retain the
+old ledger count.

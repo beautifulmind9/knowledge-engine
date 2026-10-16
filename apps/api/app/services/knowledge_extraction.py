@@ -1,4 +1,5 @@
 from collections import Counter
+from copy import deepcopy
 from datetime import datetime, timezone
 import re
 
@@ -10,6 +11,7 @@ from app.db.mock_data import (
     sources,
 )
 from app.db.persistence import save_state
+from app.db.persistence import StateMutationConflict
 from app.models.knowledge_extraction import (
     KnowledgeExtractionJob,
     KnowledgeExtractionStatus,
@@ -24,6 +26,10 @@ STOPWORDS = {
     "on", "or", "that", "the", "their", "them", "they", "this", "to",
     "use", "using", "when", "where", "which", "with", "you", "your",
 }
+
+
+class InterpretationCheckpointError(RuntimeError):
+    """A durable interpretation boundary failed; provider work must not proceed."""
 
 
 def utc_now():
@@ -57,7 +63,7 @@ def find_chunk(source_id: str, chunk_id: str):
     raise ValueError("Chunk not found for this source.")
 
 
-def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False):
+def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False, *, persist: bool = True):
     find_chunk(source_id=source_id, chunk_id=chunk_id)
 
     prior = [j for j in extraction_jobs if j["source_id"] == source_id and j["chunk_id"] == chunk_id]
@@ -78,7 +84,8 @@ def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False
     job_data = job.model_dump(mode="json")
     job_data.update(schema_version=2, extraction_version=max((j.get("extraction_version", 1) for j in prior), default=0)+1)
     extraction_jobs.append(job_data)
-    persist_state()
+    if persist:
+        persist_state()
     return job_data
 
 
@@ -109,7 +116,7 @@ def get_extraction_request(job_id: str):
     return build_knowledge_extraction_request(chunk)
 
 
-def mark_extraction_job_running(job_id: str, provider: str, model: str):
+def mark_extraction_job_running(job_id: str, provider: str, model: str, *, persist: bool = True):
     job = get_extraction_job(job_id)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
@@ -122,19 +129,22 @@ def mark_extraction_job_running(job_id: str, provider: str, model: str):
     job["provider"] = provider
     job["model"] = model
     job["error"] = None
-    persist_state()
+    if persist:
+        persist_state()
     return job
 
 
-def mark_extraction_job_failed(job_id: str, error: str):
+def mark_extraction_job_failed(job_id: str, error: str, *, persist: bool = True):
     job = get_extraction_job(job_id)
     job["status"] = KnowledgeExtractionStatus.FAILED.value
     job["error"] = error
-    persist_state()
+    if persist:
+        persist_state()
     return job
 
 
-def complete_extraction_job(job_id: str, assets, model_response_id: str | None = None):
+def complete_extraction_job(job_id: str, assets, model_response_id: str | None = None, *,
+                            persist: bool = True, update_source: bool = True):
     job = get_extraction_job(job_id)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
@@ -172,17 +182,55 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
     job["completed_at"] = utc_now().isoformat()
     job["model_response_id"] = model_response_id
     job["error"] = None
-    from app.services.source_interpretation import get_source_interpretation_summary
     source = find_source(job["source_id"])
-    summary = get_source_interpretation_summary(job["source_id"])
-    source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
-    source["stopped_reason"] = None
-    persist_state()
+    if update_source:
+        from app.services.source_interpretation import get_source_interpretation_summary
+        summary = get_source_interpretation_summary(job["source_id"])
+        source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
+        source["stopped_reason"] = None
+    if persist:
+        persist_state()
 
     return {
         "job": job,
         "assets": stored_assets,
     }
+
+
+def capture_interpretation_state():
+    """In-memory rollback point for a not-yet-durable interpretation checkpoint."""
+    from app.db import mock_data
+    return {
+        "libraries": deepcopy(libraries), "sources": deepcopy(sources),
+        "extraction_jobs": deepcopy(extraction_jobs),
+        "knowledge_assets": deepcopy(knowledge_assets),
+        "outputs": deepcopy(mock_data.outputs), "usage": deepcopy(mock_data.usage),
+    }
+
+
+def restore_interpretation_state(state):
+    """Restore a pre-checkpoint view after a definite persistence failure."""
+    from app.db import mock_data
+    for name, target in (("libraries", libraries), ("sources", sources),
+                         ("extraction_jobs", extraction_jobs),
+                         ("knowledge_assets", knowledge_assets), ("outputs", mock_data.outputs)):
+        target[:] = deepcopy(state[name])
+    mock_data.usage.clear()
+    mock_data.usage.update(deepcopy(state["usage"]))
+
+
+def persist_interpretation_checkpoint(rollback_state):
+    """Persist once; CAS conflicts restore latest state, other failures roll back locally."""
+    try:
+        persist_state()
+    except StateMutationConflict:
+        # save_state already refreshed the live collections from the latest
+        # committed snapshot on a fail-closed reconciliation conflict.
+        raise
+    except Exception:
+        restore_interpretation_state(rollback_state)
+        raise InterpretationCheckpointError("Interpretation progress could not be saved safely.") from None
+    return capture_interpretation_state()
 
 
 def list_knowledge_assets(

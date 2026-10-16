@@ -31,7 +31,7 @@ def test_source_interpretation_calls_single_chunk_runner_once_per_chunk(source, 
     s, chunks = _install_chunks(source, count=3)
     calls = []
 
-    def fake_run(job_id):
+    def fake_run(job_id, **_):
         job = next(job for job in db.extraction_jobs if job["id"] == job_id)
         calls.append(job["chunk_id"])
         job["status"] = "completed"
@@ -52,7 +52,7 @@ def test_source_interpretation_stops_after_first_failed_independent_request(sour
     s, chunks = _install_chunks(source, count=3)
     calls = []
 
-    def fake_run(job_id):
+    def fake_run(job_id, **_):
         job = next(job for job in db.extraction_jobs if job["id"] == job_id)
         calls.append(job["chunk_id"])
         if len(calls) == 2:
@@ -79,7 +79,7 @@ def test_explicit_build_retries_failed_part_without_reset_and_skips_completed_pa
     s, chunks = _install_chunks(source, count=3)
     calls = []
 
-    def fake_run(job_id):
+    def fake_run(job_id, **_):
         job = get_extraction_job(job_id)
         calls.append((job_id, job['chunk_id']))
         if len(calls) == 2:
@@ -109,7 +109,7 @@ def test_provider_503_is_returned_as_safe_known_interruption_without_retry(clien
     s, _ = _install_chunks(source, count=3)
     calls = []
 
-    def fake_run(job_id):
+    def fake_run(job_id, **_):
         calls.append(job_id)
         raise HTTPException(502, "synthetic safe provider failure",
                             headers={"X-KE-Interruption-Category":"provider_unavailable"})
@@ -140,7 +140,7 @@ def test_confirmed_timeout_persists_and_explicit_continuation_skips_completed_pa
     calls = []
     timed_out = False
 
-    def fake_run(job_id):
+    def fake_run(job_id, **_):
         nonlocal timed_out
         job = get_extraction_job(job_id)
         calls.append((job_id, job['chunk_id']))

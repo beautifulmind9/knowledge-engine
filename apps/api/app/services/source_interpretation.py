@@ -1,12 +1,16 @@
 from fastapi import HTTPException
 
+from app.db.persistence import StateMutationConflict
 from app.db.mock_data import extraction_jobs, knowledge_assets
 from app.models.knowledge_extraction import KnowledgeExtractionStatus
 from app.services.gemini_knowledge_extraction import ExtractionValidationError, run_gemini_knowledge_extraction
 from app.services.knowledge_extraction import (
+    InterpretationCheckpointError,
+    capture_interpretation_state,
     create_extraction_job,
     find_source,
-    persist_state,
+    persist_interpretation_checkpoint,
+    restore_interpretation_state,
 )
 from app.services.text_chunking import load_chunks
 from app.services.performance_timing import operation_context
@@ -151,9 +155,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
     if not chunks:
         raise ValueError("This source has no chunks to interpret.")
 
-    source["processing_status"] = "knowledge_interpreting"
-    source["stopped_reason"] = None
-    persist_state()
+    durable_state = capture_interpretation_state()
 
     completed_chunk_ids = _completed_chunk_ids(source_id)
     processed_results = []
@@ -174,6 +176,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         job = existing_job or create_extraction_job(
             source_id=source_id,
             chunk_id=chunk_id,
+            persist=False,
         )
 
         selected_jobs.append(job["id"])
@@ -188,8 +191,15 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         try:
             with operation_context(source_id=source_id, chunk_id=job.get("chunk_id"),
                                    operation_category="interpretation_part"):
-                processed_results.append(run_gemini_knowledge_extraction(job_id))
+                result = run_gemini_knowledge_extraction(
+                    job_id, coalesce_interpretation=True,
+                    rollback_state=durable_state,
+                    on_checkpoint=lambda state: durable_state.update(state),
+                )
+                processed_results.append(result)
         except Exception as error:
+            if isinstance(error, (InterpretationCheckpointError, StateMutationConflict)):
+                raise
             if isinstance(error, HTTPException):
                 stopped_reason="Interpretation stopped after an AI service interruption."
                 interruption_category=(getattr(error,"headers",None) or {}).get("X-KE-Interruption-Category")
@@ -207,15 +217,18 @@ def interpret_source(source_id: str, max_chunks: int = 1):
                 interruption_category="preparation_failed"
             break
 
-    source["stopped_reason"] = stopped_reason
-    summary = get_source_interpretation_summary(source_id)
-
-    if summary["status"] == "completed":
-        source["processing_status"] = "knowledge_interpreted"
-    else:
-        source["processing_status"] = "knowledge_interpreting"
-
-    persist_state()
+    try:
+        source["stopped_reason"] = stopped_reason
+        summary = get_source_interpretation_summary(source_id)
+        source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
+        durable_state = persist_interpretation_checkpoint(durable_state)
+    except StateMutationConflict:
+        # save_state already refreshed the live collections from latest state.
+        raise
+    except Exception:
+        # For other finalization failures restore the last durable checkpoint.
+        restore_interpretation_state(durable_state)
+        raise
 
     return {
         "source_id": source_id,

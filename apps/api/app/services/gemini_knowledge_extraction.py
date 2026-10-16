@@ -10,6 +10,8 @@ from app.services.knowledge_extraction import (
     get_extraction_request,
     mark_extraction_job_failed,
     mark_extraction_job_running,
+    find_source,
+    persist_interpretation_checkpoint,
 )
 from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
 
@@ -72,7 +74,8 @@ def validate_extraction_result(client, model: str, request: dict, interaction):
         ) from validation_error
 
 
-def run_gemini_knowledge_extraction(job_id: str):
+def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: bool = False,
+                                   rollback_state=None, on_checkpoint=None):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -86,7 +89,16 @@ def run_gemini_knowledge_extraction(job_id: str):
         job_id=job_id,
         provider="gemini",
         model=model,
+        persist=not coalesce_interpretation,
     )
+
+    if coalesce_interpretation:
+        source = find_source(request["source_id"])
+        source["processing_status"] = "knowledge_interpreting"
+        source["stopped_reason"] = None
+        durable_state = persist_interpretation_checkpoint(rollback_state)
+        if on_checkpoint:
+            on_checkpoint(durable_state)
 
     client = None
 
@@ -123,8 +135,11 @@ def run_gemini_knowledge_extraction(job_id: str):
             job_id=job_id,
             assets=result.assets,
             model_response_id=getattr(final_interaction, "id", None),
+            persist=not coalesce_interpretation,
+            update_source=not coalesce_interpretation,
         )
 
     except Exception as error:
-        mark_extraction_job_failed(job_id=job_id, error=str(error))
+        mark_extraction_job_failed(job_id=job_id, error=str(error),
+                                   persist=not coalesce_interpretation)
         raise

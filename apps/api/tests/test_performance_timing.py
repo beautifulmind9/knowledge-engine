@@ -129,6 +129,8 @@ def test_interpretation_request_correlates_provider_and_state_saves_without_real
                    and event.get("request_id")==provider.get("request_id")]
     assert provider.get("request_id")
     assert provider["source_id"]==source[0]["id"] and provider["chunk_id"]==source[1]["id"]
-    assert len(matched_saves)>=4
+    # Local allowance admission remains snapshot-backed; hosted admission uses
+    # its separate ledger and the two interpretation checkpoints.
+    assert len(matched_saves)==3
     part_saves=[event for event in matched_saves if event.get("chunk_id")==source[1]["id"]]
-    assert len(part_saves)>=3
+    assert len(part_saves)==2

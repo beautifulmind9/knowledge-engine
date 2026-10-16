@@ -32,7 +32,7 @@ Capture these events as available: `source_create`, `source_create_request`,
 `artifact_publication`, `text_extraction`, `chunk_construction`,
 `source_extraction_request_total`, `source_chunk_request_total`,
 `gemini_attempt`, `provider_response_adaptation_validation`, `state_persistence`,
-`state_persistence_attempt`, `hosted_state_load`,
+`state_persistence_attempt`, `allowance_reservation`, `hosted_state_load`,
 `hosted_state_reconciliation`, `storage_request`, `source_summary`,
 `library_source_summaries`, `material_preparation_request`, `data_fetch`,
 `material_safely_saved`, `material_read_complete`,
@@ -56,6 +56,10 @@ parsed state. `storage_request` records request and response body byte counts by
 artifact operation, without path or content. `gemini_attempt` records an
 estimated provider request payload size from the already-built input and
 response contract; SDK envelope, headers, and transport framing are excluded.
+Hosted provider admission also emits one `allowance_reservation` event per
+actual attempt. It reports reservation duration, a byte estimate for the
+small safe reservation fields, outcome category, attempt number, and reservation
+ID. It is a separate Postgres ledger write and never a workspace snapshot.
 Safe request IDs join Storage reads/writes to source-summary and interpretation
 requests, including repeated full chunks-artifact reads during preparation.
 
@@ -64,6 +68,7 @@ Example safe records (illustrative values):
 ```json
 {"event":"state_persistence_attempt","destination_category":"state","save_kind":"normal","snapshot_utf8_bytes":185432,"duration_ms":74.2,"request_id":"b7d4…","source_id":"source_…","chunk_id":"chunk_…"}
 {"event":"storage_request","destination_category":"artifact","operation_category":"artifact_read","request_payload_bytes":0,"response_payload_bytes":856321,"duration_ms":119.4,"result":"success"}
+{"event":"allowance_reservation","destination_category":"state","operation_category":"provider_attempt_admission","approximate_payload_bytes":108,"duration_ms":21.6,"attempt_number":1,"reservation_id":"a91c…","result":"admitted"}
 ```
 
 For a representative book, calculate and record:
@@ -234,20 +239,13 @@ concurrency, weaker validation, fewer persistence guarantees, or infrastructure
 spend; those choices require the measured bottleneck plus product usability
 evidence.
 
-The current architecture can theoretically produce the reported traffic through
-whole-snapshot writes. As an illustration, at the maximum 450 provider attempts
-per day for 30 days, and five snapshot writes per ordinary successful one-part
-interpretation request, 11.9 GB would correspond to roughly 176 kB per snapshot
-write if all service-initiated traffic came from Postgres. The actual required
-average falls when other outbound paths contribute, and rises when actual call
-volume is below the cap. A normal one-part request currently includes route
-start/final saves, job-running save, provider allowance save, and completion
-save; a 503 retry adds another allowance save. Reconciliation can add further
-snapshot transmissions. These counts make amplification plausible, not proven.
-
-If snapshots are dominant, the next review should compare only these small
-architectural options: avoid writing unchanged snapshots on no-op mutations,
-persist a smaller changed-state representation or per-record changes, or move
-large non-state artifacts fully out of the snapshot boundary. Evaluate the
-measured correctness/reconciliation impact before choosing. No such change is
-part of this baseline slice.
+The accepted persistence change targets two full snapshot writes for a
+one-chunk interpretation: one pre-provider checkpoint and one settlement.
+Expected hosted counts are therefore two `state_persistence_attempt` events
+plus one `allowance_reservation` event for a normal single attempt, or two
+snapshot events plus two reservation events for a confirmed 503 retry. At a
+4.651 MB snapshot, that is approximately 9.302 MB of snapshot payload per
+request, plus small ledger payloads. Compare observed snapshot-event sums and
+ledger reservation events with Render's service-initiated bandwidth delta over
+the same benchmark interval; include Storage and other measured outbound paths
+before attributing the full platform delta to Postgres.

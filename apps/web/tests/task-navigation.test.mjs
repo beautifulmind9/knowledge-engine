@@ -720,6 +720,91 @@ test('build outcomes distinguish a finished material, exhausted allowance and sa
  }
 });
 
+test('material preview stays stable during each part and refreshes once after a successful run',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+ const facts={readiness:'partly_ready',has_usable_knowledge:true,completed_parts:0,total_parts:3,coverage_text:'0 of 3 parts ready',operation:'idle',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]};
+ let knowledgeCalls=0;const progressAtDispatch=[];
+ f.ctx.api=async(path,options)=>{
+  if(path.endsWith('/summary'))return {...facts};
+  if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,daily_limit_reached:false};
+  if(path.endsWith('/knowledge-units')){knowledgeCalls++;return {items:[{canonical_asset:{title:`Preview ${knowledgeCalls}`}}]};}
+  if(path.includes('/interpret?')){progressAtDispatch.push(f.main.querySelector('progress').attributes['aria-valuetext']);facts.completed_parts++;facts.coverage_text=`${facts.completed_parts} of 3 parts ready`;facts.readiness=facts.completed_parts===3?'ready':'partly_ready';facts.next_action=facts.completed_parts===3?'use_knowledge':'continue_building';return {processed_this_run:1};}
+  return original(path,options);
+ };
+ await f.ctx.navigate('material',{id:'s1'});await new Promise(resolve=>setImmediate(resolve));
+ const callsOnEntry=knowledgeCalls;assert.equal(callsOnEntry,1,'existing usable knowledge loads on entry');
+ await f.click('Continue preparing');
+ assert.deepEqual(progressAtDispatch,['0% prepared','33% prepared','67% prepared']);
+ assert.equal(f.main.querySelector('.material-coverage').textContent,'Prepared');
+ assert.equal(knowledgeCalls,callsOnEntry+1,'only the terminal refresh follows the three chunk summaries');
+ assert.ok(f.nodes().some(n=>n.textContent==='Preview 2'));
+});
+
+test('partial preparation refreshes preview once at provider, allowance, validation, timeout, uncertainty and status stops',async()=>{
+ for(const stop of ['provider_unavailable','daily_allowance','validation_failed','preparation_timeout','uncertain','status_unavailable']){
+  const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';
+  const facts={readiness:'partly_ready',has_usable_knowledge:false,completed_parts:0,total_parts:3,coverage_text:'0 of 3 parts ready',operation:'idle',file_state:'available',read_state:'read',next_action:'build_knowledge',recovery:[]};
+  let attempts=0,knowledgeCalls=0,summaryFailureUsed=false;
+  f.ctx.api=async(path,options)=>{
+   if(path.endsWith('/summary')){if(stop==='status_unavailable'&&attempts===1&&!summaryFailureUsed){summaryFailureUsed=true;throw Error('synthetic summary outage');}return {...facts};}
+   if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,daily_limit_reached:false};
+   if(path.endsWith('/knowledge-units')){knowledgeCalls++;return {items:[{canonical_asset:{title:'New preview'}}]};}
+   if(path.includes('/interpret?')){
+    attempts++;
+    if(attempts===1){facts.completed_parts=1;facts.has_usable_knowledge=true;facts.coverage_text='1 of 3 parts ready';facts.readiness='partly_ready';facts.next_action='continue_building';return {processed_this_run:1};}
+    if(stop==='uncertain')throw Error('synthetic uncertain transport');
+    facts.attention_category='build_stopped';
+    const category=stop==='daily_allowance'?'allowance_exhausted':stop==='preparation_timeout'?'request_timed_out':stop;
+    return {processed_this_run:0,stopped_reason:'safe synthetic stop',interruption_category:category};
+   }
+   return original(path,options);
+  };
+  await f.ctx.navigate('material',{id:'s1'});await f.click('Continue preparing');
+  assert.equal(f.main.querySelector('.material-coverage').textContent,stop==='status_unavailable'?'Preparation progress unavailable':'Partly prepared',stop);
+  assert.equal(knowledgeCalls,1,`${stop}: initial no-knowledge message needs no request; one terminal preview refresh follows`);
+  assert.ok(f.nodes().some(n=>n.textContent==='New preview'),stop);
+ }
+});
+
+test('explicit preparation stop keeps confirmed progress and performs one terminal preview refresh',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';let stopAction,stopped=false,knowledgeCalls=0;
+ const facts={readiness:'ready_to_build',has_usable_knowledge:false,completed_parts:0,total_parts:3,coverage_text:'0 of 3 parts ready',operation:'idle',file_state:'available',read_state:'read',next_action:'build_knowledge',recovery:[]};
+ f.ctx.beginProcessingStatus=details=>{stopAction=details.onStop;return 1;};
+ f.ctx.api=async(path,options)=>{
+  if(path.endsWith('/summary')){if(facts.completed_parts===1&&!stopped){stopped=true;stopAction?.();}return {...facts};}
+  if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,daily_limit_reached:false};
+  if(path.endsWith('/knowledge-units')){knowledgeCalls++;return {items:[{canonical_asset:{title:'Stopped preview'}}]};}
+  if(path.includes('/interpret?')){facts.completed_parts++;facts.has_usable_knowledge=true;facts.readiness='partly_ready';facts.coverage_text=`${facts.completed_parts} of 3 parts ready`;facts.next_action='continue_building';return {processed_this_run:1};}
+  return original(path,options);
+ };
+ await f.ctx.navigate('material',{id:'s1'});await f.click('Continue preparing');
+ assert.equal(facts.completed_parts,1);assert.equal(knowledgeCalls,1);assert.ok(f.nodes().some(n=>n.textContent==='Stopped preview'));
+});
+
+test('explicit material knowledge actions remain available after preview deferral',async()=>{
+ const f=await fixture();await f.ctx.navigate('material',{id:'s1'});
+ assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Ask this source'));
+ assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Explore ideas'));
+ assert.ok(f.nodes().some(n=>n.tag==='button'&&n.textContent==='Use in Create'));
+ await f.click('Ask this source');assert.equal(parseRoute(f.browser.location.hash).view,'knowledge');
+});
+
+test('navigation away prevents a terminal preview refresh from replacing the current view',async()=>{
+ const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';let release,entered,knowledgeCalls=0,completed=0;
+ const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve);
+ f.ctx.api=async(path,options)=>{
+  if(path.endsWith('/summary'))return {source_id:'s1',readiness:completed?'partly_ready':'ready_to_build',has_usable_knowledge:completed>0,completed_parts:completed,total_parts:3,coverage_text:`${completed} of 3 parts ready`,operation:'idle',file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]};
+  if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:450,daily_limit_reached:false};
+  if(path.endsWith('/knowledge-units')){knowledgeCalls++;return {items:[{canonical_asset:{title:'Late preview'}}]};}
+  if(path.includes('/interpret?')){entered();await gate;completed++;return {processed_this_run:1};}
+  return original(path,options);
+ };
+ await f.ctx.navigate('material',{id:'s1'});const initialCalls=knowledgeCalls;
+ const pending=f.click('Continue preparing');await started;await f.ctx.navigate('library');release();await pending;
+ assert.equal(f.main.querySelector('h1').textContent,'Your library');assert.equal(knowledgeCalls,initialCalls);
+ assert.ok(!f.nodes().some(n=>n.textContent==='Late preview'));
+});
+
 test('source recovery is server-authoritative, explicit, and does not build after reset',async()=>{
  for(const allowed of [false,true]){
   const f=await fixture(),original=f.ctx.api;f.source.chunks_path='parts';

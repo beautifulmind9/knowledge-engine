@@ -246,7 +246,9 @@ async function startPreparation(sourceIds){
  try{result=await session.run();}catch{result={...session.snapshot(),status:'status_unavailable'};}finally{
   if(foregroundBuild===session)foregroundBuild=null;
   for(const [id,outcome] of session.snapshot().outcomes)preparationOutcomes.set(id,outcome);
-  try{await main.refreshMaterialStatus?.();}catch{/* Status remains explicitly unavailable until it can be checked. */}
+  let materialStatusRefreshed=false;
+  try{materialStatusRefreshed=await main.refreshMaterialStatus?.()===true;}catch{/* Status remains explicitly unavailable until it can be checked. */}
+  if(materialStatusRefreshed)try{await main.refreshMaterialKnowledgePreview?.();}catch{/* Preview refresh is best-effort after preparation. */}
   try{main.updateMaterialPreparation?.();}catch{/* The server summary remains authoritative. */}
   const final=result||session.snapshot();
   preparationBatch.outcomes=new Map(session.snapshot().outcomes);preparationBatch.status=final.status;preparationBatch.finished=true;
@@ -272,7 +274,7 @@ async function sourceView(id){
  const detailFetchStarted=performanceNow();const [source,initialSummary,libraryData]=await Promise.all([api(`/sources/${id}`),api(`/sources/${id}/summary`),libraries()]);
  try{console.info('KE_PERF',{event:'material_detail_fetch',duration_ms:Math.round((performanceNow()-detailFetchStarted)*100)/100,source_id:id});}catch{}
  if(!active())return;
- let summary=initialSummary,usage=null,previewRevision=0,lastPreviewCount=-1;
+ let summary=initialSummary,usage=null,previewRevision=0,initialPreviewLoaded=false;
  const canPrepare=()=>['build_knowledge','continue_building'].includes(summary.next_action)&&summary.operation!=='build_unconfirmed'&&Number.isInteger(summary.total_parts)&&summary.total_parts>summary.completed_parts;
  if(canPrepare())usage=await api('/usage').catch(()=>null);
  if(!active())return;
@@ -356,10 +358,14 @@ async function sourceView(id){
    const action=button('Continue preparing',()=>startPreparation([id]));action.disabled=!!foregroundBuild||!availableAIAllowance(usage)||['daily_allowance','allowance_unavailable'].includes(category);preparationActions.append(action);
   }
   renderUse();
-  if(lastPreviewCount!==summary.completed_parts){lastPreviewCount=summary.completed_parts;loadKnowledge();}
+  // Keep the initial preview behavior, but do not rebuild the full preview
+  // whenever a foreground preparation checkpoint advances. The run owner
+  // refreshes it once after its final durable summary has been loaded.
+  if(!initialPreviewLoaded){initialPreviewLoaded=true;loadKnowledge();}
  }
  main.updateMaterialPreparation=renderPreparation;
- main.refreshMaterialStatus=async()=>{if(!active())return;const [freshSummary,freshUsage]=await Promise.all([api(`/sources/${encodeURIComponent(id)}/summary`),api('/usage').catch(()=>null)]);if(!active())return;summary=freshSummary;usage=freshUsage;renderPreparation();};
+ main.refreshMaterialStatus=async()=>{if(!active())return false;const [freshSummary,freshUsage]=await Promise.all([api(`/sources/${encodeURIComponent(id)}/summary`),api('/usage').catch(()=>null)]);if(!active())return false;summary=freshSummary;usage=freshUsage;renderPreparation();return true;};
+ main.refreshMaterialKnowledgePreview=()=>active()&&main.materialId===id?loadKnowledge():undefined;
  const read=async()=>{const task=beginProcessingStatus({label:'Reading your material',detail:'Your original file stays safely attached to this material.'});try{await api(`/sources/${id}/process`,{method:'POST'});announceProcessingStatus('Reading your material is complete.');if(active()&&await navigate('material',{id,replace:true}))await startPreparation([id]);}finally{endProcessingStatus(task);}};
  const uploadFile=async file=>{validateMaterial(file);const task=beginProcessingStatus({label:'Adding your material',detail:'The file is saved before reading begins.'});try{const data=new FormData();data.append('file',file);await api(`/sources/${id}/upload`,{method:'POST',body:data});await read();}finally{endProcessingStatus(task);}};
  const needsUpload=!source.file_path||['unattached','missing'].includes(summary.file_state)||['ocr_required','unsupported_extraction'].includes(summary.attention_category);

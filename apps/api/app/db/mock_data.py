@@ -52,3 +52,13 @@ usage = _state.get("usage", {}) if _state is not None else {}
 
 def create_id(prefix):
     return f"{prefix}_{uuid4().hex[:8]}"
+
+
+# Existing imports keep stable collection identities. Only an explicitly active
+# hosted request supplies a ContextVar view; legacy/local behavior stays global.
+from app.db.request_state import ProjectionList
+libraries = ProjectionList('libraries', libraries)
+sources = ProjectionList('sources', sources)
+extraction_jobs = ProjectionList('extraction_jobs', extraction_jobs)
+knowledge_assets = ProjectionList('knowledge_assets', knowledge_assets)
+outputs = ProjectionList('outputs', outputs)

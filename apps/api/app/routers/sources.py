@@ -76,9 +76,10 @@ def persist_state():
 
 
 def find_source(source_id: str):
+    from app.services import partition_authority as authority
     for source in sources:
         if source.get("id") == source_id:
-            return source
+            return authority.source(source)
 
     return None
 

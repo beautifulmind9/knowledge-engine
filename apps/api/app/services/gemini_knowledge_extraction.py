@@ -77,6 +77,8 @@ def validate_extraction_result(client, model: str, request: dict, interaction):
 def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: bool = False,
                                    rollback_state=None, on_checkpoint=None,
                                    chunk_context=None):
+    from app.services import partition_authority as authority
+    initial_authority=bool(authority.coordinator())
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -109,6 +111,10 @@ def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: boo
         "chunk_id": request["chunk_id"],
         "chunk_text": request["chunk_text"],
     }
+
+    if bool(authority.coordinator())!=initial_authority:
+        from app.db.persistence import StateMutationConflict
+        raise StateMutationConflict('Persistence authority changed before provider dispatch.')
 
     try:
         interaction = generate_structured_interaction(

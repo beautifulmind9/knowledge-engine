@@ -90,3 +90,19 @@ def get_partition_store() -> PartitionStore:
             os.environ.get("KNOWLEDGE_ENGINE_WORKSPACE_KEY", ""),
         )
     return _partition_store
+
+
+_phase2_coordinator = None
+
+
+def get_phase2_coordinator():
+    """No IO, backfill or activation on construction."""
+    if PERSISTENCE_MODE != 'hosted':
+        raise RuntimeError('Phase 2 coordination requires hosted persistence.')
+    global _phase2_coordinator
+    if _phase2_coordinator is None:
+        from app.persistence.phase2 import Phase2Coordinator
+        _phase2_coordinator = Phase2Coordinator(
+            os.environ.get('KNOWLEDGE_ENGINE_DATABASE_URL', ''),
+            os.environ.get('KNOWLEDGE_ENGINE_WORKSPACE_KEY', ''))
+    return _phase2_coordinator

@@ -1,4 +1,5 @@
 """Compact inventory facts. No audit, consolidation, retrieval or provider IO."""
+from app.services import partition_authority as authority
 from collections import defaultdict
 import json
 from pathlib import Path
@@ -22,7 +23,7 @@ MESSAGES = {
 
 def source_file_replacement_allowed(source_id: str) -> bool:
     """A source file can be replaced only before interpretation history exists."""
-    return not any(job.get("source_id") == source_id for job in extraction_jobs)
+    return not authority.has_history(source_id)
 
 
 def source_summaries(library_id=None, source_id=None, now=None):
@@ -32,11 +33,17 @@ def source_summaries(library_id=None, source_id=None, now=None):
         raise ValueError("Source not found.")
     jobs = defaultdict(list)
     usable = set()
-    for job in extraction_jobs:
+    selected=authority.jobs_many([s['id'] for s in chosen]) if authority.coordinator() else authority.jobs()
+    for job in selected:
         jobs[job["source_id"]].append(job)
-    for asset in knowledge_assets:
-        if asset.get("active", True):
-            usable.add(asset["source_id"])
+    if not authority.coordinator():
+        for asset in knowledge_assets:
+            if asset.get("active", True):
+                usable.add(asset["source_id"])
+    history={j['source_id'] for j in extraction_jobs}
+    if authority.coordinator():
+        usable=set(authority.coordinator().asset_counts([s['id'] for s in chosen]))
+        history=authority.coordinator().history_sources([s['id'] for s in chosen])
     store = get_artifact_store()
     paths = [Path(s[key]) for s in chosen for key in ("file_path", "chunks_path") if s.get(key)]
     try:
@@ -44,10 +51,10 @@ def source_summaries(library_id=None, source_id=None, now=None):
     except Exception:
         # A failed inventory is unknown, never evidence that artifacts are absent.
         presence = {}
-    return [_summarize(s, jobs[s["id"]], s["id"] in usable, now, store, presence) for s in chosen]
+    return [_summarize(s, jobs[s["id"]], s["id"] in usable, now, store, presence, s['id'] not in history) for s in chosen]
 
 
-def _summarize(source, jobs, usable, now, store, presence):
+def _summarize(source, jobs, usable, now, store, presence, replacement_allowed):
     attention = None
     file_state = "unattached"
     if source.get("file_path"):
@@ -140,6 +147,6 @@ def _summarize(source, jobs, usable, now, store, presence):
         coverage_text=f"{completed} of {total} parts ready" if total else None,
         has_usable_knowledge=usable, operation="build_unconfirmed" if running else "idle",
         attention_category=attention, attention_message=MESSAGES.get(attention), file_state=file_state,
-        file_replacement_allowed=source_file_replacement_allowed(source["id"]),
+        file_replacement_allowed=replacement_allowed,
         read_state=read_state, next_action=action, recovery=recovery,
     )

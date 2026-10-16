@@ -25,6 +25,8 @@ def resume():
 
 @router.get("/data/integrity")
 def integrity():
+    from app.services import partition_authority as authority
+    current_jobs=authority.jobs(history=True)
     source_ids={s["id"] for s in sources}
     library_ids={l["id"] for l in libraries}
     output_ids={o["id"] for o in outputs}
@@ -39,7 +41,7 @@ def integrity():
         for key in ("file_path","chunks_path","extracted_text_path"):
             if source.get(key) and artifact_status[Path(source[key])] != "artifact":
                 issues.append({"id":source["id"],"problem":"missing "+key})
-    for item in extraction_jobs+knowledge_assets:
+    for item in current_jobs+knowledge_assets:
         if item["source_id"] not in source_ids:
             issues.append({"id":item["id"],"problem":"orphaned source"})
     for output in outputs:
@@ -52,6 +54,7 @@ def integrity():
 
 @router.get("/data/export")
 def export_data():
+    from app.services import partition_authority as authority
     # Includes private source files: never link this endpoint from a public demo.
     buffer=io.BytesIO()
     source_copy=json.loads(json.dumps(sources))
@@ -75,7 +78,7 @@ def export_data():
                             copyfileobj(artifact, target, 1024 * 8)
                     source[key]=relative
         archive.writestr("storage/state.json",json.dumps(dict(libraries=libraries,sources=source_copy,
-            extraction_jobs=extraction_jobs,knowledge_assets=knowledge_assets,outputs=outputs,
+            extraction_jobs=authority.jobs(history=True),knowledge_assets=knowledge_assets,outputs=outputs,
             usage=current_usage_state()),indent=2))
         archive.writestr("RESTORE.txt","Private backup. Stop the server. Extract storage into a NEW empty directory. Set KNOWLEDGE_ENGINE_STORAGE to that storage directory, then start the app. Never overwrite a live database.\n")
     return Response(buffer.getvalue(),media_type="application/zip",headers={"Content-Disposition":'attachment; filename="knowledge-engine-backup.zip"'})

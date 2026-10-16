@@ -90,8 +90,27 @@ async def local_requests(request:Request,call_next):
                 # Pure process liveness must remain responsive during provider work.
                 response=await invoke_route()
             else:
-                async with request_lock:
-                    response=await invoke_route()
+                from app.services.partition_authority import coordinator, refresh_authority
+                from starlette.concurrency import run_in_threadpool
+                await run_in_threadpool(refresh_authority)
+                phase2=coordinator()
+                if phase2:
+                    from app.db.request_state import request_projection
+                    parts=request.url.path.split('/')
+                    source_ids=[parts[2]] if len(parts)>2 and parts[1]=='sources' and parts[2]!='summaries' else None
+                    job_id=parts[2] if len(parts)>2 and parts[1]=='knowledge-extractions' else None
+                    # Blocking read is short and occurs before the async route;
+                    # no workspace mutex spans a provider request in active mode.
+                    from starlette.concurrency import run_in_threadpool
+                    projection=await run_in_threadpool(phase2.scoped,source_ids,job_id=job_id,
+                                                       include_jobs=source_ids is not None or job_id is not None)
+                    with request_projection(phase2,source_ids,job_id,preloaded=projection):
+                        response=await invoke_route()
+                else:
+                    from app.db.request_state import legacy_request
+                    async with request_lock:
+                        with legacy_request():
+                            response=await invoke_route()
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["Cache-Control"]="no-store"
     response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"

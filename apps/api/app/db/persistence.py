@@ -55,6 +55,9 @@ def _snapshot_counts(state):
 
 def save_state(libraries, sources, extraction_jobs, knowledge_assets):
     persistence_started = timing_start()
+    from app.db.request_state import request_mode
+    if PERSISTENCE_MODE=='hosted' and request_mode.get() is not None and bool(getattr(get_state_store(),'phase2',False))!=request_mode.get():
+        raise StateMutationConflict('Persistence authority changed; reload before saving.')
     from app.db.mock_data import outputs, usage
     state = dict(libraries=libraries, sources=sources, extraction_jobs=extraction_jobs,
                  knowledge_assets=knowledge_assets, outputs=outputs, usage=usage, schema_version=2)
@@ -132,7 +135,15 @@ def save_state(libraries, sources, extraction_jobs, knowledge_assets):
             if not isinstance(latest, dict):
                 raise
             try:
-                state = merge_state_snapshots(baseline, state, latest)
+                from app.persistence.phase2 import active
+                if active(baseline)!=active(latest):
+                    _restore_live_state(latest,libraries,sources,extraction_jobs,knowledge_assets,preserve_record_objects=False)
+                    raise StateMutationConflict('Persistence authority changed; retry the request after reload.')
+                if getattr(store,'phase2',False):
+                    from app.persistence.phase2 import rebase_projection
+                    state = rebase_projection(baseline,state,latest)
+                else:
+                    state = merge_state_snapshots(baseline, state, latest)
             except StateReconciliationConflict:
                 _restore_live_state(
                     latest, libraries, sources, extraction_jobs, knowledge_assets,

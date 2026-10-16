@@ -10,6 +10,7 @@ from app.db.mock_data import (
     libraries,
     sources,
 )
+from app.services import partition_authority as authority
 from app.db.persistence import save_state
 from app.db.persistence import StateMutationConflict
 from app.models.knowledge_extraction import (
@@ -43,7 +44,7 @@ def persist_state():
 def find_source(source_id: str):
     for source in sources:
         if source.get("id") == source_id:
-            return source
+            return authority.source(source)
     return None
 
 
@@ -73,7 +74,9 @@ def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False
                           chunk_context=None):
     find_chunk(source_id=source_id, chunk_id=chunk_id, chunk_context=chunk_context)
 
-    prior = [j for j in extraction_jobs if j["source_id"] == source_id and j["chunk_id"] == chunk_id]
+    if authority.coordinator():
+        return authority.create_job(source_id,chunk_id,create_id('extraction'),reprocess)
+    prior = [j for j in authority.jobs(source_id) if j["chunk_id"] == chunk_id]
     for existing in reversed(prior):
         if existing["status"] in ("pending_ai", "running"):
             return existing
@@ -90,6 +93,8 @@ def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False
 
     job_data = job.model_dump(mode="json")
     job_data.update(schema_version=2, extraction_version=max((j.get("extraction_version", 1) for j in prior), default=0)+1)
+    source=find_source(source_id)
+    if 'generation' in source:job_data['generation']=source['generation']
     extraction_jobs.append(job_data)
     if persist:
         persist_state()
@@ -97,6 +102,8 @@ def create_extraction_job(source_id: str, chunk_id: str, reprocess: bool = False
 
 
 def find_extraction_job(job_id: str):
+    if authority.coordinator():
+        return authority.find_job(job_id)
     for job in extraction_jobs:
         if job.get("id") == job_id:
             return job
@@ -112,6 +119,8 @@ def get_extraction_job(job_id: str):
 
 def get_extraction_chunk(job_id: str, *, chunk_context=None):
     job = get_extraction_job(job_id)
+    if authority.coordinator():authority.guard_chunk_read(job_id)
+    else:authority.legacy_generation_guard(job)
     return find_chunk(
         source_id=job["source_id"],
         chunk_id=job["chunk_id"],
@@ -125,7 +134,10 @@ def get_extraction_request(job_id: str, *, chunk_context=None):
 
 
 def mark_extraction_job_running(job_id: str, provider: str, model: str, *, persist: bool = True):
+    if authority.coordinator():
+        return authority.claim(job_id,provider,model)
     job = get_extraction_job(job_id)
+    if not authority.coordinator():authority.legacy_mutation_guard(job)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
         raise ValueError("This knowledge extraction job is already completed.")
@@ -143,6 +155,8 @@ def mark_extraction_job_running(job_id: str, provider: str, model: str, *, persi
 
 
 def mark_extraction_job_failed(job_id: str, error: str, *, persist: bool = True):
+    if authority.coordinator():
+        return authority.fail(job_id,error)
     job = get_extraction_job(job_id)
     job["status"] = KnowledgeExtractionStatus.FAILED.value
     job["error"] = error
@@ -155,6 +169,7 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
                             persist: bool = True, update_source: bool = True,
                             chunk_context=None):
     job = get_extraction_job(job_id)
+    if not authority.coordinator():authority.legacy_mutation_guard(job)
 
     if job.get("status") == KnowledgeExtractionStatus.COMPLETED.value:
         raise ValueError("This knowledge extraction job is already completed.")
@@ -180,6 +195,16 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
         asset_data.update(schema_version=2, extraction_version=job.get("extraction_version", 1), active=True)
         asset_data["chapter_or_section"] = asset_data.get("chapter_or_section") or chunk.get("chapter_or_section")
         stored_assets.append(asset_data)
+
+    if authority.coordinator():
+        completed=authority.complete(job_id,stored_assets,model_response_id)
+        from app.persistence.factory import get_state_store
+        knowledge_assets[:]=deepcopy(get_state_store().loaded_snapshot.get('knowledge_assets',[]))
+        if update_source:
+            from app.services.source_interpretation import get_source_interpretation_summary
+            summary=get_source_interpretation_summary(job['source_id'])
+            authority.checkpoint_source(job['source_id'],'knowledge_interpreted' if summary['status']=='completed' else 'knowledge_interpreting',None)
+        return {'job':completed,'assets':stored_assets}
 
     # Validate the entire batch first; only successful replacement supersedes prior assets.
     for old in knowledge_assets:
@@ -208,6 +233,8 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
 
 def capture_interpretation_state():
     """In-memory rollback point for a not-yet-durable interpretation checkpoint."""
+    if authority.coordinator():
+        return {'phase2':True}
     from app.db import mock_data
     return {
         "libraries": deepcopy(libraries), "sources": deepcopy(sources),
@@ -219,6 +246,8 @@ def capture_interpretation_state():
 
 def restore_interpretation_state(state):
     """Restore a pre-checkpoint view after a definite persistence failure."""
+    if state.get('phase2'):
+        return  # Active mutations are transactional; never undo committed narrow/core state.
     from app.db import mock_data
     for name, target in (("libraries", libraries), ("sources", sources),
                          ("extraction_jobs", extraction_jobs),
@@ -230,6 +259,8 @@ def restore_interpretation_state(state):
 
 def persist_interpretation_checkpoint(rollback_state):
     """Persist once; CAS conflicts restore latest state, other failures roll back locally."""
+    if authority.coordinator():
+        return capture_interpretation_state()
     try:
         persist_state()
     except StateMutationConflict:
@@ -680,7 +711,10 @@ def recovery_eligibility(job, now=None):
 
 
 def recover_job(job_id):
+    if authority.coordinator():
+        return authority.job_dto(authority.coordinator().recover(job_id))
     job = get_extraction_job(job_id)
+    authority.legacy_mutation_guard(job)
     allowed, _ = recovery_eligibility(job)
     if not allowed:
         if job["status"] == "running":
@@ -689,7 +723,7 @@ def recover_job(job_id):
     job.update(status="pending_ai", error=None, recovered_at=utc_now().isoformat())
     # A reset resolves the old stop, never invokes AI. Other failures still matter.
     latest = {}
-    for candidate in extraction_jobs:
+    for candidate in authority.jobs(job["source_id"]):
         if candidate["source_id"] == job["source_id"]:
             latest[candidate["chunk_id"]] = candidate
     if not any(j["status"] in {"failed", "running"} for j in latest.values()):
@@ -713,7 +747,7 @@ def audit_source(source_id):
         if evidence and not _evidence_supported_by_text(evidence, chunk_text):
             evidence_review.append(a["id"])
     return {**overview, "interpretation":get_source_interpretation_summary(source_id) if source.get("chunks_path") else None,
-        "jobs":[j for j in extraction_jobs if j["source_id"]==source_id],
+        "jobs":authority.jobs(source_id,history=True),
         "missing_evidence":[a["id"] for a in current if not (a.get("evidence") or "").strip()],
         "missing_keywords":[a["id"] for a in current if not a.get("keywords")],
         "old_schema_assets":[a["id"] for a in all_assets if a.get("schema_version",1)<2],

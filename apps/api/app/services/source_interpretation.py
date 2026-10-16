@@ -1,6 +1,8 @@
 from fastapi import HTTPException
+from app.services import partition_authority as authority
 from pathlib import Path
 
+from app.persistence.partitions import PartitionConflict
 from app.db.persistence import StateMutationConflict
 from app.db.mock_data import extraction_jobs, knowledge_assets
 from app.models.knowledge_extraction import KnowledgeExtractionStatus
@@ -39,11 +41,7 @@ def get_source_chunks(source_id: str):
 
 
 def _jobs_for_source(source_id: str):
-    return [
-        job
-        for job in extraction_jobs
-        if job.get("source_id") == source_id
-    ]
+    return authority.jobs(source_id)
 
 
 def _completed_chunk_ids(source_id: str):
@@ -128,7 +126,7 @@ def get_source_interpretation_summary(source_id: str, *, chunk_context=None):
         "total_chunks": total_chunks,
         "completed_chunks": completed_count,
         "remaining_chunks": remaining_count,
-        "asset_count": len(
+        "asset_count": authority.coordinator().asset_counts([source_id]).get(source_id,0) if authority.coordinator() else len(
             [
                 asset
                 for asset in knowledge_assets
@@ -215,7 +213,8 @@ def interpret_source(source_id: str, max_chunks: int = 1):
     # strict single-chunk response schema. Stop on the first failure so one bad
     # response cannot automatically spend the rest of the user's daily budget.
     for job_id in selected_jobs:
-        job = next((item for item in extraction_jobs if item.get("id") == job_id), {})
+        from app.services.knowledge_extraction import get_extraction_job
+        job = get_extraction_job(job_id)
         try:
             with operation_context(source_id=source_id, chunk_id=job.get("chunk_id"),
                                    operation_category="interpretation_part"):
@@ -227,7 +226,7 @@ def interpret_source(source_id: str, max_chunks: int = 1):
                 )
                 processed_results.append(result)
         except Exception as error:
-            if isinstance(error, (InterpretationCheckpointError, StateMutationConflict)):
+            if isinstance(error, (InterpretationCheckpointError, StateMutationConflict, PartitionConflict)):
                 raise
             if isinstance(error, HTTPException):
                 stopped_reason="Interpretation stopped after an AI service interruption."
@@ -250,6 +249,8 @@ def interpret_source(source_id: str, max_chunks: int = 1):
         source["stopped_reason"] = stopped_reason
         summary = get_source_interpretation_summary(source_id, chunk_context=chunk_context)
         source["processing_status"] = "knowledge_interpreted" if summary["status"] == "completed" else "knowledge_interpreting"
+        if authority.coordinator():
+            authority.checkpoint_source(source_id,source['processing_status'],stopped_reason)
         durable_state = persist_interpretation_checkpoint(durable_state)
     except StateMutationConflict:
         # save_state already refreshed the live collections from latest state.

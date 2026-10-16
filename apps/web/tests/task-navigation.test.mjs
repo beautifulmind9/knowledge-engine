@@ -108,7 +108,23 @@ test('pagehide stops foreground continuation and a fresh app instance does not r
 });
 test('My work opens stored work and Settings retains usage and backup controls',async()=>{
  const f=await fixture();await f.ctx.savedView();await f.click('Open work');assert.equal(f.browser.location.hash,'#/my-work/o1');
- await f.ctx.settingsView();const text=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');assert.ok(text.includes('Shared beta allowance'));assert.ok(text.includes('Shared allowance used today: 0 of 10'));assert.ok(text.includes('Shared allowance remaining today: 10'));assert.ok(text.includes('shared across the workspace'));assert.ok(text.includes('do not use this allowance'));assert.ok(text.includes('This workspace is configured to stay within the approved $0 beta policy.'));assert.ok(!/billing is verified|Gemini key|free-project confirmation|AI actions/i.test(text));assert.ok(f.nodes().some(n=>n.href==='/data/export'));assert.ok(f.requests.some(r=>r.path==='/data/integrity'));
+ await f.ctx.settingsView();const text=f.nodes().map(n=>n.textContent).filter(Boolean).join('\n');assert.ok(text.includes('Shared beta allowance'));assert.ok(text.includes('Shared allowance used today: 0 of 10'));assert.ok(text.includes('Shared allowance remaining today: 10'));assert.ok(text.includes('shared across the workspace'));assert.ok(text.includes('do not use this allowance'));assert.ok(text.includes('This workspace is configured to stay within the approved $0 beta policy.'));assert.ok(!/billing is verified|Gemini key|free-project confirmation|AI actions/i.test(text));assert.ok(f.nodes().some(n=>n.href==='/data/export'));assert.ok(text.includes('No integrity check has been run in this session.'));assert.equal(f.requests.filter(r=>r.path==='/data/integrity').length,0);
+ await f.click('Check data integrity');assert.equal(f.requests.filter(r=>r.path==='/data/integrity').length,1);assert.ok(f.nodes().some(n=>n.textContent==='No broken record links or missing material files detected.'));
+ await f.ctx.settingsView();assert.equal(f.requests.filter(r=>r.path==='/data/integrity').length,1);
+});
+test('Settings integrity action reports checking and safe failure states',async()=>{
+ const f=await fixture();let release;const gate=new Promise(resolve=>release=resolve);const original=f.ctx.api;
+ f.ctx.api=async(path,options)=>{if(path==='/data/integrity'){await gate;throw Error('private storage detail');}return original(path,options);};
+ await f.ctx.settingsView();const pending=f.click('Check data integrity');assert.ok(f.nodes().some(n=>n.textContent==='Checking data integrity…'));release();await pending;
+ assert.ok(f.nodes().some(n=>n.textContent==='The integrity check could not be completed. Try again.'));
+ assert.ok(!f.nodes().some(n=>n.textContent?.includes('private storage detail')));
+});
+test('an explicit integrity check finishes visibly after returning to Settings',async()=>{
+ const f=await fixture();let release;const gate=new Promise(resolve=>release=resolve);const original=f.ctx.api;let calls=0;
+ f.ctx.api=async(path,options)=>{if(path==='/data/integrity'){calls++;await gate;return {ok:true,issues:[]};}return original(path,options);};
+ await f.ctx.settingsView();const pending=f.click('Check data integrity');await f.ctx.settingsView();
+ assert.ok(f.nodes().some(n=>n.textContent==='Checking data integrity…'));release();await pending;
+ assert.equal(calls,1);assert.ok(f.nodes().some(n=>n.textContent==='No broken record links or missing material files detected.'));
 });
 test('Create previews retrieved ideas and sends explicit selections; picker preserves the brief',async()=>{
  const f=await fixture();vm.runInContext("state.selected.add('idea1');state.source='s1';state.library='l1'",f.ctx);

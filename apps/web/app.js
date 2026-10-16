@@ -15,6 +15,7 @@ attachProcessingAnnouncer(document.querySelector('#processing-announcer'));
 subscribeProcessingStatus(status=>renderProcessingStatus(processingRegion,status));
 let interactionDraft=newInteractionDraft(),createMaterials=null,viewRevision=0,foregroundBuild=null,libraryCollectionRefresh=null,preparationBatch=null;
 const preparationOutcomes=new Map();
+const integritySession={result:null,inFlight:false,render:null};
 function beginView(){const revision=++viewRevision;return ()=>revision===viewRevision;}
 let homeDraft=newInteractionDraft(),exploreState=null,explorePicker=false,materialAddDraft=null;
 function captureDraft(){main.querySelector('#create-brief')?.captureInteraction();main.captureExplore?.();}
@@ -704,7 +705,29 @@ async function outputView(id){
  revise.append(il,ml,revisionMode,tl,cl,dl,revisionSubmit);main.append(detail('Revise this work',revise));
  const history=await api(`/outputs/${id}/history`);if(!active())return;const h=card('Version history');const diff=el('pre');for(const v of history.items)h.append(actions(button(`Open version ${v.version}`,()=>navigate('work',{id:v.id})),v.id!==id?button(`Compare v${o.version} → v${v.version}`,async()=>{const r=await api(`/outputs/${id}/compare/${v.id}`);diff.textContent=`Changed: ${r.changed_fields.join(', ')||'None'}\n\n${r.content_diff}`;}):el('span','Current','badge')));h.append(diff);main.append(h,actions(button('Delete work and version history',async()=>{if(!confirm('Delete this work and every revision? This cannot be undone.'))return;await api(`/outputs/${id}?entire_history=true`,{method:'DELETE'});if(!active())return;await navigate('outputs',{replace:true});},'danger')));
 }
-async function settingsView(){const active=beginView();heading('SETTINGS','Your data, in your hands.','Keep backups private: they contain your materials and saved work.');const [usage,integrity]=await Promise.all([api('/usage'),api('/data/integrity')]);if(!active())return;const remaining=Math.max(0,usage.daily_call_limit-usage.calls_today);const aiState=!usage.configured?'AI unavailable':!usage.free_tier_confirmed?'AI unavailable':usage.paused?'AI temporarily paused':'AI requests enabled';const freeTierNote=usage.free_tier_confirmed?'This workspace is configured to stay within the approved $0 beta policy.':'AI is unavailable until the workspace owner confirms the approved $0 beta policy.';const c=card('Shared beta allowance');c.append(el('p',`Shared allowance used today: ${usage.calls_today} of ${usage.daily_call_limit}`),el('p',`Shared allowance remaining today: ${remaining}`),el('p','This allowance is shared across the workspace. AI is unavailable once today’s allowance is used.','muted'),el('p','Searching, browsing, reading material and editing requests do not use this allowance.','muted'),el('p',freeTierNote,'muted'),el('p',`AI status: ${aiState}`,'muted'));if(usage.paused&&!usage.daily_limit_reached)c.append(button('Resume after quota reset',async()=>{await api('/usage/resume',{method:'POST'});if(!active())return;await navigate('settings',{replace:true});}));const e=el('a','Download complete private backup');e.href='/data/export';const data=card('Export & integrity',integrity.ok?'No broken record links or missing material files detected.':`${integrity.issues.length} integrity issue(s) require attention.`);data.append(e,integrity.issues.length?el('p','Some saved material information needs attention. Contact the workspace owner.','muted'):el('p',''));main.append(c,data);if(csrfToken()){logoutButton.hidden=false;main.append(logoutButton);}}
+async function settingsView(){
+ const active=beginView();heading('SETTINGS','Your data, in your hands.','Keep backups private: they contain your materials and saved work.');
+ const usage=await api('/usage');if(!active())return;
+ const remaining=Math.max(0,usage.daily_call_limit-usage.calls_today);const aiState=!usage.configured?'AI unavailable':!usage.free_tier_confirmed?'AI unavailable':usage.paused?'AI temporarily paused':'AI requests enabled';const freeTierNote=usage.free_tier_confirmed?'This workspace is configured to stay within the approved $0 beta policy.':'AI is unavailable until the workspace owner confirms the approved $0 beta policy.';const c=card('Shared beta allowance');c.append(el('p',`Shared allowance used today: ${usage.calls_today} of ${usage.daily_call_limit}`),el('p',`Shared allowance remaining today: ${remaining}`),el('p','This allowance is shared across the workspace. AI is unavailable once today’s allowance is used.','muted'),el('p','Searching, browsing, reading material and editing requests do not use this allowance.','muted'),el('p',freeTierNote,'muted'),el('p',`AI status: ${aiState}`,'muted'));
+ if(usage.paused&&!usage.daily_limit_reached)c.append(button('Resume after quota reset',async()=>{await api('/usage/resume',{method:'POST'});if(!active())return;await navigate('settings',{replace:true});}));
+ const backup=el('a','Download complete private backup');backup.href='/data/export';
+ const data=card('Data integrity');const status=el('p');const check=button('Check data integrity',async()=>{
+  if(integritySession.inFlight)return;integritySession.inFlight=true;integritySession.render?.();
+  try{integritySession.result=await api('/data/integrity');}
+  catch{integritySession.result={error:true};}
+  finally{integritySession.inFlight=false;integritySession.render?.();}
+ });
+ function renderIntegrity(){
+  const result=integritySession.result;check.disabled=integritySession.inFlight;
+  check.textContent=integritySession.inFlight?'Checking…':result?'Check again':'Check data integrity';
+  if(integritySession.inFlight)status.textContent='Checking data integrity…';
+  else if(!result)status.textContent='No integrity check has been run in this session.';
+  else if(result.error)status.textContent='The integrity check could not be completed. Try again.';
+  else if(result.ok)status.textContent='No broken record links or missing material files detected.';
+  else status.textContent=`${result.issues.length} integrity issue(s) require attention. Some saved material information needs attention. Contact the workspace owner.`;
+ }
+ integritySession.render=renderIntegrity;renderIntegrity();data.append(status,check,backup);main.append(c,data);if(csrfToken()){logoutButton.hidden=false;main.append(logoutButton);}
+}
 const views={home:homeView,library:libraryView,knowledge:knowledgeView,workshop:workshopView,outputs:savedView,settings:settingsView,material:sourceView,developerMaterial:developerSourceView,work:outputView};
 const logoutButton = el('button','Sign out');logoutButton.id='beta-logout';logoutButton.hidden=true;document.body.append(logoutButton);
 if (logoutButton && csrfToken()) {

@@ -160,7 +160,7 @@ def test_single_source_broad_question_keeps_representative_retrieval():
         from app.db import mock_data
         monkeypatch.setattr(mock_data, "sources", [{"id": "source_a", "library_id": "library_a", "title": "Material"}])
         monkeypatch.setattr(mock_data, "libraries", [{"id": "library_a"}])
-        monkeypatch.setattr(workshop, "list_knowledge_assets", lambda source_id=None: [asset])
+        monkeypatch.setattr(workshop, "list_knowledge_assets", lambda source_id=None, source_ids=None: [asset])
         result = workshop._retrieve_raw_assets(payload)
     finally:
         monkeypatch.undo()
@@ -259,12 +259,19 @@ def test_evidence_base_state_counts_ready_preparing_attention_and_unknown(monkey
         {"id": "s_unknown", "library_id": "lib", "title": "Unknown"},
     ])
     states = {
-        "s_ready": SimpleNamespace(readiness="ready", attention_category=None),
-        "s_preparing": SimpleNamespace(readiness="partly_ready", attention_category=None),
-        "s_attention": SimpleNamespace(readiness="partly_ready", attention_category="build_stopped"),
-        "s_unknown": SimpleNamespace(readiness="unknown", attention_category="artifact_unavailable"),
+        "s_ready": SimpleNamespace(source_id="s_ready", readiness="ready", attention_category=None),
+        "s_preparing": SimpleNamespace(source_id="s_preparing", readiness="partly_ready", attention_category=None),
+        "s_attention": SimpleNamespace(source_id="s_attention", readiness="partly_ready", attention_category="build_stopped"),
+        "s_unknown": SimpleNamespace(source_id="s_unknown", readiness="unknown", attention_category="artifact_unavailable"),
     }
-    monkeypatch.setattr(source_summary, "source_summaries", lambda source_id: [states[source_id]])
+    monkeypatch.setattr(
+        source_summary,
+        "source_summaries",
+        lambda source_id=None, source_ids=None: (
+            [states[source_id]] if source_id is not None
+            else [states[item] for item in source_ids]
+        ),
+    )
 
     assert workshop.evidence_base_state([], "lib") == {
         "selected_count": 4, "selected_source_ids": ["s_ready", "s_preparing", "s_attention", "s_unknown"], "ready_count": 1, "preparing_count": 1,

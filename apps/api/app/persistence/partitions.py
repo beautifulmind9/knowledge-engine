@@ -72,12 +72,16 @@ class PostgresPartitionStore:
         try:
             if connection is None:
                 with psycopg.connect(self._database_url, connect_timeout=10) as owned:
-                    yield PartitionTransaction(owned, self._workspace_key)
+                    tx=PartitionTransaction(owned, self._workspace_key)
+                    yield tx
+                    self.last_transaction_sql_statements=tx.statement_count
             else:
                 if connection.info.transaction_status != psycopg.pq.TransactionStatus.INTRANS:
                     raise ValueError("A borrowed partition connection requires an outer transaction.")
                 with connection.transaction():
-                    yield PartitionTransaction(connection, self._workspace_key)
+                    tx=PartitionTransaction(connection, self._workspace_key)
+                    yield tx
+                    self.last_transaction_sql_statements=tx.statement_count
         except psycopg.IntegrityError:
             raise PartitionConflict("Partition constraint or concurrent mutation rejected.") from None
         except psycopg.Error:
@@ -163,8 +167,15 @@ class PartitionTransaction:
     def __init__(self, connection, workspace):
         self.connection = connection
         self.workspace = workspace
+        self.statement_count = 0
+
+    def execute(self, sql, params=()):
+        """Count an issued statement for disposable-database acceptance probes."""
+        self.statement_count += 1
+        return self.connection.execute(sql, params)
 
     def _all(self, sql, params=()):
+        self.statement_count += 1
         with self.connection.cursor(row_factory=dict_row) as cursor:
             cursor.execute(sql, params)
             return cursor.fetchall()

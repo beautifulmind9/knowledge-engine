@@ -106,3 +106,19 @@ def get_phase2_coordinator():
             os.environ.get('KNOWLEDGE_ENGINE_DATABASE_URL', ''),
             os.environ.get('KNOWLEDGE_ENGINE_WORKSPACE_KEY', ''))
     return _phase2_coordinator
+
+
+_phase3_coordinator = None
+
+
+def get_phase3_coordinator():
+    """No IO, backfill or activation on construction."""
+    if PERSISTENCE_MODE != 'hosted':
+        raise RuntimeError('Phase 3 coordination requires hosted persistence.')
+    global _phase3_coordinator
+    if _phase3_coordinator is None:
+        from app.persistence.phase3 import Phase3Coordinator
+        _phase3_coordinator = Phase3Coordinator(
+            os.environ.get('KNOWLEDGE_ENGINE_DATABASE_URL', ''),
+            os.environ.get('KNOWLEDGE_ENGINE_WORKSPACE_KEY', ''))
+    return _phase3_coordinator

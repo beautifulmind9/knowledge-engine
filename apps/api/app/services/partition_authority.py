@@ -1,7 +1,7 @@
 """Read-boundary composition and captured claim context, never another authority."""
 from contextvars import ContextVar
 from uuid import uuid4
-from app.persistence.factory import PERSISTENCE_MODE, get_state_store, get_phase2_coordinator
+from app.persistence.factory import PERSISTENCE_MODE, get_state_store, get_phase2_coordinator, get_phase3_coordinator
 from app.persistence.partitions import PartitionConflict
 from app.persistence.phase2 import job_dto, owned
 
@@ -10,12 +10,14 @@ _claims=ContextVar('ke_phase2_claims',default=None)
 
 def coordinator():
     from app.db.request_state import request_mode
-    enabled=PERSISTENCE_MODE=='hosted' and bool(getattr(get_state_store(),'phase2',False))
+    store=get_state_store()
+    version=3 if bool(getattr(store,'phase3',False)) else (2 if bool(getattr(store,'phase2',False)) else 0)
+    enabled=PERSISTENCE_MODE=='hosted' and version in (2,3)
     if request_mode.get() is not None and enabled!=request_mode.get():
         from app.db.persistence import StateMutationConflict
         raise StateMutationConflict('Persistence authority changed during the request; reload before continuing.')
     if enabled:
-        return get_phase2_coordinator()
+        return get_phase3_coordinator() if version==3 else get_phase2_coordinator()
     return None
 
 
@@ -165,6 +167,17 @@ def jobs_many(source_ids):
     if current is not None and wanted<=current['job_sources']:
         return [j for j in current['extraction_jobs'] if j['source_id'] in wanted]
     return coordinator().scoped(source_ids)['extraction_jobs']
+
+
+def assets(source_ids=None, *, history=False):
+    c=coordinator()
+    if c is not None and getattr(c,'version',2)==3:
+        return c.list_assets(source_ids=source_ids,history=history)
+    from app.db.mock_data import knowledge_assets
+    records=list(knowledge_assets)
+    if source_ids is not None:
+        wanted=set(source_ids);records=[a for a in records if a.get('source_id') in wanted]
+    return records if history else [a for a in records if a.get('active',True)]
 
 
 def legacy_mutation_guard(job):

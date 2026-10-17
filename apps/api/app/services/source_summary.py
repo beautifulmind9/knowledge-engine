@@ -26,14 +26,19 @@ def source_file_replacement_allowed(source_id: str) -> bool:
     return not authority.has_history(source_id)
 
 
-def source_summaries(library_id=None, source_id=None, now=None):
+def source_summaries(library_id=None, source_id=None, now=None, source_ids=None):
     chosen = [s for s in sources if (library_id is None or s["library_id"] == library_id)
-              and (source_id is None or s["id"] == source_id)]
+              and (source_id is None or s["id"] == source_id)
+              and (source_ids is None or s["id"] in set(source_ids))]
     if source_id is not None and not chosen:
         raise ValueError("Source not found.")
     jobs = defaultdict(list)
     usable = set()
-    selected=authority.jobs_many([s['id'] for s in chosen]) if authority.coordinator() else authority.jobs()
+    coordinator=authority.coordinator()
+    summary_state=(coordinator.summary_state([s['id'] for s in chosen])
+                   if coordinator is not None and getattr(coordinator,'version',2)>=3 else None)
+    selected=(summary_state['jobs'] if summary_state is not None else
+              authority.jobs_many([s['id'] for s in chosen]) if coordinator else authority.jobs())
     for job in selected:
         jobs[job["source_id"]].append(job)
     if not authority.coordinator():
@@ -41,9 +46,12 @@ def source_summaries(library_id=None, source_id=None, now=None):
             if asset.get("active", True):
                 usable.add(asset["source_id"])
     history={j['source_id'] for j in extraction_jobs}
-    if authority.coordinator():
-        usable=set(authority.coordinator().asset_counts([s['id'] for s in chosen]))
-        history=authority.coordinator().history_sources([s['id'] for s in chosen])
+    if summary_state is not None:
+        usable=set(summary_state['asset_counts'])
+        history=summary_state['history_sources']
+    elif coordinator:
+        usable=set(coordinator.asset_counts([s['id'] for s in chosen]))
+        history=coordinator.history_sources([s['id'] for s in chosen])
     store = get_artifact_store()
     paths = [Path(s[key]) for s in chosen for key in ("file_path", "chunks_path") if s.get(key)]
     try:

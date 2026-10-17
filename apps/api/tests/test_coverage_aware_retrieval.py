@@ -36,7 +36,13 @@ def test_multisource_raw_pool_preserves_relevant_candidates_without_importing_ir
         {"id": "c_1", "source_id": "source_c", "title": "Audience positioning", "what_it_says": "Audience positioning and customer choice"},
         {"id": "i_1", "source_id": "source_irrelevant", "title": "Garden soil", "what_it_says": "Watering garden soil"},
     ]
-    monkeypatch.setattr(workshop, "list_knowledge_assets", lambda source_id=None: [item for item in assets if source_id is None or item["source_id"] == source_id])
+    def list_assets(source_id=None, source_ids=None):
+        selected = set(source_ids) if source_ids is not None else None
+        return [item for item in assets
+                if (selected is None and (source_id is None or item["source_id"] == source_id))
+                or (selected is not None and item["source_id"] in selected)]
+
+    monkeypatch.setattr(workshop, "list_knowledge_assets", list_assets)
     payload = WorkshopPrepareRequest(
         situation="Audience positioning for customer choice",
         goal="Compare audience positioning and customer choice",

@@ -276,16 +276,7 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
         if not selected:
             return []
     if selected:
-        candidates = []
-        seen_ids = set()
-        for source_id in sorted(selected):
-            for item in list_knowledge_assets(source_id=source_id):
-                item_id = item.get("id")
-                if item_id and item_id in seen_ids:
-                    continue
-                if item_id:
-                    seen_ids.add(item_id)
-                candidates.append(item)
+        candidates = list_knowledge_assets(source_ids=sorted(selected))
     else:
         candidates = list_knowledge_assets()
 
@@ -519,9 +510,11 @@ def evidence_base_state(source_ids, library_id=None):
               and (library_id is None or source["library_id"] == library_id)]
     state = {"selected_count": len(chosen), "selected_source_ids": [source["id"] for source in chosen], "ready_count": 0, "preparing_count": 0,
              "attention_count": 0, "unavailable_count": 0}
+    summaries=source_summaries(source_ids=[source['id'] for source in chosen])
+    summary_by_id={item.source_id:item for item in summaries}
     for source in chosen:
         try:
-            summary = source_summaries(source_id=source["id"])[0]
+            summary = summary_by_id[source['id']]
         except Exception:
             state["unavailable_count"] += 1
             continue

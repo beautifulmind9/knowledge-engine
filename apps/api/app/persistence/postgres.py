@@ -51,11 +51,19 @@ class PostgresStateStore:
                             "Hosted state load failed: stored payload must be a dictionary JSON snapshot."
                         )
                     if row is not None and row[0].get('partition') is not None:
-                        from app.persistence.phase2 import active, Phase2Coordinator
+                        from app.persistence.phase3 import authority_version, Phase3Coordinator
+                        from app.persistence.phase2 import Phase2Coordinator
                         from app.persistence.partitions import PartitionTransaction
-                        active(row[0])
-                        row = (Phase2Coordinator(self._database_url,self._workspace_key).compose(
-                            PartitionTransaction(connection,self._workspace_key),row[0]),row[1])
+                        version=authority_version(row[0])
+                        if version==2:
+                            composed=Phase2Coordinator(self._database_url,self._workspace_key).compose(
+                                PartitionTransaction(connection,self._workspace_key),row[0])
+                        elif version==3:
+                            composed=Phase3Coordinator(self._database_url,self._workspace_key).compose(
+                                PartitionTransaction(connection,self._workspace_key),row[0],include_assets=False)
+                        else:
+                            raise HostedStateIntegrityError('Hosted state load failed: unsupported authority marker.')
+                        row=(composed,row[1])
             except (psycopg.Error, ValueError):
                 # Never expose DSNs, workspace keys, payloads, or driver diagnostics.
                 raise HostedStateStoreError("Hosted state load failed: database operation failed.") from None
@@ -71,8 +79,18 @@ class PostgresStateStore:
 
     @property
     def phase2(self):
-        from app.persistence.phase2 import active
-        return active(self._loaded_snapshot)
+        from app.persistence.phase3 import authority_version
+        return authority_version(self._loaded_snapshot)==2
+
+    @property
+    def phase3(self):
+        from app.persistence.phase3 import authority_version
+        return authority_version(self._loaded_snapshot)==3
+
+    @property
+    def partitioned(self):
+        from app.persistence.phase3 import authority_version
+        return authority_version(self._loaded_snapshot) in (2,3)
 
     def accept_committed(self,state,revision):
         """Publish only a confirmed shared commit; never regress the process cache."""
@@ -95,13 +113,17 @@ class PostgresStateStore:
 
 
     def save(self, state: dict[str, Any]) -> None:
-        if self.phase2:
-            from app.persistence.phase2 import Phase2Coordinator
+        if self.partitioned:
             from app.db.request_state import view
             current=view.get()
             baseline=current['baseline'] if current else self.loaded_snapshot
             revision=current['revision'] if current else self._revision
-            coordinator=Phase2Coordinator(self._database_url,self._workspace_key)
+            if self.phase3:
+                from app.persistence.phase3 import Phase3Coordinator
+                coordinator=Phase3Coordinator(self._database_url,self._workspace_key)
+            else:
+                from app.persistence.phase2 import Phase2Coordinator
+                coordinator=Phase2Coordinator(self._database_url,self._workspace_key)
             new_revision,core=coordinator.save_core(baseline,state,revision)
             # Only advance adapter/projection revision after the shared commit.
             composed=core

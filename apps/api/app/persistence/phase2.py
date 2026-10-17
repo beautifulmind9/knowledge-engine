@@ -85,6 +85,43 @@ class Phase2Coordinator(PostgresPartitionStore):
         if not row or row['marker'] != MARKER:
             raise PartitionConflict('Jobs/lifecycle authority changed; reload before continuing.')
 
+    # These shared primitive getters are used by migration diagnostics before
+    # cutover as well as by request services. Preserve pre-cutover inspection,
+    # but never let a v2 reader treat a newer active marker as v2 authority.
+    def _reject_newer_authority(self, tx):
+        row=tx._one("SELECT payload->'partition' AS marker FROM knowledge_engine.state_snapshots "
+                    "WHERE workspace_key=%s",(tx.workspace,))
+        marker=row['marker'] if row else None
+        if isinstance(marker,dict) and type(marker.get('version')) is int and marker['version']>VERSION:
+            raise PartitionConflict('A newer partition authority version is active.')
+
+    def read_source(self, source_id):
+        with self.transaction() as tx:
+            self._reject_newer_authority(tx)
+            return tx.read_source(source_id)
+
+    def read_job(self, job_id):
+        with self.transaction() as tx:
+            self._reject_newer_authority(tx)
+            return tx.read_job(job_id)
+
+    def query_jobs(self, source_id, generation, *, chunk_id=None):
+        with self.transaction() as tx:
+            self._reject_newer_authority(tx)
+            return tx.query_jobs(source_id, generation, chunk_id=chunk_id)
+
+    def query_assets(self, source_id, generation, *, chunk_id=None, active=None):
+        with self.transaction() as tx:
+            self._reject_newer_authority(tx)
+            return tx.query_assets(source_id, generation, chunk_id=chunk_id, active=active)
+
+    def assets_by_ids(self, asset_ids):
+        if not asset_ids:
+            return []
+        with self.transaction() as tx:
+            self._reject_newer_authority(tx)
+            return tx.assets_by_ids(asset_ids)
+
     def read_migration(self):
         with self.transaction() as tx:
             row=tx._one('SELECT row_to_json(m) AS record FROM knowledge_engine.partition_migrations m '

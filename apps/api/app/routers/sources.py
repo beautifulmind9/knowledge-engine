@@ -33,6 +33,8 @@ from app.services.performance_timing import start as timing_start, emit as timin
 
 from app.models.source_summary import SourceSummary
 from app.services.source_summary import source_summaries, source_file_replacement_allowed
+from app.services import partition_authority as authority
+from app.services.knowledge_extraction import list_knowledge_assets
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -112,14 +114,17 @@ def _recover_pdf_structure(source: dict):
         for chunk in chunks
         if chunk.get("chapter_or_section")
     }
+    candidates=(list_knowledge_assets(source_id=source['id']) if
+                (authority.coordinator() is not None and getattr(authority.coordinator(),'version',2)>=3)
+                else [a for a in knowledge_assets if a.get('source_id')==source['id']])
     updated_assets = 0
-    for asset in knowledge_assets:
-        if asset.get("source_id") != source["id"]:
-            continue
+    patches={}
+    for asset in candidates:
         chapter = chapter_by_chunk.get(asset.get("chunk_id"))
         if chapter and not asset.get("chapter_or_section"):
             asset["chapter_or_section"] = chapter
             updated_assets += 1
+            if asset.get('id'):patches[asset['id']]={'chapter_or_section':chapter}
 
     source["structure_status"] = (
         "pdf_outline_recovered" if summary["outline_entry_count"] else "no_pdf_outline"
@@ -129,6 +134,9 @@ def _recover_pdf_structure(source: dict):
     # PDF outline annotation may enrich chunks but must retain the exact chunk
     # identity set used by progress and recovery calculations.
     source["chunk_manifest"] = manifest_from_chunks(source["id"], chunks)
+    coordinator=authority.coordinator()
+    if coordinator is not None and getattr(coordinator,'version',2)>=3:
+        coordinator.enrich_current_assets(source['id'],patches)
     persist_state()
 
     return {

@@ -7,6 +7,7 @@ from app.db.persistence import save_state
 from app.persistence.contracts import ArtifactStore
 from app.persistence.factory import get_artifact_store
 from app.services.source_structure import annotate_pdf_assets_with_outline_from_evidence
+from app.services import partition_authority as authority
 
 
 router = APIRouter(prefix="/sources", tags=["sources"])
@@ -51,7 +52,13 @@ def refine_asset_sections(source_id: str):
 
     source["asset_section_refinement_status"] = "pdf_evidence_refined"
     source["asset_section_refinement_count"] = len(changed_ids)
-    save_state(libraries, sources, extraction_jobs, knowledge_assets)
+    coordinator=authority.coordinator()
+    if coordinator is not None and getattr(coordinator,'version',2)>=3:
+        patches={asset['id']:{'chapter_or_section':asset.get('chapter_or_section')}
+                 for asset in assets if asset.get('id') in changed_ids}
+        coordinator.enrich_current_assets(source_id,patches)
+    else:
+        save_state(libraries, sources, extraction_jobs, knowledge_assets)
 
     return {
         "source_id": source_id,

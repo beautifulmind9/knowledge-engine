@@ -199,9 +199,11 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
 
     if authority.coordinator():
         completed=authority.complete(job_id,stored_assets,model_response_id)
-        from app.persistence.factory import get_state_store
-        knowledge_assets[:]=deepcopy(get_state_store().loaded_snapshot.get('knowledge_assets',[]))
-        if update_source:
+        coordinator=authority.coordinator()
+        if getattr(coordinator,'version',2)<3:
+            from app.persistence.factory import get_state_store
+            knowledge_assets[:]=deepcopy(get_state_store().loaded_snapshot.get('knowledge_assets',[]))
+        if update_source and getattr(coordinator,'version',2)<3:
             from app.services.source_interpretation import get_source_interpretation_summary
             summary=get_source_interpretation_summary(job['source_id'])
             authority.checkpoint_source(job['source_id'],'knowledge_interpreted' if summary['status']=='completed' else 'knowledge_interpreting',None)
@@ -278,7 +280,12 @@ def list_knowledge_assets(
     source_id: str | None = None,
     chunk_id: str | None = None,
     asset_type: str | None = None,
+    source_ids: list[str] | None = None,
 ):
+    coordinator=authority.coordinator()
+    if coordinator is not None and getattr(coordinator,'version',2)>=3:
+        selected=source_ids if source_ids is not None else ([source_id] if source_id else None)
+        return coordinator.active_assets(source_ids=selected,chunk_id=chunk_id,asset_type=asset_type)
     items = [a for a in knowledge_assets if a.get("active", True)]
 
     if source_id:
@@ -532,10 +539,20 @@ def search_knowledge_assets(
         return []
 
     normalized_query = normalize_text(query)
-    candidates = list_knowledge_assets(
-        source_id=source_id,
-        asset_type=asset_type,
-    )
+    coordinator=authority.coordinator()
+    if coordinator is not None and getattr(coordinator,'version',2)>=3:
+        selected_sources=None
+        if library_id:
+            from app.db.mock_data import libraries, sources
+            if not any(l['id']==library_id for l in libraries):raise ValueError('Library not found.')
+            allowed={s['id'] for s in sources if s.get('library_id')==library_id}
+            if source_id and source_id not in allowed:
+                raise ValueError('Selected source does not belong to this library.')
+            selected_sources=sorted({source_id} if source_id else allowed)
+        candidates=coordinator.search_candidates(tokens,normalized_query,source_ids=selected_sources,
+                                                   source_id=source_id,asset_type=asset_type)
+    else:
+        candidates = list_knowledge_assets(source_id=source_id,asset_type=asset_type)
     if library_id:
         from app.db.mock_data import libraries, sources
         if not any(l["id"] == library_id for l in libraries):
@@ -738,7 +755,7 @@ def audit_source(source_id):
     overview=summarize_knowledge_assets(source_id)
     source=find_source(source_id)
     current=list_knowledge_assets(source_id=source_id)
-    all_assets=[a for a in knowledge_assets if a["source_id"]==source_id]
+    all_assets=authority.assets([source_id],history=True)
     chunks=load_chunks(source["chunks_path"]) if source.get("chunks_path") else []
     chunk_map={c["id"]:c for c in chunks}
     evidence_review=[]

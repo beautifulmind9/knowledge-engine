@@ -1,6 +1,7 @@
 """Phase 2 authority tests; only a disposable local PostgreSQL database."""
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 import json
@@ -666,6 +667,96 @@ def test_restart_requires_verified_rollback_legacy_authority_and_drained_writers
         c._cas(tx,current,3)
     with pytest.raises((PartitionConflict,StaleStateWriteError)):c.backfill(3)
     assert c.read_migration()['stage']=='preparing'
+
+
+def test_preparing_revision_drift_has_explicit_fresh_restart_path(setup):
+    c,store,state=setup
+    state['sources'].append({'id':'s2','library_id':'l','title':'Second','processing_status':'not_started'})
+    store.save(state)
+    # Pin the fixture at the requested 10 -> 11 boundary.
+    with c.transaction() as tx:
+        tx.connection.execute("UPDATE knowledge_engine.state_snapshots SET revision=10 WHERE workspace_key=%s",(tx.workspace,))
+    store.load()
+    c.prepare(10,'attempt-a')
+    c.backfill(10,max_sources=1)
+    original=c.read_migration()
+    assert original['checkpoint']=={'sources':['s']}
+    original_started=original['started_at']
+    state['libraries'][0]['name']='Revision 11'
+    store.save(state)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):
+        c.backfill(10)
+    with pytest.raises(PartitionConflict):c.prepare(11,'attempt-b')
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):
+        c.restart_after_revision_drift(11,'wrong-id',10,'attempt-b',writers_drained=True)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):
+        c.restart_after_revision_drift(11,'attempt-a',9,'attempt-b',writers_drained=True)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):
+        c.restart_after_revision_drift(10,'attempt-a',10,'attempt-b',writers_drained=True)
+    with pytest.raises(PartitionConflict):
+        c.restart_after_revision_drift(11,'attempt-a',10,'attempt-b')
+    # Force a database guard failure after the archive INSERT; the enclosing
+    # transaction must leave both the current attempt and history untouched.
+    with pytest.raises(PartitionConflict):
+        c.restart_after_revision_drift(11,'attempt-a',10,'',writers_drained=True)
+    assert c.read_migration()['migration_id']=='attempt-a'
+    assert c.read_migration_history()==[]
+
+    # A fresh attempt archives A's complete provenance rather than repinning it.
+    result=c.restart_after_revision_drift(11,'attempt-a',10,'attempt-b',writers_drained=True)
+    assert result=={'stage':'preparing','checkpoint':{}}
+    archived=c.read_migration_history()
+    assert len(archived)==1
+    old=archived[0]
+    assert (old['migration_id'],old['partition_version'],old['source_snapshot_revision'])==('attempt-a',2,10)
+    assert old['stage']=='preparing' and old['checkpoint']=={'sources':['s']}
+    assert old['started_at'].isoformat()==original_started and old['archived_at'] is not None
+    assert old['terminal_reason']=='revision_drift'
+    assert old['verified_at'] is None and old['cutover_revision'] is None
+    current=c.read_migration()
+    assert current['migration_id']=='attempt-b' and current['source_snapshot_revision']==11
+    assert current['stage']=='preparing' and current['checkpoint']=={}
+    assert datetime.fromisoformat(current['started_at'])>old['started_at']
+    assert not store.phase2 and 'partition' not in core(c)['payload']
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):c.backfill(10)
+    with pytest.raises(PartitionConflict):c.prepare(11,'attempt-a')
+    with pytest.raises(PartitionConflict):c.restart_after_revision_drift(11,'attempt-a',10,'attempt-c',writers_drained=True)
+    assert c.read_migration_history()==archived
+    with pytest.raises(PartitionConflict):c.restart_after_revision_drift(11,'attempt-b',11,'attempt-c',writers_drained=True)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):c.verify(10)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):c.cutover(10,writers_drained=True)
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("UPDATE knowledge_engine.partition_migration_attempt_history "
+                                  "SET source_snapshot_revision=99 WHERE workspace_key=%s AND migration_id='attempt-a'",
+                                  (tx.workspace,))
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("DELETE FROM knowledge_engine.partition_migration_attempt_history "
+                                  "WHERE workspace_key=%s AND migration_id='attempt-a'",(tx.workspace,))
+
+    # The replacement attempt starts from a fresh checkpoint and follows the
+    # ordinary verify/cutover path while retaining legacy authority until then.
+    c.backfill(11)
+    c.verify(11)
+    assert c.read_migration()['stage']=='verified' and not store.phase2
+    cutover=c.cutover(11,writers_drained=True)
+    assert store.load()['partition']==MARKER and cutover['revision']==12
+    with pytest.raises(PartitionConflict):
+        c.restart_after_revision_drift(12,'attempt-b',11,'attempt-c',writers_drained=True)
+
+
+def test_verified_attempt_cannot_use_preparing_drift_restart(setup):
+    c,store,_=setup
+    c.prepare(1,'verified-attempt');c.backfill(1);c.verify(1)
+    store.save(fixture_state())
+    with pytest.raises(PartitionConflict):
+        c.restart_after_revision_drift(2,'verified-attempt',1,'replacement',writers_drained=True)
+    migration=c.read_migration()
+    assert migration['migration_id']=='verified-attempt' and migration['stage']=='verified'
+    assert migration['source_snapshot_revision']==1 and migration['verified_at'] is not None
+    assert c.read_migration_history()==[] and not store.phase2
+    assert 'partition' not in core(c)['payload']
 
 
 @pytest.mark.parametrize('status',['pending_ai','running','completed','failed'])

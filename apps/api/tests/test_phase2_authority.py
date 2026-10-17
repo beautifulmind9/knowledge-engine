@@ -29,6 +29,15 @@ def test_no_marker_remains_legacy_and_supported_marker_is_explicit():
     assert active({'partition':deepcopy(MARKER)})
 
 
+def test_drifted_preparing_attempt_has_explicit_administrative_restart():
+    from app.persistence.phase2 import Phase2Coordinator
+    from app.persistence.partitions import PartitionConflict
+    coordinator=Phase2Coordinator('postgresql://unused','workspace')
+    assert callable(getattr(coordinator,'restart_after_revision_drift',None))
+    with pytest.raises(PartitionConflict,match='drained writers'):
+        coordinator.restart_after_revision_drift(11,'attempt-a',10,'attempt-b')
+
+
 def test_phase2_compaction_preserves_asset_output_library_authority():
     original=state();result=compact(original)
     assert 'extraction_jobs' not in result

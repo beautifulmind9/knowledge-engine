@@ -201,9 +201,10 @@ then names the new attempt, with a fresh pin and empty checkpoint. Its old pin i
 never changed within that attempt. Attempt IDs cannot be reused. Backfill accepts
 existing rows only when provenance and API payload exactly match the new pinned
 snapshot; mismatches fail closed. Tombstones, jobs and receipts remain intact.
-Revision drift during the new preparing attempt blocks continuation and requires
-separate reviewed retirement; it does not erase records from that invalidated
-attempt. The core authority marker remains absent until the new explicit cutover.
+Revision drift during the new preparing attempt blocks continuation. The separate
+explicit `restart_after_revision_drift` operation archives the invalidated attempt
+and starts a fresh attempt; it does not erase its provenance or change authority.
+The core authority marker remains absent until the new explicit cutover.
 
 The original PostgreSQL regression failed before code changes at `verify` with
 `Job relational equivalence failed.` It uses actual rollback output: source
@@ -279,9 +280,9 @@ latency have not been measured in this pass.
 
 Validation used Python 3.12 and disposable PostgreSQL 16; synthetic providers only.
 
-- Focused Phase 2/affected offline regressions plus Phase 1 primitives: 226 passed.
-- Combined disposable PostgreSQL integration suite: 88 passed.
-- Full offline backend suite: 1,074 passed (including the legacy failure-transition generation-fence regression).
+- Focused Phase 2/affected offline regressions plus Phase 1 primitives: 227 passed.
+- Combined disposable PostgreSQL integration suite: 90 passed.
+- Full offline backend suite: 1,075 passed (including the drift-restart and legacy failure-transition generation-fence regressions).
 - The final extended measurement test also passed independently. Two existing
   FastAPI/Starlette test-client deprecation warnings remain; no SDK/dependency
   upgrade is included.
@@ -341,3 +342,46 @@ in this one-job fixture. One full core write per successful interpreted chunk
 remains because assets are still legacy-authoritative. Phase 2 removes job/status
 snapshot writes; it does not establish the Phase 3 98.2–99.6% bandwidth projection.
 Output revisions and other core mutations can still write large snapshots.
+
+## Migration-attempt lifecycle and revision-drift restart
+
+Each migration attempt ID is permanently bound to one pinned core snapshot
+revision. An existing attempt's pin never changes. Preparing/backfill can resume
+only while the authoritative legacy snapshot remains at that pin. Revision drift
+invalidates a preparing attempt for continuation; it can never later resume,
+verify or cut over.
+
+The explicit `restart_after_revision_drift` transition is separate from
+`restart_after_rollback`. It requires the expected current legacy revision,
+attempt ID and old pin, confirms the existing attempt is preparing, unverified
+and not cut over, and records the invalidation in the same transaction that
+creates a replacement attempt. The immutable history row retains the original
+attempt ID, partition version, pin, checkpoint, start time and migration
+revision. It has `terminal_reason=revision_drift`; verification and cutover
+fields remain null because neither occurred. The replacement gets a new attempt
+ID, pins the current authoritative legacy revision and starts with a fresh empty
+checkpoint. This administrative operation does no provider work and does not
+change authority.
+
+Restart after rollback remains the separate path for a previously verified and
+cut-over attempt whose authority was explicitly rolled back to legacy. It records
+the prior attempt with `terminal_reason=rollback_restart`, preserves its pin and
+verification/cutover provenance, then creates a new attempt at the current
+legacy revision with a fresh checkpoint. It also does no provider work and does
+not change authority.
+
+For both restart paths, archived history is append-only. Repeating a restart
+against an already archived attempt is rejected; it does not create another
+history row or replacement attempt. `verified` means equivalence checks passed;
+it does not activate partition authority. Only the existing explicit guarded
+cutover changes authority.
+
+| Transition | Starting state -> result | Authority before -> after | History row | New attempt ID | Existing pin changes? |
+| --- | --- | --- | --- | --- | --- |
+| Prepare | No attempt -> preparing | Legacy -> legacy | No | Yes | Initial pin only |
+| Resume/backfill | Preparing -> preparing | Legacy -> legacy | No | Same ID | Pin unchanged |
+| Verify | Preparing -> verified | Legacy -> legacy | No | Same ID | Pin unchanged |
+| Cutover | Verified -> verified with cutover revision | Legacy -> partition | No | Same ID | Pin unchanged |
+| Rollback | Active verified -> legacy snapshot | Partition -> legacy | No | No | Pin unchanged |
+| Restart after rollback | Rolled-back verified -> new preparing | Legacy -> legacy | Archived `rollback_restart` history | Yes | Old pin unchanged |
+| Restart after pinned-revision drift | Drifted preparing -> new preparing | Legacy -> legacy | Archived `revision_drift` history | Yes | Old pin unchanged |

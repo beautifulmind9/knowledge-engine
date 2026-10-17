@@ -94,10 +94,10 @@ class Phase2Coordinator(PostgresPartitionStore):
             return row['record'] if row else None
 
     def read_migration_history(self):
-        """Return immutable verified attempts superseded by rollback restarts."""
+        """Return immutable attempts superseded by rollback or drift restarts."""
         with self.transaction() as tx:
             return tx._all('SELECT workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
-                           'migration_revision,verified_at,cutover_revision,archived_at '
+                           'migration_revision,started_at,verified_at,cutover_revision,terminal_reason,archived_at '
                            'FROM knowledge_engine.partition_migration_attempt_history '
                            'WHERE workspace_key=%s ORDER BY migration_revision,migration_id',(tx.workspace,))
 
@@ -149,14 +149,51 @@ class Phase2Coordinator(PostgresPartitionStore):
             tx.connection.execute("SELECT set_config('knowledge_engine.phase2_restart','on',true)")
             tx._one('INSERT INTO knowledge_engine.partition_migration_attempt_history '
                     '(workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
-                    'migration_revision,verified_at,cutover_revision) '
+                    'migration_revision,started_at,verified_at,cutover_revision,terminal_reason) '
                     'SELECT workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
-                    'revision,verified_at,cutover_revision FROM knowledge_engine.partition_migrations '
+                    'revision,started_at,verified_at,cutover_revision,\'rollback_restart\' FROM knowledge_engine.partition_migrations '
                     'WHERE workspace_key=%s RETURNING migration_id',(tx.workspace,))
             tx._one("UPDATE knowledge_engine.partition_migrations SET migration_id=%s,source_snapshot_revision=%s,"
                     "stage='preparing',checkpoint='{}'::jsonb,verified_at=NULL,cutover_revision=NULL,"
-                    'revision=revision+1,updated_at=now() '
+                    'started_at=now(),revision=revision+1,updated_at=now() '
                     "WHERE workspace_key=%s RETURNING revision",
+                    (migration_id, expected_revision, tx.workspace))
+            return {'stage': 'preparing', 'checkpoint': {}}
+
+    def restart_after_revision_drift(self, expected_revision, expected_migration_id,
+                                     expected_pinned_revision, migration_id, *, writers_drained=False):
+        """Archive a drifted preparing attempt and start fresh under legacy authority.
+
+        This explicit administrative transition never changes the old pin or
+        carries its checkpoint into the new attempt. Repeating it with the old
+        expected attempt ID is rejected after the atomic switch.
+        """
+        if not writers_drained:
+            raise PartitionConflict('Migration restart requires explicitly drained writers.')
+        with self.transaction() as tx:
+            core = self._core(tx, expected_revision)
+            if core['payload'].get('partition') is not None:
+                raise PartitionConflict('Drift restart requires legacy authority.')
+            current = self._migration(tx, stage='preparing')
+            if (current['migration_id'] != expected_migration_id
+                    or current['source_snapshot_revision'] != expected_pinned_revision
+                    or current['source_snapshot_revision'] == expected_revision
+                    or current.get('verified_at') is not None
+                    or current.get('cutover_revision') is not None
+                    or migration_id == current['migration_id']):
+                raise PartitionConflict('Expected drifted preparing attempt does not match current migration state.')
+            tx.connection.execute("SELECT set_config('knowledge_engine.phase2_drift_restart','on',true)")
+            tx._one('INSERT INTO knowledge_engine.partition_migration_attempt_history '
+                    '(workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
+                    'migration_revision,started_at,verified_at,cutover_revision,terminal_reason) '
+                    'SELECT workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
+                    'revision,started_at,verified_at,cutover_revision,\'revision_drift\' '
+                    'FROM knowledge_engine.partition_migrations WHERE workspace_key=%s RETURNING migration_id',
+                    (tx.workspace,))
+            tx._one("UPDATE knowledge_engine.partition_migrations SET migration_id=%s,source_snapshot_revision=%s,"
+                    "stage='preparing',checkpoint='{}'::jsonb,verified_at=NULL,cutover_revision=NULL,"
+                    'started_at=now(),revision=revision+1,updated_at=now() '
+                    'WHERE workspace_key=%s RETURNING revision',
                     (migration_id, expected_revision, tx.workspace))
             return {'stage': 'preparing', 'checkpoint': {}}
 

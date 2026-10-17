@@ -49,8 +49,8 @@ metadata remains in core. Progress is derived from current-generation jobs.
 
 An incompatible legacy writer is excluded by a database guard once active: a
 stale client cannot remove the marker or reintroduce jobs/owned source fields.
-Preparing/verification require pinned revision and no in-flight running legacy
-jobs at cutover. Maintenance/drained writers remain mandatory operationally.
+Preparing/verification require pinned revision and no in-flight current-generation
+running legacy jobs at cutover. Maintenance/drained writers remain mandatory operationally.
 No runtime or production flag automatically invokes migration or cutover.
 
 ## Implemented boundaries
@@ -92,7 +92,7 @@ cannot silently replace an existing attempt. Reset/restart of invalidated stagin
 requires a separately reviewed explicit administrative procedure; none is automatic.
 
 Cutover requires a verified supported migration, matching expected core revision,
-an explicit drained-writers assertion and no running legacy jobs. It rechecks
+an explicit drained-writers assertion and no current-generation running legacy jobs. It rechecks
 exact equivalence while holding core/source locks, writes the marker and removes
 only jobs/owned source fields from the core. It does not move, shrink or delete
 assets, output history, libraries or source descriptions/manifests. A database
@@ -160,11 +160,99 @@ needed. This implementation's legacy mode respects them in selection, recovery
 and mutation. After generation changes, rollback requires this generation-aware
 code; arbitrary older binaries ignoring these fields are not claimed safe.
 There is no automatic code downgrade or flag-only rollback. Re-cutover after a
-rollback needs an explicitly reviewed fresh migration attempt, not reuse of an old
-pinned checkpoint. These are rollout compatibility constraints, not a different
-transactional datastore or a change to asset ownership.
+rollback uses the explicit `restart_after_rollback` operation below; it does not
+reuse the old pinned checkpoint. These are rollout compatibility constraints,
+not a different transactional datastore or a change to asset ownership.
 
 ## Acceptance coverage and remaining Phase 3 work
+
+### Historical-generation backfill correction
+
+Job generation is immutable provenance. Source generation is the live-transition
+fence. Backfill preserves each job's explicit generation; a legacy job without a
+generation uses the original generation 1, consistently with legacy eligibility
+checks. It never substitutes the source's current generation. A future-generation
+job is rejected and the entire backfill batch/checkpoint transaction rolls back.
+Exact verification compares against that same original job generation.
+
+The PostgreSQL `guard_partition_record` exception now applies only to job INSERTs
+within a workspace-scoped, version-2 preparing migration pinned to the current
+core revision with legacy authority. Such an INSERT may preserve a generation
+less than or equal to the live source generation. Missing/deleted sources and
+future generations remain rejected. Every UPDATE, ordinary runtime INSERT and
+asset mutation retains the current-generation fence. The preparing exception no
+longer bypasses job UPDATE transition guards. Generation immutability, revisions,
+claim tokens and unique live-claim slots remain enforced; no historical flag or
+second authority is introduced. Backfill and ordinary creation remain separate
+store paths.
+
+Cutover's running-job check now considers current-generation jobs only. An old
+generation's historical `running` status cannot execute and does not represent
+an in-flight current writer. The explicit drained-writer requirement still
+applies. Current-generation running work continues to block cutover.
+
+`restart_after_rollback` creates a logically new administrative attempt at the
+new legacy snapshot revision. It requires the expected newer revision and drained
+writers, then checks exact source/job equivalence before reusing the retained
+narrow rows. The previous verified attempt is copied to an immutable
+`partition_migration_attempt_history` row, including its pinned revision,
+checkpoint, verification time and cutover revision. The current migration row
+then names the new attempt, with a fresh pin and empty checkpoint. Its old pin is
+never changed within that attempt. Attempt IDs cannot be reused. Backfill accepts
+existing rows only when provenance and API payload exactly match the new pinned
+snapshot; mismatches fail closed. Tombstones, jobs and receipts remain intact.
+Revision drift during the new preparing attempt blocks continuation and requires
+separate reviewed retirement; it does not erase records from that invalidated
+attempt. The core authority marker remains absent until the new explicit cutover.
+
+The original PostgreSQL regression failed before code changes at `verify` with
+`Job relational equivalence failed.` It uses actual rollback output: source
+generation 2 and a completed generation-1 job. It now passes same-workspace
+restart under a new attempt ID, backfill, checkpoint replay, exact verification,
+explicit cutover, historical reads, current progress exclusion and a second
+rollback preserving generation 1. Assertions confirm that the old attempt keeps
+its original pin and cutover revision in immutable history, while the new
+attempt receives a new pin and empty checkpoint. Original operation receipts are
+unchanged.
+
+The correction's final validation passed: the 15 new PostgreSQL regression cases,
+all 88 combined Phase 1/Phase 2 disposable PostgreSQL tests, 226 focused offline
+tests (including Phase 1 primitives and affected extraction/source/grounding
+regressions), and all 1,074 offline backend tests. The offline suite emitted two
+existing Starlette test-client deprecation warnings. No provider requests were
+made.
+
+The schema correction changes the explicit Phase 2 schema definition only. It is
+tested on disposable PostgreSQL. No automatic migration or activation is added.
+An already initialized database would need an explicitly reviewed replacement of
+the trigger function; rerunning the entire non-idempotent CREATE/ALTER script is
+not an upgrade procedure.
+
+### Generation-assumption audit
+
+| Path | Classification | Required behavior / review result |
+| --- | --- | --- |
+| `Phase2Coordinator.backfill`, `_equivalent` | HISTORICAL/PROVENANCE PATH | Preserve original job generation, default absent legacy values to 1, reject future generations; corrected here. |
+| `compose(history=True)`, `history_jobs`, `rollback` | HISTORICAL/PROVENANCE PATH | Read all retained generations for live sources; rollback copies relational job generations into legacy records. Source current generation is copied independently. |
+| `PartitionTransaction.read_job`, `query_jobs` | HISTORICAL/PROVENANCE PATH | Identity reads preserve the row; generation-filtered queries use the caller's requested generation, allowing history inspection without mutation. |
+| `partition_authority.find_job`, history reads, control integrity/backup | HISTORICAL/PROVENANCE PATH | Preserve existing job data; do not infer provenance from the current source generation. |
+| `Phase2Coordinator.create_job`; `PartitionTransaction.create_job` | LIVE ELIGIBILITY CHECK | Only create jobs at the current live source generation; runtime behavior unchanged. |
+| `_fence`, `_job_fence`, `_running`, claim/finish/recover | LIVE ELIGIBILITY CHECK | Exact source/job generation equality plus existing revision/token/status checks; unchanged. |
+| `compose(history=False)`, `scoped`, `partition_authority.jobs/jobs_many` | LIVE ELIGIBILITY CHECK | Current-generation jobs drive selection and progress. Explicit history reads bypass only the read filter. |
+| `source_fields`, completion progress count, recovery job selection | LIVE ELIGIBILITY CHECK | Count/select jobs in the current fenced generation, never historical completions. |
+| Cutover/rollback running-job guards | LIVE ELIGIBILITY CHECK | Only current-generation running jobs block authority change; cutover corrected to match rollback. |
+| `save_core`, source-field updates, request generation captures | LIVE ELIGIBILITY CHECK | Preserve current source fence; advance it on delete/rechunk and reject stale requests. These are source fields, not historical job reconstruction. |
+| Legacy `jobs`, `legacy_generation_guard`, `legacy_mutation_guard`, `guard_chunk_read` | LIVE ELIGIBILITY CHECK | Equality correctly prevents old jobs from dispatching or reading new-generation chunk text; explicit history remains readable. The audit also found and fixed a missing `legacy_mutation_guard` call in `mark_extraction_job_failed`, so direct failure transitions now enforce the same fence. |
+| SQL record guard | Both, separate branches | Historical INSERT exception only during pinned preparation; runtime creation and all transitions retain equality and immutable job generation. |
+| Phase 1 asset insert/supersede and active asset queries | LIVE ELIGIBILITY CHECK | Existing current-generation fencing is unchanged; Phase 2 assets remain core-authoritative. |
+
+The generation audit found that the legacy branch of
+`knowledge_extraction.mark_extraction_job_failed` omitted the generation guard
+used by claim, completion and recovery. A direct helper call could therefore
+change a historical generation-1 job while its source was at generation 2. The
+helper now calls `legacy_mutation_guard` before changing status; a focused
+regression verifies this live-transition fence. Narrow-store failure
+transitions remain fenced as before.
 
 The tests cover legacy and shadow authority, pinned migration/resume/drift,
 exact verification/tampering, verified versus active, activation guards, API
@@ -191,9 +279,9 @@ latency have not been measured in this pass.
 
 Validation used Python 3.12 and disposable PostgreSQL 16; synthetic providers only.
 
-- New Phase 2/affected focused offline regressions plus Phase 1 primitives: 166 passed.
-- Combined PostgreSQL integration suite: 73 passed (29 Phase 1, 44 Phase 2).
-- Full offline backend suite: 1,073 passed (including 13 new Phase 2 offline tests).
+- Focused Phase 2/affected offline regressions plus Phase 1 primitives: 226 passed.
+- Combined disposable PostgreSQL integration suite: 88 passed.
+- Full offline backend suite: 1,074 passed (including the legacy failure-transition generation-fence regression).
 - The final extended measurement test also passed independently. Two existing
   FastAPI/Starlette test-client deprecation warnings remain; no SDK/dependency
   upgrade is included.

@@ -158,6 +158,7 @@ def mark_extraction_job_failed(job_id: str, error: str, *, persist: bool = True)
     if authority.coordinator():
         return authority.fail(job_id,error)
     job = get_extraction_job(job_id)
+    authority.legacy_mutation_guard(job)
     job["status"] = KnowledgeExtractionStatus.FAILED.value
     job["error"] = error
     if persist:

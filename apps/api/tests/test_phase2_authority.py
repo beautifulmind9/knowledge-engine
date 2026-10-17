@@ -83,6 +83,19 @@ def test_rehydrated_legacy_state_keeps_historical_generations_fenced(monkeypatch
     authority.legacy_generation_guard(current)
 
 
+def test_legacy_failure_transition_rejects_historical_generation(monkeypatch):
+    from app.db import mock_data as db
+    from app.services import partition_authority as authority
+    from app.services.knowledge_extraction import mark_extraction_job_failed
+    monkeypatch.setattr(authority,'PERSISTENCE_MODE','local')
+    db.sources[:]=[{'id':'s','generation':2}]
+    historical={'id':'old','source_id':'s','chunk_id':'same','status':'completed','generation':1}
+    db.extraction_jobs[:]=[historical]
+    with pytest.raises(ValueError,match='fenced'):
+        mark_extraction_job_failed('old','late failure',persist=False)
+    assert historical['status']=='completed'
+
+
 def test_scoped_projection_does_not_materialize_unneeded_asset_corpus():
     from app.db.request_state import LazyProjection
     class Unreadable:

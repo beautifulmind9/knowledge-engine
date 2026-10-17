@@ -602,6 +602,237 @@ def test_rollback_keeps_old_generation_job_provenance(setup):
     assert result['payload']['extraction_jobs'][0]['status']=='completed'
 
 
+def test_rollback_history_can_migrate_verify_and_recutover(setup):
+    c,store,_=setup
+    activate(c)
+    c.finish(claim(c),assets=[])
+    before=store.load();changed=deepcopy(before)
+    changed['sources'][0]['chunks_path']='chunks/next.json'
+    revision,_=c.save_core(before,changed,core(c)['revision'])
+    receipt=c.read_operation('finish:token')
+    restored=c.rollback(revision,writers_drained=True)['payload']
+    assert restored['sources'][0]['generation']==2
+    assert restored['extraction_jobs'][0]['generation']==1
+
+    assert c.read_migration()['stage']=='verified'
+    prior=c.read_migration()
+    assert prior['source_snapshot_revision']==1 and prior['cutover_revision']==2
+    assert prior['verified_at'] is not None
+    assert c.restart_after_rollback(core(c)['revision'],'fresh-after-rollback',writers_drained=True)=={
+        'stage':'preparing','checkpoint':{}}
+    rollback_revision=core(c)['revision']
+    current=c.read_migration()
+    assert current['migration_id']=='fresh-after-rollback'
+    assert current['source_snapshot_revision']==rollback_revision
+    assert current['verified_at'] is None and current['cutover_revision'] is None
+    history=c.read_migration_history()
+    assert len(history)==1
+    assert history[0]['migration_id']=='migration'
+    assert history[0]['source_snapshot_revision']==1
+    assert history[0]['stage']=='verified' and history[0]['cutover_revision']==2
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("UPDATE knowledge_engine.partition_migration_attempt_history "
+                                  "SET source_snapshot_revision=99 WHERE workspace_key=%s AND migration_id='migration'",
+                                  (tx.workspace,))
+    c.backfill(rollback_revision)
+    c.backfill(rollback_revision)  # Checkpoint replay preserves retained generations.
+    c.verify(rollback_revision)
+    assert c.read_job('j')['generation']==1
+    cutover=c.cutover(rollback_revision,writers_drained=True)
+    assert c.history_jobs('s')[0]['id']=='j'
+    assert c.read_job('j')['generation']==1
+    assert c.scoped(['s'])['extraction_jobs']==[]
+    again=c.rollback(cutover['revision'],writers_drained=True)['payload']
+    assert again['sources'][0]['generation']==2
+    assert again['extraction_jobs'][0]['generation']==1
+    assert c.read_operation('finish:token')==receipt
+
+
+def test_restart_requires_verified_rollback_legacy_authority_and_drained_writers(setup):
+    c,store,_=setup
+    activate(c)
+    with pytest.raises(PartitionConflict):c.restart_after_rollback(2,'unsafe',writers_drained=True)
+    c.rollback(2,writers_drained=True)
+    with pytest.raises(PartitionConflict):c.restart_after_rollback(3,'unsafe')
+    c.restart_after_rollback(3,'fresh',writers_drained=True)
+    assert c.read_migration()['stage']=='preparing'
+    with pytest.raises(PartitionConflict):c.restart_after_rollback(3,'second',writers_drained=True)
+    baseline=store.load();changed=deepcopy(baseline)
+    changed['libraries'][0]['name']='Core revision changed'
+    with c.transaction() as tx:
+        current=c._core(tx,3)['payload']
+        current['libraries'][0]['name']='Core revision changed'
+        c._cas(tx,current,3)
+    with pytest.raises((PartitionConflict,StaleStateWriteError)):c.backfill(3)
+    assert c.read_migration()['stage']=='preparing'
+
+
+@pytest.mark.parametrize('status',['pending_ai','running','completed','failed'])
+def test_migrated_historical_jobs_are_readable_but_never_live(setup,status):
+    c,store,state=setup
+    state['sources'][0]['generation']=2
+    old=state['extraction_jobs'][0]
+    old.update(generation=1,status=status)
+    if status=='running':old['started_at']='2026-10-16T00:00:01+00:00'
+    if status=='completed':old['completed_at']='2026-10-16T00:00:02+00:00'
+    store.save(state)
+    c.prepare(2,'history');c.backfill(2)
+    historical=c.read_job('j')
+    assert historical['generation']==1 and historical['api_payload']==old
+
+    # Even a preparing migration's exception is INSERT-only, never a license
+    # to update/reanimate history or bypass normal transition guards.
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill','on',true)")
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill_workspace',%s,true)",(tx.workspace,))
+            tx.connection.execute("UPDATE knowledge_engine.partition_jobs SET revision=revision+1 WHERE workspace_key=%s AND job_id='j'",(tx.workspace,))
+    c.verify(2)
+    # A historical running record is not an in-flight current-generation writer.
+    c.cutover(2,writers_drained=True)
+    assert c.history_jobs('s')==[old]
+    assert c.scoped(['s'])['extraction_jobs']==[]
+    assert c.read_job('j')['generation']==1
+    for operation in (
+        lambda:c.claim('j','synthetic','fixture','old-claim','old-token'),
+        lambda:c.recover('j'),
+        lambda:c.finish(dict(historical,claim_token='old-token'),assets=[]),
+        lambda:c.finish(dict(historical,claim_token='old-token'),error='stale'),
+    ):
+        with pytest.raises(PartitionConflict):operation()
+    # Exercise direct store and SQL paths as well as the coordinator.
+    for terminal in ('completed','failed'):
+        with pytest.raises(PartitionConflict):
+            c.apply('old-'+terminal,{},lambda tx:tx.finish_job('j',1,historical['revision'],'old-token',status=terminal))
+    for next_status in ('running','completed','failed','pending_ai'):
+        with pytest.raises(PartitionConflict):
+            with c.transaction() as tx:
+                tx.connection.execute("UPDATE knowledge_engine.partition_jobs SET status=%s,revision=revision+1,"
+                                      "claim_token=CASE WHEN %s='running' THEN 'old-token' END,started_at=now(),"
+                                      "completed_at=CASE WHEN %s='completed' THEN now() END "
+                                      "WHERE workspace_key=%s AND job_id='j'",(next_status,next_status,next_status,tx.workspace))
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("UPDATE knowledge_engine.partition_jobs SET generation=2,revision=revision+1 "
+                                  "WHERE workspace_key=%s AND job_id='j'",(tx.workspace,))
+    assert c.read_job('j')==historical
+    assert c.read_operation('old-claim') is None
+    assert c.read_operation('finish:old-token') is None
+
+    # Same chunk in the current generation is new work, not a replacement of
+    # historical progress. Ordinary creation still enforces the current fence.
+    for generation in (1,3):
+        with pytest.raises(PartitionConflict):
+            c.apply('wrong-create-'+str(generation),{},lambda tx:tx.create_job('wrong','s','chunk_s_1',generation,1))
+    current=c.create_job('s','chunk_s_1','current')
+    assert c.read_job(current['id'])['generation']==2
+    captured=claim(c,'current','current-token')
+    with pytest.raises(PartitionConflict):claim(c,'current','duplicate')
+    c.finish(captured,error='synthetic interruption')
+    c.recover('current')
+    recovered=claim(c,'current','recovered-token')
+    c.finish(recovered,assets=[])
+    assert c.finish(recovered,assets=[]).replayed
+    assert c.finish(captured,error='synthetic interruption').replayed
+    assert c.read_job('current')['status']=='completed'
+    assert c.read_operation('finish:current-token')['result']['generation']==2
+    assert [j['id'] for j in c.scoped(['s'])['extraction_jobs']]==['current']
+    assert c.read_source('s')['interpretation_status']=='knowledge_interpreting'
+    assert core(c)['payload']['knowledge_assets'][0]['active'] is False
+
+
+def test_backfill_missing_legacy_job_generation_means_original_generation_one(setup):
+    c,store,state=setup
+    state['sources'][0]['generation']=2
+    store.save(state)
+    c.prepare(2,'legacy-history');c.backfill(2);c.verify(2)
+    assert c.read_job('j')['generation']==1
+    assert 'generation' not in c.read_job('j')['api_payload']
+    c.cutover(2,writers_drained=True)
+    assert c.scoped(['s'])['extraction_jobs']==[]
+
+
+def test_future_job_generation_refuses_backfill_atomically(setup):
+    c,store,state=setup
+    state['sources'][0]['generation']=2
+    state['extraction_jobs'][0]['generation']=3
+    store.save(state);c.prepare(2,'future')
+    before=core(c)
+    with pytest.raises(PartitionConflict,match='ahead of its source'):c.backfill(2)
+    assert c.read_source('s') is None and c.read_job('j') is None
+    assert c.read_migration()['checkpoint']=={}
+    assert core(c)==before
+
+
+@pytest.mark.parametrize('generation',[1,2,3])
+def test_database_historical_insert_exception_requires_pinned_migration(setup,generation):
+    c,store,state=setup
+    state['sources'][0]['generation']=2
+    state['extraction_jobs']=[]
+    store.save(state);c.prepare(2,'insert-fence');c.backfill(2)
+    def insert(*,backfill):
+        with c.transaction() as tx:
+            if backfill:
+                tx.connection.execute("SELECT set_config('knowledge_engine.backfill','on',true)")
+                tx.connection.execute("SELECT set_config('knowledge_engine.backfill_workspace',%s,true)",(tx.workspace,))
+            tx.connection.execute("INSERT INTO knowledge_engine.partition_jobs "
+                                  "(workspace_key,job_id,source_id,chunk_id,generation,extraction_version) "
+                                  "VALUES (%s,%s,'s','chunk_s_1',%s,1)",(tx.workspace,'insert-'+str(generation),generation))
+    if generation!=2:
+        with pytest.raises(PartitionConflict):insert(backfill=False)
+    if generation==3:
+        with pytest.raises(PartitionConflict):insert(backfill=True)
+        assert c.read_job('insert-3') is None
+    else:
+        insert(backfill=True)
+        assert c.read_job('insert-'+str(generation))['generation']==generation
+
+
+def test_backfill_insert_exception_cannot_bypass_current_job_transition_guard(setup):
+    c,_,_=setup
+    c.prepare(1,'insert-only');c.backfill(1)
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill','on',true)")
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill_workspace',%s,true)",(tx.workspace,))
+            tx.connection.execute("UPDATE knowledge_engine.partition_jobs SET status='completed',completed_at=now(),"
+                                  "revision=revision+1 WHERE workspace_key=%s AND job_id='j'",(tx.workspace,))
+    assert c.read_job('j')['status']=='pending_ai'
+
+
+@pytest.mark.parametrize('invalidated',['verified','revision_drift'])
+def test_historical_insert_exception_ends_with_preparing_revision(setup,invalidated):
+    c,store,state=setup
+    state['sources'][0]['generation']=2
+    state['extraction_jobs']=[]
+    store.save(state);c.prepare(2,'scoped-history');c.backfill(2)
+    if invalidated=='verified':c.verify(2)
+    else:store.save(state)
+    with pytest.raises(PartitionConflict):
+        with c.transaction() as tx:
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill','on',true)")
+            tx.connection.execute("SELECT set_config('knowledge_engine.backfill_workspace',%s,true)",(tx.workspace,))
+            tx.connection.execute("INSERT INTO knowledge_engine.partition_jobs "
+                                  "(workspace_key,job_id,source_id,chunk_id,generation,extraction_version) "
+                                  "VALUES (%s,'expired-backfill','s','chunk_s_1',1,1)",(tx.workspace,))
+    assert c.read_job('expired-backfill') is None
+
+
+def test_current_progress_excludes_migrated_historical_completion(api):
+    client,c,store,state=api
+    state['sources'][0]['generation']=2
+    state['extraction_jobs'][0].update(generation=1,status='completed',completed_at='2026-10-16T01:00:00Z')
+    store.save(state);activate(c,3);store.load()
+    summary=client.get('/sources/s/summary')
+    assert summary.status_code==200,summary.text
+    assert summary.json()['completed_parts']==0
+    assert summary.json()['total_parts']==2
+    assert summary.json()['file_replacement_allowed'] is False
+    history=client.get('/knowledge-extractions/j')
+    assert history.status_code==200,history.text
+
+
 def test_core_and_narrow_lock_order_is_core_then_source_then_job(setup,monkeypatch):
     from app.persistence.partitions import PartitionTransaction
     c,_,_=setup;activate(c);captured=claim(c)

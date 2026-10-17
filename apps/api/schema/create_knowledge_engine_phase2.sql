@@ -6,6 +6,23 @@ ALTER TABLE knowledge_engine.partition_sources ADD COLUMN api_payload jsonb;
 ALTER TABLE knowledge_engine.partition_jobs ADD CONSTRAINT phase2_job_api_object CHECK (api_payload IS NULL OR jsonb_typeof(api_payload)='object');
 ALTER TABLE knowledge_engine.partition_sources ADD CONSTRAINT phase2_source_api_object CHECK (api_payload IS NULL OR jsonb_typeof(api_payload)='object');
 ALTER TABLE knowledge_engine.partition_jobs ADD CONSTRAINT phase2_ordinal_nonnegative CHECK (ordinal>=0);
+ALTER TABLE knowledge_engine.partition_migrations ADD COLUMN verified_at timestamptz;
+ALTER TABLE knowledge_engine.partition_migrations ADD COLUMN cutover_revision bigint;
+CREATE TABLE knowledge_engine.partition_migration_attempt_history (
+ workspace_key text NOT NULL,
+ migration_id text NOT NULL,
+ partition_version integer NOT NULL,
+ source_snapshot_revision bigint NOT NULL,
+ stage text NOT NULL CHECK (stage='verified'),
+ checkpoint jsonb NOT NULL CHECK (jsonb_typeof(checkpoint)='object'),
+ migration_revision bigint NOT NULL,
+ verified_at timestamptz NOT NULL,
+ cutover_revision bigint,
+ archived_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY (workspace_key,migration_id)
+);
+ALTER TABLE knowledge_engine.partition_migration_attempt_history ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON knowledge_engine.partition_migration_attempt_history FROM PUBLIC;
 CREATE INDEX partition_jobs_api_order ON knowledge_engine.partition_jobs
     (workspace_key, source_id, generation, ordinal, job_id);
 CREATE FUNCTION knowledge_engine.phase2_backfill_allowed(p_workspace text) RETURNS boolean
@@ -19,6 +36,43 @@ LANGUAGE sql STABLE AS $$
     AND NOT (s.payload ? 'partition')
  )
 $$;
+CREATE FUNCTION knowledge_engine.phase2_restart_after_rollback_allowed(p_workspace text, p_revision bigint, p_migration_id text) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+ SELECT current_setting('knowledge_engine.phase2_restart', true) = 'on' AND EXISTS (
+  SELECT 1 FROM knowledge_engine.partition_migrations m
+  JOIN knowledge_engine.state_snapshots s USING (workspace_key)
+  WHERE m.workspace_key=p_workspace AND s.workspace_key=p_workspace
+    AND m.partition_version=2 AND m.stage='verified'
+    AND m.source_snapshot_revision < p_revision AND m.cutover_revision < p_revision AND s.revision=p_revision
+    AND NOT (s.payload ? 'partition')
+    AND m.migration_id <> p_migration_id
+    AND NOT EXISTS (SELECT 1 FROM knowledge_engine.partition_migration_attempt_history h
+                    WHERE h.workspace_key=p_workspace AND h.migration_id=p_migration_id)
+ )
+$$;
+CREATE FUNCTION knowledge_engine.guard_partition_migration_attempt_history() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE current_attempt knowledge_engine.partition_migrations%ROWTYPE;
+BEGIN
+    IF TG_OP <> 'INSERT' OR current_setting('knowledge_engine.phase2_restart',true) IS DISTINCT FROM 'on' THEN
+        RAISE EXCEPTION 'partition attempt history is append-only' USING ERRCODE='23514';
+    END IF;
+    SELECT * INTO current_attempt FROM knowledge_engine.partition_migrations
+      WHERE workspace_key=NEW.workspace_key FOR UPDATE;
+    IF NOT FOUND OR current_attempt.migration_id<>NEW.migration_id
+       OR current_attempt.partition_version<>NEW.partition_version
+       OR current_attempt.source_snapshot_revision<>NEW.source_snapshot_revision
+       OR current_attempt.stage<>NEW.stage OR current_attempt.checkpoint<>NEW.checkpoint
+       OR current_attempt.revision<>NEW.migration_revision
+       OR current_attempt.verified_at IS DISTINCT FROM NEW.verified_at
+       OR current_attempt.cutover_revision IS DISTINCT FROM NEW.cutover_revision THEN
+        RAISE EXCEPTION 'partition attempt history does not match verified attempt' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END $$;
+CREATE TRIGGER guard_partition_migration_attempt_history
+ BEFORE INSERT OR UPDATE OR DELETE ON knowledge_engine.partition_migration_attempt_history
+ FOR EACH ROW EXECUTE FUNCTION knowledge_engine.guard_partition_migration_attempt_history();
 CREATE OR REPLACE FUNCTION knowledge_engine.guard_partition_source() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -34,13 +88,61 @@ BEGIN
     END IF;
     RETURN NEW;
 END $$;
+CREATE OR REPLACE FUNCTION knowledge_engine.guard_partition_migration() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE restart_after_rollback boolean; cutover_record boolean;
+BEGIN
+    restart_after_rollback := TG_OP = 'UPDATE' AND
+        knowledge_engine.phase2_restart_after_rollback_allowed(NEW.workspace_key,NEW.source_snapshot_revision,NEW.migration_id);
+    cutover_record := TG_OP = 'UPDATE' AND current_setting('knowledge_engine.phase2_cutover',true)='on';
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.workspace_key <> OLD.workspace_key OR NEW.partition_version <> OLD.partition_version
+           OR NEW.revision <> OLD.revision + 1
+           OR (restart_after_rollback AND
+               (OLD.stage <> 'verified' OR NEW.stage <> 'preparing' OR NEW.migration_id = OLD.migration_id
+                OR NEW.checkpoint <> '{}'::jsonb OR NEW.source_snapshot_revision <= OLD.source_snapshot_revision
+                OR NEW.verified_at IS NOT NULL OR NEW.cutover_revision IS NOT NULL
+                OR NOT EXISTS (SELECT 1 FROM knowledge_engine.partition_migration_attempt_history h
+                               WHERE h.workspace_key=OLD.workspace_key AND h.migration_id=OLD.migration_id
+                                 AND h.partition_version=OLD.partition_version
+                                 AND h.source_snapshot_revision=OLD.source_snapshot_revision
+                                 AND h.stage=OLD.stage AND h.checkpoint=OLD.checkpoint
+                                 AND h.migration_revision=OLD.revision AND h.verified_at=OLD.verified_at
+                                 AND h.cutover_revision IS NOT DISTINCT FROM OLD.cutover_revision)))
+           OR (cutover_record AND
+               (OLD.stage<>'verified' OR NEW.stage<>'verified' OR NEW.migration_id<>OLD.migration_id
+                OR NEW.partition_version<>OLD.partition_version
+                OR NEW.source_snapshot_revision<>OLD.source_snapshot_revision
+                OR NEW.checkpoint<>OLD.checkpoint OR NEW.verified_at IS DISTINCT FROM OLD.verified_at
+                OR OLD.cutover_revision IS NOT NULL OR NEW.cutover_revision IS NULL
+                OR NOT EXISTS (SELECT 1 FROM knowledge_engine.state_snapshots s
+                               WHERE s.workspace_key=NEW.workspace_key AND s.revision=NEW.cutover_revision
+                                 AND s.payload->'partition'->>'version'='2'
+                                 AND s.payload->'partition'->>'state'='active')))
+           OR (NOT restart_after_rollback AND NOT cutover_record AND
+               (NEW.migration_id <> OLD.migration_id
+                OR NEW.source_snapshot_revision <> OLD.source_snapshot_revision OR OLD.stage <> 'preparing'
+                OR NEW.cutover_revision IS NOT NULL
+                OR (NEW.stage='preparing' AND NEW.verified_at IS NOT NULL)
+                OR (NEW.stage='verified' AND NEW.verified_at IS NULL)))
+        THEN RAISE EXCEPTION 'partition migration transition rejected' USING ERRCODE = '23514'; END IF;
+    ELSIF NEW.revision <> 1 OR NEW.stage <> 'preparing' OR NEW.verified_at IS NOT NULL OR NEW.cutover_revision IS NOT NULL THEN
+        RAISE EXCEPTION 'partition migration initialization rejected' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END $$;
 CREATE OR REPLACE FUNCTION knowledge_engine.guard_partition_record() RETURNS trigger
 LANGUAGE plpgsql AS $$
-DECLARE fence knowledge_engine.partition_sources%ROWTYPE;
+DECLARE fence knowledge_engine.partition_sources%ROWTYPE; backfill_insert boolean;
 BEGIN
+    -- Only a pinned preparing migration may INSERT historical job provenance.
+    -- UPDATEs, runtime creation and assets always require the current live fence.
+    backfill_insert := TG_TABLE_NAME = 'partition_jobs' AND TG_OP = 'INSERT'
+        AND coalesce(knowledge_engine.phase2_backfill_allowed(NEW.workspace_key), false);
     SELECT * INTO fence FROM knowledge_engine.partition_sources
         WHERE workspace_key = NEW.workspace_key AND source_id = NEW.source_id FOR UPDATE;
-    IF NOT FOUND OR fence.deleted OR fence.generation <> NEW.generation THEN
+    IF NOT FOUND OR fence.deleted OR NEW.generation > fence.generation
+       OR (NEW.generation < fence.generation AND NOT backfill_insert) THEN
         RAISE EXCEPTION 'partition generation fenced' USING ERRCODE = '23514';
     END IF;
     IF TG_OP = 'UPDATE' THEN
@@ -52,7 +154,7 @@ BEGIN
     ELSIF NEW.revision <> 1 THEN
         RAISE EXCEPTION 'partition initial revision rejected' USING ERRCODE = '23514';
     END IF;
-    IF TG_TABLE_NAME = 'partition_jobs' AND knowledge_engine.phase2_backfill_allowed(NEW.workspace_key) THEN
+    IF backfill_insert THEN
         RETURN NEW;
     END IF;
     IF TG_TABLE_NAME = 'partition_jobs' AND TG_OP = 'UPDATE'
@@ -171,6 +273,6 @@ BEGIN
 END $$;
 CREATE TRIGGER guard_phase2_core BEFORE UPDATE ON knowledge_engine.state_snapshots
  FOR EACH ROW EXECUTE FUNCTION knowledge_engine.guard_phase2_core();
-REVOKE ALL ON FUNCTION knowledge_engine.phase2_backfill_allowed(text), knowledge_engine.sync_phase2_job(),
+REVOKE ALL ON FUNCTION knowledge_engine.phase2_backfill_allowed(text), knowledge_engine.phase2_restart_after_rollback_allowed(text,bigint,text), knowledge_engine.guard_partition_migration_attempt_history(), knowledge_engine.sync_phase2_job(),
  knowledge_engine.guard_phase2_core(), knowledge_engine.sync_phase2_source() FROM PUBLIC;
 COMMIT;

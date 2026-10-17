@@ -42,8 +42,25 @@ def owned(source):
     return {k: deepcopy(v) for k, v in source.items() if k in OWNED}
 
 
+def source_projection(source):
+    """Ignore only fields added by rollback but absent from legacy source JSON."""
+    return {k: deepcopy(v) for k, v in owned(source).items()
+            if k not in {'generation', 'deleted'}}
+
+
 def job_dto(row):
     return deepcopy(row['api_payload']) if row else None
+
+
+def job_projection_matches(api_payload, legacy_job):
+    """Generation may be relationally present after rollback but absent in old JSON."""
+    actual = deepcopy(api_payload or {})
+    expected = deepcopy(legacy_job)
+    if 'generation' in expected:
+        generation = expected.pop('generation')
+        if 'generation' in actual and actual.pop('generation') != generation:
+            return False
+    return actual == expected
 
 
 class Phase2Coordinator(PostgresPartitionStore):
@@ -76,6 +93,14 @@ class Phase2Coordinator(PostgresPartitionStore):
                 raise PartitionVersionError('Unsupported Phase 2 staging version.')
             return row['record'] if row else None
 
+    def read_migration_history(self):
+        """Return immutable verified attempts superseded by rollback restarts."""
+        with self.transaction() as tx:
+            return tx._all('SELECT workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
+                           'migration_revision,verified_at,cutover_revision,archived_at '
+                           'FROM knowledge_engine.partition_migration_attempt_history '
+                           'WHERE workspace_key=%s ORDER BY migration_revision,migration_id',(tx.workspace,))
+
     def _migration(self, tx, revision=None, stage=None):
         row = tx._expect(tx._one('SELECT * FROM knowledge_engine.partition_migrations '
                                 'WHERE workspace_key = %s FOR UPDATE', (tx.workspace,)))
@@ -102,6 +127,39 @@ class Phase2Coordinator(PostgresPartitionStore):
                     'RETURNING revision', (tx.workspace, migration_id, expected_revision))
             return {'stage': 'preparing', 'checkpoint': {}}
 
+    def restart_after_rollback(self, expected_revision, migration_id, *, writers_drained=False):
+        """Start a new pinned attempt reusing verified retained rows after rollback.
+
+        This does not discard retained lifecycle fences, jobs or receipts. The
+        prior attempt is archived, and the old staging set must exactly match
+        the rehydrated legacy snapshot before the new attempt is created.
+        """
+        if not writers_drained:
+            raise PartitionConflict('Migration restart requires explicitly drained writers.')
+        with self.transaction() as tx:
+            core = self._core(tx, expected_revision)
+            if core['payload'].get('partition') is not None:
+                raise PartitionConflict('Migration restart requires legacy authority after rollback.')
+            migration = self._migration(tx, stage='verified')
+            if (migration['source_snapshot_revision'] >= expected_revision
+                    or migration['cutover_revision'] is None
+                    or migration['cutover_revision'] >= expected_revision):
+                raise PartitionConflict('Migration restart requires a later legacy revision after a recorded cutover.')
+            self._equivalent(tx, core['payload'])
+            tx.connection.execute("SELECT set_config('knowledge_engine.phase2_restart','on',true)")
+            tx._one('INSERT INTO knowledge_engine.partition_migration_attempt_history '
+                    '(workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
+                    'migration_revision,verified_at,cutover_revision) '
+                    'SELECT workspace_key,migration_id,partition_version,source_snapshot_revision,stage,checkpoint,'
+                    'revision,verified_at,cutover_revision FROM knowledge_engine.partition_migrations '
+                    'WHERE workspace_key=%s RETURNING migration_id',(tx.workspace,))
+            tx._one("UPDATE knowledge_engine.partition_migrations SET migration_id=%s,source_snapshot_revision=%s,"
+                    "stage='preparing',checkpoint='{}'::jsonb,verified_at=NULL,cutover_revision=NULL,"
+                    'revision=revision+1,updated_at=now() '
+                    "WHERE workspace_key=%s RETURNING revision",
+                    (migration_id, expected_revision, tx.workspace))
+            return {'stage': 'preparing', 'checkpoint': {}}
+
     def backfill(self, expected_revision, *, max_sources=100):
         if max_sources < 1:
             raise ValueError('max_sources must be positive.')
@@ -121,19 +179,45 @@ class Phase2Coordinator(PostgresPartitionStore):
             selected = [s for s in core['payload'].get('sources', []) if s['id'] not in done][:max_sources]
             for s in sorted(selected,key=lambda s:s['id']):
                 generation = s.get('generation', 1)
-                tx._one('INSERT INTO knowledge_engine.partition_sources '
-                        '(workspace_key,source_id,generation,deleted,interpretation_status,stopped_reason,api_payload) '
-                        'VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING source_id',
-                        (tx.workspace,s['id'],generation,s.get('deleted',False),s.get('processing_status'),
-                         s.get('stopped_reason'),Jsonb(owned(s))))
+                existing_source = tx._one('SELECT * FROM knowledge_engine.partition_sources '
+                                          'WHERE workspace_key=%s AND source_id=%s FOR UPDATE',
+                                          (tx.workspace,s['id']))
+                if existing_source is None:
+                    tx._one('INSERT INTO knowledge_engine.partition_sources '
+                            '(workspace_key,source_id,generation,deleted,interpretation_status,stopped_reason,api_payload) '
+                            'VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING source_id',
+                            (tx.workspace,s['id'],generation,s.get('deleted',False),s.get('processing_status'),
+                             s.get('stopped_reason'),Jsonb(owned(s))))
+                elif (existing_source['generation'] != generation or existing_source['deleted'] != s.get('deleted',False)
+                      or source_projection(existing_source['api_payload'] or {}) != source_projection(s)
+                      or existing_source['interpretation_status'] != s.get('processing_status')
+                      or existing_source['stopped_reason'] != s.get('stopped_reason')):
+                    raise PartitionConflict('Retained source fence differs from the pinned snapshot.')
                 for ordinal, j in enumerate(jobs):
                     if j['source_id'] != s['id']:
+                        continue
+                    # Generation is immutable job provenance, not the live source fence.
+                    job_generation = j.get('generation', 1)
+                    if job_generation > generation:
+                        raise PartitionConflict('Backfill job generation is ahead of its source.')
+                    existing_job = tx._one('SELECT * FROM knowledge_engine.partition_jobs '
+                                            'WHERE workspace_key=%s AND job_id=%s FOR UPDATE',
+                                            (tx.workspace,j['id']))
+                    if existing_job is not None:
+                        metadata={k:v for k,v in j.items() if k in META}
+                        if (existing_job['generation'] != job_generation or existing_job['source_id'] != s['id']
+                                or existing_job['chunk_id'] != j['chunk_id']
+                                or existing_job['extraction_version'] != j.get('extraction_version',1)
+                                or existing_job['status'] != j['status'] or existing_job['metadata'] != metadata
+                                or not job_projection_matches(existing_job['api_payload'],j)
+                                or existing_job['ordinal'] != ordinal):
+                            raise PartitionConflict('Retained job provenance differs from the pinned snapshot.')
                         continue
                     tx._one('INSERT INTO knowledge_engine.partition_jobs '
                             '(workspace_key,job_id,source_id,chunk_id,generation,extraction_version,status,claim_token,metadata,'
                             'created_at,started_at,completed_at,recovered_at,api_payload,ordinal) '
                             'VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING job_id',
-                            (tx.workspace,j['id'],s['id'],j['chunk_id'],generation,j.get('extraction_version',1),j['status'],
+                            (tx.workspace,j['id'],s['id'],j['chunk_id'],job_generation,j.get('extraction_version',1),j['status'],
                              uuid4().hex if j['status']=='running' else None,Jsonb({k:v for k,v in j.items() if k in META}),
                              j['created_at'],j.get('started_at') or (j['created_at'] if j['status']=='running' else None),
                              j.get('completed_at'),j.get('recovered_at'),Jsonb(j),ordinal))
@@ -144,27 +228,33 @@ class Phase2Coordinator(PostgresPartitionStore):
             return checkpoint
 
     def _equivalent(self, tx, payload):
-        sources = tx._all('SELECT * FROM knowledge_engine.partition_sources WHERE workspace_key=%s ORDER BY source_id',
+        sources = tx._all('SELECT * FROM knowledge_engine.partition_sources WHERE workspace_key=%s AND NOT deleted ORDER BY source_id',
                           (tx.workspace,))
         expected = sorted(payload.get('sources', []), key=lambda s:s['id'])
         if len(sources) != len(expected):
             raise PartitionConflict('Source equivalence verification failed.')
         for row, s in zip(sources, expected):
-            if (row['source_id'] != s['id'] or row['api_payload'] != owned(s)
+            if (row['source_id'] != s['id']
+                    or source_projection(row['api_payload'] or {}) != source_projection(s)
                     or row['generation'] != s.get('generation',1) or row['deleted'] != s.get('deleted',False)
                     or row['interpretation_status'] != s.get('processing_status')
                     or row['stopped_reason'] != s.get('stopped_reason')):
                 raise PartitionConflict('Source equivalence verification failed.')
-        rows = tx._all('SELECT * FROM knowledge_engine.partition_jobs WHERE workspace_key=%s ORDER BY ordinal,job_id',
+        rows = tx._all('SELECT j.* FROM knowledge_engine.partition_jobs j '
+                       'JOIN knowledge_engine.partition_sources s USING (workspace_key,source_id) '
+                       'WHERE j.workspace_key=%s AND NOT s.deleted ORDER BY j.ordinal,j.job_id',
                        (tx.workspace,))
-        if [job_dto(j) for j in rows] != payload.get('extraction_jobs', []):
+        expected_jobs=payload.get('extraction_jobs', [])
+        if len(rows) != len(expected_jobs) or any(
+                not job_projection_matches(job_dto(row),job)
+                for row,job in zip(rows,expected_jobs)):
             raise PartitionConflict('Job equivalence verification failed.')
         for ordinal,row in enumerate(rows):
             j = row['api_payload']
             if (row['job_id']!=j['id'] or row['ordinal']!=ordinal or row['extraction_version']!=j.get('extraction_version',1)
                     or row['status'] != j['status'] or row['source_id'] != j['source_id'] or row['chunk_id'] != j['chunk_id']
                     or row['metadata'] != {k:v for k,v in j.items() if k in META}
-                    or row['generation'] != j.get('generation',next(s.get('generation',1) for s in expected if s['id']==j['source_id']))):
+                    or row['generation'] != j.get('generation',1)):
                 raise PartitionConflict('Job relational equivalence failed.')
             for key in ('created_at','started_at','completed_at','recovered_at'):
                 expected_time=j.get(key)
@@ -182,7 +272,7 @@ class Phase2Coordinator(PostgresPartitionStore):
             core = self._core(tx, expected_revision)
             self._migration(tx, expected_revision, 'preparing')
             self._equivalent(tx, core['payload'])
-            tx._one("UPDATE knowledge_engine.partition_migrations SET stage='verified',revision=revision+1 "
+            tx._one("UPDATE knowledge_engine.partition_migrations SET stage='verified',verified_at=now(),revision=revision+1 "
                     'WHERE workspace_key=%s RETURNING revision', (tx.workspace,))
             return {'stage':'verified'}
 
@@ -196,10 +286,15 @@ class Phase2Coordinator(PostgresPartitionStore):
                 raise PartitionConflict('Cutover requires legacy authority.')
             tx._all('SELECT source_id FROM knowledge_engine.partition_sources WHERE workspace_key=%s ORDER BY source_id FOR UPDATE',(tx.workspace,))
             self._equivalent(tx,core['payload'])
-            if any(j['status']=='running' for j in core['payload'].get('extraction_jobs',[])):
+            generations={s['id']:s.get('generation',1) for s in core['payload'].get('sources',[])}
+            if any(j['status']=='running' and j.get('generation',1)==generations[j['source_id']]
+                   for j in core['payload'].get('extraction_jobs',[])):
                 raise PartitionConflict('Running legacy jobs prevent cutover.')
             payload = compact(core['payload'])
             revision = self._cas(tx,payload,expected_revision)
+            tx.connection.execute("SELECT set_config('knowledge_engine.phase2_cutover','on',true)")
+            tx._one('UPDATE knowledge_engine.partition_migrations SET cutover_revision=%s,revision=revision+1,updated_at=now() '
+                    'WHERE workspace_key=%s RETURNING revision',(revision,tx.workspace))
         return {'revision':revision,'payload':payload}
 
     def compose(self, tx, core, *, source_ids=None, include_jobs=False, generations=None, history=False):

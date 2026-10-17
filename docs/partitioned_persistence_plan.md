@@ -236,6 +236,17 @@ not a safe rollback. Do not restore the initial backup over newer user work.
 
 ## Remaining core writes and request budget
 
+### Phase 2 SQL-budget decision
+
+The disposable fixture measured interpretation at 9 transactions / 57
+client-issued SQL statements and source summary at 4 transactions / 7
+statements. No per-asset SQL loop or correctness issue was found; cosmetic
+statement-count reduction is deferred. These fixture counts do not establish
+production wire or billing equivalence. Phase 3 settlement must keep statement
+count O(1) in N assets through batched/set-based writes, batch multi-source
+Workshop and evidence-base reads, and avoid repeated full-corpus Explore
+retrieval.
+
 Full core snapshots remain for library mutations; source creation/identity edits;
 upload, extraction, structure and chunk-manifest publication/backfill; saved
 Workshop/manual/imported outputs; output revisions/history deletion; source/library

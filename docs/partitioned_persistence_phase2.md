@@ -385,3 +385,231 @@ cutover changes authority.
 | Rollback | Active verified -> legacy snapshot | Partition -> legacy | No | No | Pin unchanged |
 | Restart after rollback | Rolled-back verified -> new preparing | Legacy -> legacy | Archived `rollback_restart` history | Yes | Old pin unchanged |
 | Restart after pinned-revision drift | Drifted preparing -> new preparing | Legacy -> legacy | Archived `revision_drift` history | Yes | Old pin unchanged |
+
+## Operator readiness and migration runbooks
+
+### Existing controls and hard stop
+
+The repository has explicit coordinator methods, but no supported Phase 2
+operator command, protected administrative API, or operations shell. The
+available Python methods are library interfaces, not a documented production
+invocation path:
+
+| Operation | Existing method | Operator surface |
+| --- | --- | --- |
+| Read migration and archived attempts | `read_migration()`, `read_migration_history()` | No supported command/API |
+| Prepare and resume backfill | `prepare(expected_revision, migration_id)`, `backfill(expected_revision, max_sources=100)` | No supported command/API |
+| Verify and cut over | `verify(expected_revision)`, `cutover(expected_revision, writers_drained=False)` | No supported command/API |
+| Roll back | `rollback(expected_revision, writers_drained=False)` | No supported command/API |
+| Restart after drift | `restart_after_revision_drift(expected_revision, expected_migration_id, expected_pinned_revision, migration_id, writers_drained=False)` | No supported command/API |
+| Restart after rollback | `restart_after_rollback(expected_revision, migration_id, writers_drained=False)` | No supported command/API |
+
+`get_phase2_coordinator()` constructs the coordinator but does not provide a
+command, inspection report, revision reader, or safe execution wrapper. The
+existing `apps/api/scripts/backfill_chunk_manifests.py` is unrelated and does
+not operate the Phase 2 migration. `/usage/resume` resumes allowance admission;
+it is not a writer pause. The
+state store has a private cached revision, but no supported operator method for
+reading the authoritative raw core revision and marker together. There is no
+supported CLI/API for listing current-generation running jobs either. Do not
+turn private Python attributes, direct SQL, or ad-hoc `python -c` snippets into
+an operational procedure.
+
+There is no schema-version registry or supported schema inspection command.
+`partition_version=2` in the migration row identifies the staged data format; it
+does not prove that the Phase 1/Phase 2 DDL is installed at the expected
+revision. A future operator command must report both application support and
+schema readiness.
+
+The app is configured for one hosted web worker, but that does not drain it.
+There is no maintenance/write gate, active-request registry, or durable writer
+lease count. The beta login gate authenticates users; it does not pause writes.
+`/health` is only process liveness. The existing local `asyncio.Lock` is not
+used in hosted mode. Cutover/rollback checks reject current-generation running
+jobs, but that does not prove that source, upload, chunk, asset, library, or
+output mutations have drained. Passing `writers_drained=True` supplies no such
+proof.
+
+**Until the operator surface and writer-drain controls below exist, do not run a
+hosted migration, cutover, rollback, or restart.** The sequences that follow are
+the required operational procedure and the checks the future supported command
+must expose; the method calls shown above are not shell commands.
+
+### Writer-drain definition
+
+For migration start/resume, only legacy authority is active; writes may proceed
+between batches, but any core revision change invalidates continuation and
+requires the explicit drift-restart path. Before verification, cutover, rollback,
+or either administrative restart, the operator must stop and drain all writers
+for the workspace:
+
+- interpretation/extraction start, run, result submission, recovery, and source
+  interpretation/finalization requests;
+- source creation, identity, upload, process, extract, chunk/rechunk, structure,
+  and deletion requests;
+- library and asset mutations;
+- output creation, import, revision, and deletion;
+- maintenance/backfill processes that can change the core snapshot or narrow
+  records.
+
+Read-only requests may continue only if the maintenance control guarantees they
+cannot trigger writes or recovery. Existing in-flight writes must be registered
+before route execution and remain registered through commit and response-side
+finalization. The observable drain condition is: the maintenance gate rejects
+new writes and the authoritative in-flight writer count is zero, with no
+current-generation running jobs. A stuck request must be investigated and
+allowed to finish or terminated through a controlled service procedure; a
+timeout alone is not evidence that its transaction or provider work ended.
+There is no configured maximum request duration or drain timeout. The job's
+10-minute stale-running recovery eligibility is not proof that the provider
+request stopped and must not be used as a drain signal. Never force the
+`writers_drained` argument while the condition is unknown.
+
+Current code cannot establish this condition. A supported control must gate new
+mutating requests and expose/drain all in-flight writers across the hosted
+instance before `cutover`, `rollback`, and restart calls can be offered to
+operators. This does not require holding a database transaction or workspace
+lock during provider execution.
+
+### Initial migration and cutover
+
+The operator workflow must be implemented as a protected, auditable command or
+equivalent control surface before execution. It must print safe workspace
+identity, core revision, authority marker, migration attempt and history, schema
+support, current-generation running jobs, and drain state without printing
+credentials or full workspace contents.
+
+1. **Preflight.** Confirm the deployed compatible application build supports
+   Phase 2 version 2, the Phase 1 and Phase 2 schemas are already applied, and
+   an operator has explicitly authorized migration for this workspace (there is
+   no runtime enable flag). Confirm the raw core
+   marker is absent (legacy authority), record the authoritative core revision,
+   inspect migration/history, and confirm no incompatible preparing/verified
+   attempt exists. Do not infer schema readiness from code files alone.
+2. **Drain for initial pinning.** Close the mutating-request gate and wait for
+   the observable writer count to reach zero. Read-only requests may continue
+   under the gate's guarantee. Re-read the core revision and authority after
+   drain; if the revision changed, use the newly confirmed revision for a new
+   initial attempt only when no attempt exists.
+3. **Prepare.** Invoke `prepare(expected_revision, migration_id)` with the
+   confirmed revision and a new, never-reused attempt ID. Confirm state is
+   `preparing`, the pin equals that revision, and authority remains legacy.
+4. **Backfill/checkpoint.** Invoke `backfill(pinned_revision, max_sources=100)`
+   repeatedly. Each completed source batch and checkpoint commit atomically.
+   Inspect the checkpoint until it names every source. Do not manually edit
+   checkpoint JSON or narrow records.
+5. **Interruption.** If the authoritative revision still equals the pin, resume
+   the same attempt with `backfill(pinned_revision, max_sources=100)`. If the
+   revision differs, stop: never repin or continue that attempt. After draining
+   writers and confirming legacy authority and the new revision, use the
+   separate revision-drift restart procedure below.
+6. **Verify.** Invoke `verify(pinned_revision)`. Require exact source/job
+   relational and API equivalence, IDs, relationships, original generations,
+   statuses, metadata, timestamps, ordering, and checkpoint completeness. Any
+   mismatch blocks cutover; retain the attempt and diagnose it.
+7. **Confirm verified is not active.** Read migration state/history and the raw
+   core marker again. Require `stage=verified`, no cutover revision yet, and
+   legacy authority still active. Verification alone must not change authority.
+8. **Drain again.** Close the mutating gate, wait for zero in-flight writers,
+   and recheck the core revision equals the pin, authority is legacy, and no
+   current-generation running legacy jobs exist.
+9. **Cut over.** Invoke `cutover(expected_revision, writers_drained=True)` only
+   after the drain controller reports success. The coordinator rechecks pinned
+   revision, exact equivalence, authority and current-generation running jobs
+   inside its transaction. It writes the version-2 marker and strips only the
+   jobs/lifecycle fields from core. On any failure, leave the gate closed, inspect
+   state, and do not manually change the marker.
+10. **Post-cutover checks.** Require the exact version-2 active marker and
+    migration `cutover_revision`; verify history has not been fabricated or
+    rewritten. Through representative API reads, compare source detail,
+    summary/progress, job status/history, recovery state, and interruption state
+    to the pre-cutover fixture/export. Confirm new job/source lifecycle writes
+    appear only in narrow records and the raw core has no authoritative jobs or
+    owned lifecycle fields. Check that knowledge assets, outputs, libraries,
+    and allowance remain in their existing authorities. Reopen writes only
+    after all checks pass.
+11. **Rollback criteria/escape.** Roll back for failed API parity, missing or
+    inconsistent narrow state, stale-worker incompatibility, or unresolved
+    correctness/performance acceptance. Keep writes gated, confirm the current
+    core revision and no running current-generation jobs, then invoke the
+    guarded `rollback(expected_revision, writers_drained=True)`. Verify legacy
+    authority and exact rehydrated job/source provenance before reopening writes.
+    Keep narrow records, receipts, tombstones, and allowance state; do not restore
+    an old snapshot backup over newer work. Use the rollback/re-cutover procedure
+    below for any later activation.
+
+### Restart after pinned-revision drift
+
+This is only for an unverified `preparing` attempt whose pinned snapshot has
+drifted. It is not `restart_after_rollback`.
+
+1. Inspect the current attempt and history. Record its attempt ID, partition
+   version, pinned revision, checkpoint, start time, and null verification and
+   cutover fields. Confirm `stage=preparing` and that the attempt is not already
+   archived.
+2. Confirm the raw core marker is absent and legacy remains authoritative.
+3. Gate new writers and drain all in-flight writers. Record the authoritative
+   current core revision after the drain and confirm it differs from the old pin.
+4. Invoke
+   `restart_after_revision_drift(current_revision, old_attempt_id, old_pin,
+   new_attempt_id, writers_drained=True)` using a new ID. The transaction
+   archives the old attempt as `terminal_reason=revision_drift` and creates the
+   new `preparing` attempt atomically. It does no provider work and does not
+   change authority.
+5. Read migration and history. Require the archived row to preserve the old ID,
+   version, pin, checkpoint and start time; require verification/cutover fields
+   to remain null. Require the new ID, current revision pin and fresh checkpoint.
+   Confirm legacy authority remains active. The old ID must not resume, verify,
+   or cut over.
+6. Continue through initial-runbook backfill and verification using the new
+   attempt and pin. If the revision drifts again, repeat only with a new attempt
+   identity after recording the new provenance.
+
+Today steps 1–5 have no supported operator invocation path; do not perform them
+through manual SQL or private in-process attributes.
+
+### Rollback and re-cutover
+
+1. Inspect the active marker and verified migration/cutover attempt. Record the
+   attempt ID, pin, cutover revision, migration history, and current core
+   revision. Confirm the deployed compatibility build understands preserved
+   historical job generations and the rollback fields.
+2. Gate new writes and drain all in-flight writers. Confirm zero current-
+   generation running jobs. Read-only traffic may continue only if the gate
+   guarantees it cannot mutate state.
+3. Invoke `rollback(expected_revision, writers_drained=True)`. This transaction
+   rehydrates legacy jobs/source lifecycle, preserves job generation provenance,
+   and removes the active marker. It does not clear receipts/tombstones or change
+   allowance authority.
+4. Verify the raw marker is absent and the migration still records the prior
+   verified/cutover provenance. Compare rehydrated job IDs, source/chunk links,
+   timestamps, statuses and generations, including older-generation historical
+   jobs. Confirm operation receipts remain present and no provider work was
+   replayed. Keep writers gated if any check fails.
+5. With legacy still authoritative and writers drained, read the new core
+   revision. Invoke `restart_after_rollback(new_legacy_revision,
+   new_attempt_id, writers_drained=True)` with a new ID. The method requires a
+   later legacy revision than the old pin/cutover and exact equivalence of
+   retained relational records to the rehydrated snapshot. It archives the
+   previous verified attempt as `rollback_restart`, preserving its original
+   pin, checkpoint, verification and cutover provenance, then creates a fresh
+   preparing attempt pinned to the current legacy revision.
+6. Verify the archived history and new attempt identity/pin/checkpoint. Backfill
+   idempotently against the new pin, verify exact equivalence, and confirm
+   `verified` still leaves legacy authority active.
+7. Close/drain writes again, reconfirm the pinned core revision and no running
+   legacy jobs, then invoke guarded `cutover(expected_revision,
+   writers_drained=True)`. Check the exact active marker and cutover revision,
+   API parity and absence of authoritative core job/lifecycle duplicates before
+   reopening writes.
+8. If re-cutover fails before the marker transaction commits, keep legacy
+   authority and writers gated; diagnose and resume/restart only under the
+   recorded pin rules. If it commits but post-checks fail, use the same guarded
+   rollback procedure after draining. Never delete retained narrow rows or
+   receipts, replay provider work, reset allowance, or restore a stale snapshot.
+
+The coordinator methods implement these guarded state transitions, but this
+sequence is not safely executable until inspection, writer gating/draining and
+method invocation are exposed through a supported operator control surface.
+That surface and drain proof are **required before the first hosted cutover**;
+they do not block Phase 3 implementation or disposable-database testing.

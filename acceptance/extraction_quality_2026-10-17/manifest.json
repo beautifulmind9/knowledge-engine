@@ -1,0 +1,45 @@
+{
+  "audit_id": "ke-extraction-quality-2026-10-17-v1",
+  "status": "preregistered_not_executed",
+  "repository": "beautifulmind9/knowledge-engine",
+  "branch": "feature/knowledge-assets",
+  "code_baseline": "6492e55c81c842bf823666e4330a86559d2eb7a7",
+  "source": {
+    "title": "Running a Community Repair Session: A Field Guide for Volunteer Hosts",
+    "path": "source.md",
+    "rights_basis": "Original synthetic material written specifically for Knowledge Engine acceptance on 2026-10-17; no external source text used.",
+    "sha256": "93afffd120832c93694a2e854e4a8dd444e0d1f83bc05d812ab7d49390485de8",
+    "utf8_bytes": 20145,
+    "whitespace_word_count": 3286
+  },
+  "chunking": {
+    "algorithm": "current Knowledge Engine text_chunking.chunk_text",
+    "chunk_size_words": 1200,
+    "overlap_words": 200,
+    "expected_chunk_count": 4,
+    "expected_chunk_word_counts": [1200, 1200, 1200, 286],
+    "actual_chunk_records": null
+  },
+  "frozen_review_protocol": "preregistration.md",
+  "provider_execution": {
+    "provider": "Gemini via current application gateway",
+    "model": "application default; resolve and record at run time",
+    "one_chunk_per_request": true,
+    "retry_policy": "existing application policy only",
+    "status": "blocked_before_provider_request",
+    "reason": "Current managed environment has no configured secrets/runtime variables; enforced network allowlist excludes Gemini API endpoint.",
+    "provider_requests_made": 0
+  },
+  "dataset_records": {
+    "workspace_id": null,
+    "library_id": null,
+    "source_id": null,
+    "chunks": null,
+    "jobs": null,
+    "assets": null,
+    "retrieval_results": null,
+    "saved_outputs": null,
+    "review_judgments": null
+  },
+  "decision": "not_evaluated"
+}

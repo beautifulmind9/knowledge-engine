@@ -106,3 +106,26 @@ test('numeric titles and quantities are not mistaken for hexadecimal identifiers
   const answer = renderGroundedAnswer('The launch cap is 12345678 units.', {document, snapshot:[], sourceInfo:[]});
   assert.ok(answer.textContent.includes('12345678'));
 });
+
+test('member citations disclose only their own provenance, retaining both members in the snapshot', () => {
+  const units = [{canonical_asset:{id:'asset_a', source_id:'source_a', title:'Shared idea'},
+    asset_ids:['asset_a','asset_b'], source_ids:['source_a','source_b'], evidence_trail:[
+      {asset_id:'asset_a',source_id:'source_a',evidence:'First evidence'},
+      {asset_id:'asset_b',source_id:'source_b',evidence:'Second evidence'}]}];
+  const index = createAnswerEvidenceIndex(units, [{id:'source_a',title:'First book'},{id:'source_b',title:'Second book'}]);
+  assert.equal(index.asset('asset_a').label, 'First book');
+  assert.deepEqual(index.asset('asset_a').evidence.map(item=>item.evidence), ['First evidence']);
+  assert.equal(index.asset('asset_b').label, 'Second book');
+  assert.deepEqual(index.asset('asset_b').evidence.map(item=>item.evidence), ['Second evidence']);
+  assert.equal(units[0].evidence_trail.length, 2);
+});
+
+test('legacy ambiguous multi-source trails do not become member citations', () => {
+  const units = [{canonical_asset:{id:'asset_a',source_id:'source_a',title:'Shared idea'},
+    asset_ids:['asset_a','asset_b'], evidence_trail:[
+      {source_id:'source_a',evidence:'First evidence'},{source_id:'source_b',evidence:'Second evidence'}]}];
+  const index = createAnswerEvidenceIndex(units, [{id:'source_a',title:'First book'},{id:'source_b',title:'Second book'}]);
+  assert.equal(index.asset('asset_a').label, 'First book');
+  assert.equal(index.asset('asset_a').evidence.length, 1);
+  assert.equal(index.asset('asset_b').evidence.length, 0);
+});

@@ -21,8 +21,18 @@ function evidenceIndex(snapshot = [], sourceInfo = []) {
     const asset = group?.canonical_asset;
     if (!asset) continue;
     const evidence = group.evidence_trail || [];
-    const entry = { title: asset.title || '', evidence };
-    for (const id of [asset.id, ...(group.asset_ids || [])]) if (id) assets.set(id, entry);
+    for (const id of [asset.id, group.asset_id, ...(group.asset_ids || [])]) {
+      if (!id) continue;
+      let cited = evidence.filter(item => item.asset_id === id);
+      if (!cited.length) {
+        const knownSources = [...new Set(evidence.map(item => item.source_id).filter(Boolean))];
+        const ownSource = id === asset.id ? asset.source_id : null;
+        const source = ownSource || (knownSources.length === 1 ? knownSources[0] : null);
+        cited = evidence.filter(item => !item.asset_id && source && item.source_id === source);
+      }
+      assets.set(id, {title: asset.title || '', evidence: cited,
+        sourceId: id === asset.id ? asset.source_id : null});
+    }
   }
   function sourceFor(reference) {
     if (!reference) return null;
@@ -41,7 +51,7 @@ function evidenceIndex(snapshot = [], sourceInfo = []) {
     asset(reference) {
       const asset = assets.get(reference);
       if (!asset) return { label: 'Source & evidence', evidence: [] };
-      const sourceIds = [...new Set(asset.evidence.map(item => item.source_id).filter(Boolean))];
+      const sourceIds = [...new Set([...asset.evidence.map(item => item.source_id), asset.sourceId].filter(Boolean))];
       const labels = sourceIds.map(sourceFor).filter(Boolean).map(source => [humanIdentity(source.title), humanIdentity(source.author)].filter(Boolean).join(' · ')).filter(Boolean);
       return { label: labels.length ? [...new Set(labels)].join(', ') : humanIdentity(asset.title, 'Source & evidence'), evidence: asset.evidence };
     },

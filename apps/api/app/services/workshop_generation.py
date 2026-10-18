@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from google import genai
 
+from app.services.evidence_accounting import reference_maps
 from app.models.grounded_answer_provider import (
     GroundedAnswerProviderResponse,
     grounded_answer_provider_schema,
@@ -298,12 +299,7 @@ Grounded reasoning requirements for this answer:
     if knowledge_answer:
         from app.services.workshop import evidence_base_state
 
-        source_ids_by_asset = {}
-        for unit in knowledge_units:
-            member_ids = [unit.get("asset_id"), *(unit.get("asset_ids") or [])]
-            for asset_id in member_ids:
-                if asset_id:
-                    source_ids_by_asset[asset_id] = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
+        _, source_ids_by_asset = reference_maps(knowledge_units)
         for section in generated.reasoning_sections:
             if section.kind in {"source_principle", "source_tactic", "mechanism", "interpretation", "challenge", "agreement", "disagreement"} and not section.supporting_asset_ids:
                 raise GroundedAnswerValidationError("A source-related answer section lacked supporting knowledge. No answer was accepted.", category="source_section_missing_evidence")
@@ -373,29 +369,17 @@ Grounded reasoning requirements for this answer:
         "model_response_id": getattr(interaction, "id", None),
     }
     if knowledge_answer:
-        source_ids_by_asset = {}
-        for unit in prepared["knowledge_units"]:
-            member_ids = [unit.get("asset_id"), *(unit.get("asset_ids") or [])]
-            source_ids = set(unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
-            for asset_id in member_ids:
-                if asset_id:
-                    source_ids_by_asset[asset_id] = source_ids
-        used_source_ids = set()
-        canonical_by_asset = {}
-        for section in generated.reasoning_sections:
-            for asset_id in section.supporting_asset_ids:
-                used_source_ids.update(source_ids_by_asset.get(asset_id, set()))
-        for unit in prepared["knowledge_units"]:
-            canonical_id = unit.get("asset_id")
-            for asset_id in [canonical_id, *(unit.get("asset_ids") or [])]:
-                if asset_id and canonical_id:
-                    canonical_by_asset[asset_id] = canonical_id
-        used_idea_ids = {
-            canonical_by_asset[asset_id]
-            for section in generated.reasoning_sections
-            for asset_id in section.supporting_asset_ids
-            if asset_id in canonical_by_asset
+        canonical_by_asset, source_ids_by_asset = reference_maps(prepared["knowledge_units"])
+        used_source_ids = {
+            sid for section in generated.reasoning_sections
+            for aid in section.supporting_asset_ids
+            for sid in source_ids_by_asset.get(aid, set())
         }
+        referenced_ids = {item.asset_id for item in generated.applied_knowledge}
+        referenced_ids.update(aid for section in generated.reasoning_sections
+                              for aid in section.supporting_asset_ids)
+        used_idea_ids = {canonical_by_asset[aid] for aid in referenced_ids
+                         if aid in canonical_by_asset}
         retrieved_source_ids = {
             source_id for unit in prepared["knowledge_units"]
             for source_id in (unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))

@@ -134,7 +134,7 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
   const applied = output.applied_knowledge || [];
   const count = Number.isInteger(data.evidence_coverage?.used_idea_count)
     ? data.evidence_coverage.used_idea_count
-    : applied.length || (Number.isInteger(data.knowledge_unit_count) ? data.knowledge_unit_count : snapshot.length);
+    : new Set(applied.map(item => item.asset_id).filter(Boolean)).size;
   const scopeLabel = document.querySelector('#main')?.exploreContext?.scopeLabel?.() || 'your selected materials';
   const answerTitle = makeElement("h2", undefined, "answer-title");
   card.append(

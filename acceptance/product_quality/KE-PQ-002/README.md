@@ -158,3 +158,48 @@ is needed to collect existing records. Keep subsequent analysis separate from th
 - Application/backend and frontend source are unchanged. Frozen extraction audit
   matches baseline `9d64585`; private evidence copy matches supplied bytes.
 - No Gemini calls, hosted operations, migrations, deployment or commits were made.
+
+## Accounting corrections following baseline preservation
+
+The diagnostic-only baseline is preserved in commit `d77e95a`. Its findings and
+validation above describe that checkpoint. The subsequent fix is restricted to
+canonical/member identity, citation accounting, and affected presentation/export.
+The ranking and research-sufficiency requirements remain proposals.
+
+- Resolve canonical identity from `canonical_asset.id`, accepting the existing
+  top-level `asset_id` representation too. Count distinct units referenced by
+  applied knowledge or answer sections; do not count unused retrieved context.
+- Resolve each cited member's source from `evidence_trail`. Canonical provenance
+  and unambiguous single-source legacy context are fallbacks. Ambiguous legacy
+  multi-source membership does not establish independent source support.
+- Use that same source mapping for answer counts, cross-source agreement and
+  broad-coverage guards. A single member of a multi-source group cannot establish
+  agreement between those sources.
+- Newly saved output source attribution follows actual references. Additive
+  `generation_metadata.citation_asset_ids` preserves that identity through manual
+  revisions, whose existing attribution-review note still applies. AI revisions
+  derive new citation identities from their new response. Snapshots remain intact.
+- Markdown exports derive cited sources from the snapshot, identify cited members,
+  and label broader consolidated evidence as context. Answer citations disclose
+  member evidence; saved-work evidence separates citation support from related
+  context. Legacy frontend fallback no longer calls retrieved counts used ideas.
+
+No schema migration or historical record rewrite is required. Existing saved
+records without citation metadata use reasoning-section references where present,
+otherwise applied references. Their stored `source_ids` fields remain historical
+(API record/list/history reads do not rewrite them); fresh exports derive precise
+attribution. Historical counters are not retroactively recomputed. Missing member
+provenance cannot be reconstructed and can yield an unknown source attribution.
+Existing source-deletion safeguards still inspect the entire immutable snapshot.
+
+Counting references establishes traceability, not entailment, independent research
+quality, or coverage sufficiency. Those limitations and the original missing Ask
+response remain unresolved. No prompts, retrieval weights, extraction validation,
+provider controls or frozen KE-PQ-001 files were changed.
+
+Final fix validation: 40 affected backend tests passed; the complete offline
+backend suite passed **1,095 tests** (two existing dependency deprecation warnings).
+The complete frontend suite passed **182 tests**. The backend suite ran with
+loopback access for its synthetic demo smoke test. Private evidence remains ignored;
+final diff review found only this case, accounting code, affected presentation and
+synthetic tests. No provider requests, hosted changes or deployment occurred.

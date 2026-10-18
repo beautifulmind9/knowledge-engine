@@ -702,7 +702,30 @@ async function outputView(id){
  heading('VERSION '+o.version,o.title,`${o.output_type.replaceAll('_',' ')} · Saved ${new Date(o.created_at).toLocaleString()}`);
  const review=card('Quality review',quality.validation_status.replaceAll('_',' '));review.append(el('p',o.provider==='manual'?'Manually supplied or edited':'Created with AI'),el('p',quality.note),list(quality.issues.map(i=>i.message)));if(quality.timing_checks)review.append(list(quality.timing_checks.map(c=>`${c.criterion.replaceAll('_',' ')}: ${c.status} · Requested: ${c.requested_minutes??'unknown'} min · Calculated: ${c.calculated_minutes??'unknown'} min`)));
  const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;const reading=renderGroundedAnswer(o.content,{document,snapshot:o.knowledge_snapshot||[],sourceInfo});reading.className=`${reading.className||''} reading`.trim();main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),reading);const answerTableObserver=observeAnswerTableOverflow(reading);main._answerTableObserver?.disconnect();main._answerTableObserver=answerTableObserver;
- const evidence=detail('Ideas and evidence used');main.append(evidence);for(const ref of o.applied_knowledge||[]){const g=(o.knowledge_snapshot||[]).find(item=>item.canonical_asset?.id===ref.asset_id);const c=card(g?.canonical_asset?.title||'Knowledge used',ref.usage_note);const evidenceItems=(g?.evidence_trail||[]).map(item=>{const sourceTitle=sourceTitles.get(item.source_id);const context=[sourceTitle,item.chapter_or_section].filter(Boolean).join(' · ');return el('p',(context?context+'\n':'')+item.evidence,'evidence');});if(evidenceItems.length)c.append(detail('Source & evidence',...evidenceItems));evidence.append(c);}
+ const evidence=detail('Ideas and evidence used');main.append(evidence);
+ const citedIds=o.generation_metadata?.citation_asset_ids||(o.reasoning_sections?.length
+   ?o.reasoning_sections.flatMap(section=>section.supporting_asset_ids||[]):null);
+ const references=citedIds?[...new Set(citedIds)].map(asset_id=>({asset_id,
+   usage_note:(o.applied_knowledge||[]).find(ref=>ref.asset_id===asset_id)?.usage_note||'Cited in the output.'})):o.applied_knowledge||[];
+ for(const ref of references){
+   const g=(o.knowledge_snapshot||[]).find(item=>item.canonical_asset?.id===ref.asset_id||item.asset_ids?.includes(ref.asset_id));
+   const c=card(g?.canonical_asset?.title||'Knowledge used',ref.usage_note),trail=g?.evidence_trail||[];
+   let cited=trail.filter(item=>item.asset_id===ref.asset_id);
+   if(!cited.length){
+     const knownSources=[...new Set(trail.map(item=>item.source_id).filter(Boolean))];
+     const ownSource=ref.asset_id===g?.canonical_asset?.id?g?.canonical_asset?.source_id:null;
+     const source=ownSource||(knownSources.length===1?knownSources[0]:null);
+     cited=trail.filter(item=>!item.asset_id&&source&&item.source_id===source);
+   }
+   const renderEvidence=item=>{
+     const context=[sourceTitles.get(item.source_id),item.chapter_or_section].filter(Boolean).join(' · ');
+     return el('p',(context?context+'\n':'')+item.evidence,'evidence');
+   };
+   if(cited.length)c.append(detail('Source & evidence',...cited.map(renderEvidence)));
+   const related=trail.filter(item=>!cited.includes(item));
+   if(related.length)c.append(detail('Related consolidated evidence · context',...related.map(renderEvidence)));
+   evidence.append(c);
+ }
  main.append(detail('Review and design choices',review,list(o.design_choices.length?o.design_choices:['No additional design choices recorded.'])));
  const revise=form(async fd=>{const body=revisionPayload(fd,o),processing=beginProcessingStatus({label:body.manual?'Saving changes':'Revising your work',detail:body.manual?'Your manual edits will be saved as a new version.':'The requested AI revision is being prepared.'});let n;try{n=await api(`/outputs/${id}/revise`,{method:'POST',body});}finally{endProcessingStatus(processing);}if(!active())return;if(!await navigate('work',{id:n.id}))return;announceProcessingStatus(body.manual?'Your manual edits were saved as a new version.':'Your revised work was saved as a new version.');message(`Saved version ${n.version}; the original is unchanged.`);});
  const [il,ii]=field('Revision instruction','instruction');ii.required=true;ii.minLength=2;const [ml,mi]=field('Save my manual edits','manual');mi.type='checkbox';mi.checked=true;ml.className='check';

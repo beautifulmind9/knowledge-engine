@@ -864,3 +864,26 @@ test('internal manual import keeps the selected part and strict result endpoint 
  assert.equal(writes[1].path,'/knowledge-extractions/manual-job/results');assert.equal(writes[1].options.body.assets.length,0);
  assert.ok(!writes.some(r=>/interpret|generate/.test(r.path)));assert.equal(parseRoute(f.browser.location.hash).view,'material');
 });
+
+test('stored answers separate cited member evidence from related consolidated context', async()=>{
+ const f=await fixture();
+ f.ctx.api=async(path)=>{
+  if(path==='/sources')return {items:[{id:'source_a',title:'First book'},{id:'source_b',title:'Second book'}]};
+  if(path.endsWith('/quality'))return {validation_status:'not_evaluated',issues:[]};
+  if(path.endsWith('/history'))return {items:[]};
+  return {id:'o1',title:'Synthetic answer',content:'A synthetic answer.',output_type:'knowledge_answer',version:1,provider:'manual',
+   applied_knowledge:[{asset_id:'asset_a',usage_note:'Canonical idea.'}],
+   reasoning_sections:[{supporting_asset_ids:['asset_b']}],
+   knowledge_snapshot:[{canonical_asset:{id:'asset_a',title:'Shared idea',source_id:'source_a'},asset_ids:['asset_a','asset_b'],
+    evidence_trail:[{asset_id:'asset_a',source_id:'source_a',evidence:'First evidence.'},
+                    {asset_id:'asset_b',source_id:'source_b',evidence:'Second evidence.'}]}],design_choices:[]};
+ };
+ await f.ctx.outputView('o1');
+ const cited=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Source & evidence');
+ const context=f.nodes().find(n=>n.tag==='details'&&n.children[0].textContent==='Related consolidated evidence · context');
+ const text=n=>all(n).map(item=>item.textContent||'').join(' ');
+ assert.ok(text(cited).includes('Second book'));
+ assert.ok(text(cited).includes('Second evidence.'));
+ assert.ok(!text(cited).includes('First evidence.'));
+ assert.ok(text(context).includes('First evidence.'));
+});

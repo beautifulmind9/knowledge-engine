@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 from difflib import unified_diff
+from app.services.evidence_accounting import cited_sources, output_references
 from app.db.mock_data import outputs, create_id
 from app.models.output import OutputRecord
 from app.models.workshop_generation import WorkshopGenerateRequest
@@ -29,8 +30,8 @@ def save_output(result, parent=None, instruction=None):
     if not applied or not set(applied) <= available:
         raise ValueError("Applied assets must come from the supplied knowledge snapshot.")
     # Keep all retrieved context for reproducible revisions; source_ids describes material use.
-    source_ids = sorted({sid for g in snapshot if g["canonical_asset"]["id"] in applied
-                         for sid in g.get("source_ids", [g["canonical_asset"]["source_id"]])})
+    citation_ids = result.get("citation_asset_ids", output_references(output))
+    source_ids = cited_sources(snapshot, citation_ids)
     now = datetime.now(timezone.utc)
     oid = create_id("output")
     root = parent["root_output_id"] if parent else oid
@@ -39,7 +40,7 @@ def save_output(result, parent=None, instruction=None):
         applied_asset_ids=applied, knowledge_snapshot=snapshot, provider=result["provider"], model=result.get("model"),
         created_at=now, updated_at=now, root_output_id=root, parent_output_id=parent["id"] if parent else None,
         version=version, revision_instruction=instruction,
-        generation_metadata={"model_response_id":result.get("model_response_id"), "quality":quality_report(output, result["brief"], snapshot)})
+        generation_metadata={"citation_asset_ids": sorted(citation_ids), "model_response_id":result.get("model_response_id"), "quality":quality_report(output, result["brief"], snapshot)})
     data=record.model_dump(mode="json")
     outputs.append(data)
     persist_state()
@@ -51,6 +52,9 @@ def revise_output(output_id, request):
     if request.content is not None:
         result = {"brief":parent["brief"], "knowledge_snapshot":parent["knowledge_snapshot"], "provider":"manual", "model":None,
                   "output":{key:deepcopy(parent[key]) for key in ("title","output_type","content","applied_knowledge")}}
+        # Manual edits retain the parent citation provenance; the review note
+        # below makes clear that edited claims need renewed attribution review.
+        result["citation_asset_ids"] = output_references(parent)
         # Prefilled choices are intentional only when they differ from the
         # parent. Preserve the parent's rationale when content is identical;
         # an actual content edit invalidates it and requires a review note.
@@ -88,11 +92,19 @@ def export_markdown(output):
         lines.append(f"- {ref['asset_id']}: {ref['usage_note']}")
     lines += ["", "## Design choices"]+["- "+v for v in output["design_choices"]]
     lines += ["", "## Provenance", f"Output: {output['id']} | Version: {output['version']} | Created: {output['created_at']}",
-              "Sources: "+", ".join(output["source_ids"]), "Provider: "+output["provider"], "", "## Brief"]
+              "Sources: "+", ".join(cited_sources(output["knowledge_snapshot"], output_references(output))), "Provider: "+output["provider"], "", "## Brief"]
     lines += [f"- {k}: {v}" for k,v in output["brief"].items()]
+    lines += ["", "## Cited evidence"]
+    for aid in sorted(output_references(output)):
+        lines.append("- Asset " + aid)
+        for group in output["knowledge_snapshot"]:
+            for trail in group.get("evidence_trail", []):
+                if trail.get("asset_id") == aid:
+                    lines.append(f"  - Source {trail.get('source_id', '')}; chunk {trail.get('chunk_id', '')}")
     for group in output["knowledge_snapshot"]:
         if group["canonical_asset"]["id"] in output["applied_asset_ids"]:
             lines += ["", "### "+group["canonical_asset"]["title"]]
+            lines.append("Consolidated evidence context (separate from citation attribution):")
             for trail in group.get("evidence_trail", []):
                 lines += [f"- Source {trail['source_id']}; chunk {trail['chunk_id']}; asset {trail['asset_id']}"]
     return "\n".join(lines)+"\n"

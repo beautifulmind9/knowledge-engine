@@ -1,0 +1,20 @@
+{
+  "status": "Original synthetic evaluation-only material; do not use as prompt examples or tune on candidate outputs. No model execution yet.",
+  "cases": [
+    {
+      "id": "archive-access",
+      "text": "An archive visit permit allows reading in the supervised room, not copying or publication. Ask separately before photographing a document. The custodian may refuse handling when a page is fragile even if the visitor accepts the risk. A named follow-up contact must accept the request; otherwise record it as unassigned. Return all folders at closing unless the custodian explicitly approves a different arrangement.",
+      "review_targets": ["Reading permission does not authorize copying/publication; photographing requires separate permission.", "Custodian handling veto survives visitor willingness.", "Follow-up requires acceptance; otherwise unassigned.", "Return-at-closing rule retains explicit-approval exception."]
+    },
+    {
+      "id": "field-observations",
+      "text": "Count sightings and observation hours separately. More sightings can reflect longer observation or better visibility rather than a larger animal population. Do not rank observers by raw sightings. One visitor comment is a signal, not a representative survey. Invite feedback optionally; access to the next visit must not depend on positive comments. These notes describe observed activity and cannot establish breeding success.",
+      "review_targets": ["Separate counts from effort.", "Retain effort/visibility confounding and no raw observer ranking.", "Single comment is not representative evidence.", "Feedback is optional and not a condition of access.", "Observation scope does not establish breeding success."]
+    },
+    {
+      "id": "community-rehearsal",
+      "text": "Use a scene recap when actors disagree about established events: list agreed events and mark disputed ones without forcing agreement. Ask permission to change the exercise when a new topic displaces rehearsal; a recap does not grant that permission. Do not redirect a participant away from a safety concern. If permission is declined, offer a pause or a different exercise. The guide has twelve pages and was printed in April; neither fact changes the rehearsal method.",
+      "review_targets": ["Recap preserves disputes rather than forcing agreement.", "Recap and permission to change exercises have distinct purposes.", "Safety concerns are an exception to redirection.", "Declined permission preserves pause/alternative choices.", "Incidental publication details are not promoted to reusable rules."]
+    }
+  ]
+}

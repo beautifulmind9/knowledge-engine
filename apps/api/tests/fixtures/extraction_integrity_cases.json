@@ -1,0 +1,14 @@
+{
+  "provenance": "Original synthetic offline fixtures; no private runtime export or credential required.",
+  "cases": [
+    {"id": "severe_phrase_loop", "kind": "phrase_loop", "unit": "reliably retain the unchanged status while consistently repeating the unchanged status without adding evidence", "repeats": 160, "severe_signal": true},
+    {"id": "degenerate_single_word", "kind": "phrase_loop", "unit": "pending", "repeats": 256, "severe_signal": true},
+    {"id": "mixed_case_punctuation_loop", "kind": "phrase_loop", "unit": "Keep TRACK of the status; keep track of the STATUS.", "repeats": 32, "severe_signal": true},
+    {"id": "short_deliberate_repetition", "kind": "phrase_loop", "unit": "Check the record before proceeding", "repeats": 6, "severe_signal": false},
+    {"id": "long_diverse_explanation", "kind": "long_explanation", "paragraphs": 180, "severe_signal": false},
+    {"id": "repeated_headers_with_distinct_content", "kind": "repeated_headers", "paragraphs": 160, "severe_signal": false},
+    {"id": "unsupported_but_fluent_claim", "kind": "literal", "text": "This procedure is guaranteed to satisfy every regulation in every jurisdiction.", "severe_signal": false},
+    {"id": "exceptional_symbol_blob", "kind": "literal_repeat", "unit": "!", "repeats": 20000, "severe_signal": false},
+    {"id": "intentional_long_repeated_quote", "kind": "phrase_loop", "unit": "This is a deliberately repeated quotation retained for comparison with its source", "repeats": 24, "severe_signal": true}
+  ]
+}

@@ -5,6 +5,7 @@ from google import genai
 from pydantic import ValidationError
 
 from app.models.knowledge_extraction import KnowledgeExtractionResultSubmission
+from app.services.generated_content_integrity import ExtractionValidationError
 from app.services.knowledge_extraction import (
     complete_extraction_job,
     get_extraction_request,
@@ -19,10 +20,6 @@ from app.services.performance_timing import start as timing_start, emit as timin
 # Flash-Lite is a better fit for our current workload: short, structured
 # extraction jobs where we want to stay within a free development setup.
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
-
-
-class ExtractionValidationError(RuntimeError):
-    """A provider response was received but failed strict local validation."""
 
 
 def generate_structured_interaction(client, model: str, request: dict, payload: dict):
@@ -145,6 +142,7 @@ def run_gemini_knowledge_extraction(job_id: str, *, coalesce_interpretation: boo
             persist=not coalesce_interpretation,
             update_source=not coalesce_interpretation,
             chunk_context=chunk_context,
+            generated_content=True,
         )
 
     except Exception as error:

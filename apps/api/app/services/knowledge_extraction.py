@@ -168,7 +168,7 @@ def mark_extraction_job_failed(job_id: str, error: str, *, persist: bool = True)
 
 def complete_extraction_job(job_id: str, assets, model_response_id: str | None = None, *,
                             persist: bool = True, update_source: bool = True,
-                            chunk_context=None):
+                            chunk_context=None, generated_content: bool = False):
     job = get_extraction_job(job_id)
     if not authority.coordinator():authority.legacy_mutation_guard(job)
 
@@ -176,6 +176,9 @@ def complete_extraction_job(job_id: str, assets, model_response_id: str | None =
         raise ValueError("This knowledge extraction job is already completed.")
 
     chunk = get_extraction_chunk(job_id, chunk_context=chunk_context)
+    if generated_content:
+        from app.services.generated_content_integrity import check_generated_assets
+        check_generated_assets(assets, job)
     stored_assets = []
 
     for asset in assets:

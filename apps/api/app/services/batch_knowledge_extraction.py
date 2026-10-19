@@ -9,6 +9,7 @@ from app.models.knowledge_extraction import (
     KnowledgeExtractionBatchGroup,
     gemini_batch_response_schema,
 )
+from app.services.generated_content_integrity import GeneratedContentIntegrityError
 from app.services import ai_gateway
 from app.services.gemini_knowledge_extraction import DEFAULT_MODEL, _validation_summary
 from app.services.knowledge_extraction import (
@@ -205,7 +206,10 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
                 ],
             }
             validated = KnowledgeExtractionBatchGroup.model_validate(hydrated)
-        except (ValidationError, ValueError) as error:
+            completed = complete_extraction_job(
+                job["id"], validated.assets, getattr(interaction, "id", None),
+                generated_content=True)
+        except (ValidationError, ValueError, GeneratedContentIntegrityError) as error:
             if isinstance(error, ValidationError):
                 detail = _validation_summary(error)
             else:
@@ -214,5 +218,5 @@ def run_gemini_knowledge_extraction_batch(job_ids: list[str]):
             mark_extraction_job_failed(job['id'], message)
             failures.append({'job_id': job['id'], 'chunk_id': job['chunk_id'], 'error': message})
             continue
-        results.append(complete_extraction_job(job['id'], validated.assets, getattr(interaction, 'id', None)))
+        results.append(completed)
     return {'results': results, 'failures': failures}

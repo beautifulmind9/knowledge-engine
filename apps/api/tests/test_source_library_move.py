@@ -62,3 +62,31 @@ def test_failed_write_restores_in_memory_membership(client, monkeypatch):
     )
     assert response.status_code == 500
     assert client.get(f"/sources/{source['id']}").json()["library_id"] == original["id"]
+
+
+def test_sequential_bulk_moves_isolate_failure_and_refresh_both_libraries(client, monkeypatch):
+    """The listing's batch reuses single-source moves; one failed save is isolated."""
+    original = client.post("/libraries", json={"name": "Original"}).json()["id"]
+    destination = client.post("/libraries", json={"name": "Destination"}).json()["id"]
+    items = [client.post("/sources", json={"library_id": original, "title": title}).json()
+             for title in ["First", "Second", "Third"]]
+    before = [client.get(f"/sources/{item['id']}").json() for item in items]
+    real_save = source_router.persist_state
+    calls = 0
+
+    def save():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("synthetic failed save")
+        real_save()
+
+    monkeypatch.setattr(source_router, "persist_state", save)
+    results = [client.put(f"/sources/{item['id']}/library", json={"library_id": destination})
+               for item in items]
+    assert [result.status_code for result in results] == [200, 500, 200]
+    assert [item["id"] for item in client.get("/sources", params={"library_id": original}).json()["items"]] == [items[1]["id"]]
+    assert {item["id"] for item in client.get("/sources", params={"library_id": destination}).json()["items"]} == {items[0]["id"], items[2]["id"]}
+    for item, previous in zip(items, before):
+        after = client.get(f"/sources/{item['id']}").json()
+        assert {k: v for k, v in after.items() if k != "library_id"} == {k: v for k, v in previous.items() if k != "library_id"}

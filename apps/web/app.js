@@ -187,6 +187,73 @@ function materialAddSurface(libs,active){
  fileInput.onchange=()=>{const selected=Array.from(fileInput.files||[]);selectMaterialFiles(batch,selected);renderConfirmation();if(batch.invalidFiles.length)message(selected.length===1&&!batch.items.length?batch.invalidFiles[0].message:'Unsupported or empty files were left out. The valid files can still be added.',true);else message('');};
  main.refreshMaterialAdd=renderConfirmation;renderConfirmation();return surface;
 }
+// Sequential membership-only moves reuse the validated persistence/rollback API.
+async function moveMaterials(materials,destination,request=api,onProgress=()=>{}){
+ const results=[];
+ for(const source of materials){
+  if(source.library_id===destination){results.push({source,ok:true});continue;}
+  try{await request(`/sources/${encodeURIComponent(source.id)}/library`,{method:'PUT',body:{library_id:destination}});results.push({source,ok:true});}
+  catch{results.push({source,ok:false});}
+  onProgress(results.length,materials.length);
+ }
+ return results;
+}
+function bulkMoveSurface(sources,libs,active,onMoved){
+ const selected=new Set(),surface=el('section',undefined,'library-bulk-move');
+ surface.setAttribute('aria-label','Move materials');
+ const toolbar=actions(),count=el('span'),preview=el('section'),result=el('section');
+ result.setAttribute('role','status');result.setAttribute('aria-live','polite');
+ let busy=false;const boxes=new Map();
+ const selectedSources=()=>sources.filter(source=>selected.has(source.id));
+ const update=()=>{
+  count.textContent=`${selected.size} selected`;
+  all.checked=!!sources.length&&selected.size===sources.length;all.indeterminate=selected.size>0&&selected.size<sources.length;
+  move.hidden=!selected.size;move.disabled=busy;clear.hidden=!selected.size;clear.disabled=busy;all.disabled=busy;
+  for(const [id,{input,row}] of boxes){input.checked=selected.has(id);input.disabled=busy;row.classList.toggle('is-selected',input.checked);}
+ };
+ const [allLabel,all]=field('Select all materials','select_all');all.type='checkbox';all.onchange=()=>{if(busy)return;selected.clear();if(all.checked)for(const source of sources)selected.add(source.id);preview.replaceChildren();update();};
+ const clear=button('Clear selection',()=>{selected.clear();preview.replaceChildren();update();});
+ const move=button('Move selected',()=>{
+  preview.replaceChildren();result.replaceChildren();
+  const chosen=selectedSources();
+  const destinations=libs.filter(lib=>chosen.some(source=>source.library_id!==lib.id));
+  if(!destinations.length){preview.append(el('p','Create another library to move these materials.'));return;}
+  preview.append(el('h3',`Move ${chosen.length} ${chosen.length===1?'material':'materials'}`));
+  const [label,destination]=select('Destination library',[['','Choose a library'],...destinations.map(lib=>[lib.id,lib.name])]);
+  const visual=el('div');
+  const cancel=button('Cancel',()=>{preview.replaceChildren();move.focus();});
+  const confirmMove=button('Confirm move',async()=>{
+   if(busy||!destinations.some(lib=>lib.id===destination.value))return;
+   const target=destination.value;busy=true;destination.disabled=true;cancel.disabled=true;confirmMove.disabled=true;update();
+   result.replaceChildren(el('p',`Moving 0 of ${chosen.length} materials…`));
+   const outcomes=await moveMaterials(chosen,target,api,(done,total)=>{if(active())result.replaceChildren(el('p',`Moving ${done} of ${total} materials…`));});
+   // Refresh membership even after partial failure or an uncertain response.
+   // Each later library visit fetches its listing; no destination cache exists.
+   if(!active())return;
+   for(const outcome of outcomes)if(outcome.ok)selected.delete(outcome.source.id);
+   const succeeded=outcomes.filter(outcome=>outcome.ok).length,failed=outcomes.filter(outcome=>!outcome.ok);
+   preview.replaceChildren();busy=false;update();
+   result.replaceChildren(el('p',`${succeeded} of ${chosen.length} materials moved to ${libs.find(lib=>lib.id===target).name}.`));
+   if(failed.length)result.append(el('p','Could not confirm these moves. Check their current location before trying again.'),list(failed.map(outcome=>outcome.source.title)));
+   else result.append(el('p','Original files, prepared knowledge and saved work are kept.'));
+   try{await onMoved();if(!active())return;result.append(button('View destination library',()=>navigate('library',{library:target,replace:true})));}
+   catch{if(active())result.append(el('p','Moves finished, but the listing could not refresh. Refresh the page to check current locations.','error'));}
+  },'primary');confirmMove.disabled=true;
+  destination.onchange=()=>{
+   const target=libs.find(lib=>lib.id===destination.value);confirmMove.disabled=!target;
+   visual.replaceChildren();if(!target)return;
+   visual.append(el('p',`Destination: ${target.name}`),list(chosen.map(source=>`${source.title} · ${libs.find(lib=>lib.id===source.library_id)?.name||'Current library'} → ${target.name}${source.library_id===target.id?' (already here)':''}`)),el('p','Only the library changes. Original files, ideas and saved work stay attached.'));
+  };
+  preview.append(label,visual,actions(confirmMove,cancel));destination.focus();
+ },'primary');
+ toolbar.append(allLabel,count,move,clear);surface.append(toolbar,preview,result);update();
+ return {surface,attach(row,source){
+  const [label,input]=field('Select '+source.title,'move_'+source.id);input.type='checkbox';label.className='library-material-select';
+  input.checked=selected.has(source.id);input.disabled=busy;row.classList.toggle('is-selected',input.checked);
+  input.onchange=()=>{if(busy)return;if(input.checked)selected.add(source.id);else selected.delete(source.id);preview.replaceChildren();update();};
+  row.insertBefore(label,row.children[0]);boxes.set(source.id,{input,row});
+ },resetRows(){boxes.clear();},reconcile(){for(const id of selected)if(!sources.some(source=>source.id===id))selected.delete(id);update();}};
+}
 async function libraryView(_id,route={}){const dataStarted=performanceNow();const active=beginView();heading('LIBRARY','Your library','Material, ideas and work in one place.');const libs=await libraries();if(!active())return;
  if(libs.length>1){const [l,s]=select('Filter by library',[['','All libraries'],...libs.map(l=>[l.id,l.name])],state.library||'');s.onchange=()=>{state.library=s.value||null;state.source=null;state.selected.clear();if(!materialAddDraft?.items?.length)materialAddDraft=null;run(()=>navigate('library',{replace:true}));};main.append(l);}
  const sources=libs.length?await sourceItems():[];if(!active())return;
@@ -204,6 +271,10 @@ async function libraryView(_id,route={}){const dataStarted=performanceNow();cons
  const batchSummary=el('section',undefined,'library-batch-summary');collection.append(batchSummary);
  const create=form(async fd=>{const lib=await api('/libraries',{method:'POST',body:{name:fd.get('name'),description:fd.get('description')}});if(!active())return;state.library=lib.id;if(!materialAddDraft?.items?.length)materialAddDraft=null;if(!await navigate('library',{add:true,replace:true}))return;message('Library created.');});for(const [label,name] of [['Library name','name'],['Description','description']]){const [l,i]=field(label,name);i.required=name==='name';create.append(l);}create.append(submit('Create library'));collection.append(detail('Create a library',create));
  const grid=el('div',undefined,'library-rows');grid.setAttribute('aria-label','Materials');collection.append(grid);
+ const bulk=bulkMoveSurface(sources,libs,active,async()=>{
+  const fresh=await sourceItems();if(!active())return;
+  sources.splice(0,sources.length,...fresh);bulk.reconcile();state.source=null;createMaterials=null;exploreState=null;state.selected.clear();renderCards();
+ });if(sources.length)collection.insertBefore(bulk.surface,grid);
  const renderCards=()=>{
   const effective=source=>preparationBatch?.outcomes.get(source.id)?.summary||summaryById.get(source.id);
   const currentReady=sources.filter(source=>effective(source)?.readiness==='ready').length;
@@ -220,7 +291,7 @@ async function libraryView(_id,route={}){const dataStarted=performanceNow();cons
     batchSummary.append(el('p',copy));if(incomplete.length&&preparationBatch.status!=='daily_allowance')batchSummary.append(button('Continue incomplete materials',()=>startPreparation(incomplete.map(source=>source.id)),'primary'));
    }
   }
-  grid.replaceChildren();for(const source of sources)grid.append(renderLibraryRow(source,effective(source),summaryUnavailable,preparationBatch?.outcomes.get(source.id)));
+  grid.replaceChildren();bulk.resetRows();for(const source of sources){const row=renderLibraryRow(source,effective(source),summaryUnavailable,preparationBatch?.outcomes.get(source.id));bulk.attach(row,source);grid.append(row);}
  };
  renderCards();libraryCollectionRefresh=renderCards;main.append(collection);try{console.info('KE_PERF',{event:'library_render',duration_ms:Math.round((performanceNow()-renderStarted)*100)/100,source_count:sources.length,library_source_count:sources.length});}catch{}
 }

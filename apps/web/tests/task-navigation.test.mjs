@@ -12,7 +12,7 @@ import * as materialPreparation from '../material-preparation.js';
 import {renderGroundedAnswer, observeAnswerTableOverflow} from '../answer-renderer.js';
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 class Node {
- constructor(tag){this.tag=tag;this.children=[];this._value='';this.attributes={};this.listeners={};}
+ constructor(tag){this.tag=tag;this.children=[];this._value='';this.attributes={};this.listeners={};this.classList={toggle:(name,on)=>{const classes=new Set((this.className||'').split(' ').filter(Boolean));if(on)classes.add(name);else classes.delete(name);this.className=[...classes].join(' ');}};}
  append(...nodes){for(const n of nodes){n.remove();n.parent=this;this.children.push(n);}}
  remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);this.parent=null;}
  replaceChildren(...nodes){for(const n of this.children)n.parent=null;this.children=[];this.append(...nodes);}

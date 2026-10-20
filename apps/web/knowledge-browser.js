@@ -34,9 +34,13 @@ export function filterSearchResults(items, query) {
   if (!terms.length) return [];
 
   const normalizedQuery = normalize(query);
+  // Short keyword searches stay precise. Full natural-language questions
+  // contain background/context words that no single idea should have to repeat.
+  // Require three distinct terms for longer searches rather than 67% of a
+  // potentially very long question. This is lexical matching, not semantic proof.
   const minimumMatches = terms.length === 1
     ? 1
-    : Math.max(2, Math.ceil(terms.length * 0.67));
+    : terms.length <= 5 ? Math.max(2, Math.ceil(terms.length * 0.67)) : 3;
 
   return items
     .map((group, index) => {
@@ -46,6 +50,7 @@ export function filterSearchResults(items, query) {
         asset.title,
         asset.what_it_says,
         asset.why_it_matters,
+        asset.evidence,
         ...(asset.keywords || []),
         asset.chapter_or_section,
       ].filter(Boolean).join(' '));

@@ -497,7 +497,7 @@ async function knowledgeView(){const active=beginView();
   allRadio.checked=local.scopeMode==='all';selectedRadio.checked=local.scopeMode!=='all';
  }
  function resetScopeResults(){
-  main.querySelector('#create-handoff')?.remove();state.selected.clear();updateSelection();controller.invalidate();browseRevision++;loaded=false;loading=false;items=[];visible=PAGE_SIZE;inventory.replaceChildren();more.hidden=true;browseStatus.textContent='';browse.open=false;type.replaceChildren(new Option('All types',''));chapter.replaceChildren(new Option('All chapters / sections',''));local.results=null;local.answer=null;local.browseOpen=false;local.type='';local.section='';local.visible=PAGE_SIZE;
+  main.querySelector('#create-handoff')?.remove();state.selected.clear();updateSelection();controller.invalidate();browseRevision++;browseCache.clear();loaded=false;loading=false;items=[];visible=PAGE_SIZE;inventory.replaceChildren();more.hidden=true;retryBrowse.hidden=true;browseStatus.textContent='';browse.open=false;type.replaceChildren(new Option('All types',''));chapter.replaceChildren(new Option('All chapters / sections',''));local.results=null;local.answer=null;local.browseOpen=false;local.type='';local.section='';local.visible=PAGE_SIZE;
   document.dispatchEvent(new Event('ke-scope-change'));main.exploreContext?.refreshAskLabel?.();
  }
  function applyLibraryScope(mode){
@@ -514,8 +514,18 @@ async function knowledgeView(){const active=beginView();
  updateScopeDisplay();
  const [ql,qi]=field('What are you looking for or wondering about?','q','textarea',local.query);
  qi.placeholder='e.g. One-on-one facilitation approach';
- const search=form(async()=>{if(qi.value.trim().length<2){controller.invalidate();message('Enter at least two characters to search.');return;}if(!selectedSourceIds().length){controller.invalidate();message('Select at least one library with material before searching.');return;}browse.open=false;await controller.search(qi.value.trim(),s.value);});
- search.id='ke-search-form';qi.id='explore-request';qi.rows=3;const captureActions=actions(submit('Find matching ideas'));captureActions.id='explore-actions';search.append(scopePicker,l,ql,captureActions);main.append(search);
+ // An empty request means explore the selected scope; searching by topic is optional.
+ // Ask is separately gated in enhancements.js and is never invoked from this action.
+ const search=form(async()=>{
+  if(!selectedSourceIds().length){controller.invalidate();message('Select at least one library with material before exploring.');return;}
+  const query=qi.value.trim();
+  if(!query){controller.invalidate();browse.open=true;await loadBrowse();browse.scrollIntoView?.({behavior:'smooth',block:'start'});return;}
+  if(query.length<2){controller.invalidate();message('Enter at least two characters to find matching ideas.');return;}
+  browse.open=false;await controller.search(query,s.value);
+ });
+ search.id='ke-search-form';qi.id='explore-request';qi.rows=3;
+ const findAction=submit(qi.value.trim()?'Find matching ideas':'Explore ideas');
+ const captureActions=actions(findAction);captureActions.id='explore-actions';search.append(scopePicker,l,ql,captureActions);main.append(search);
  const searchPanel=el('section');searchPanel.hidden=true;searchPanel.id='ke-search-results';searchPanel.setAttribute('aria-live','polite');
  const searchHeading=query=>query.trim().length>64||query.includes('\n')?'Related ideas':`Search results for “${query}”`;
  const selectedCount=el('p',undefined,'muted');
@@ -529,8 +539,12 @@ async function knowledgeView(){const active=beginView();
  const [cl,chapter]=select('Chapter / section',[['','All chapters / sections']]);filters.append(tl,cl);
  const browseStatus=el('p',undefined,'muted'),inventory=el('div',undefined,'grid');
  let items=[],loaded=false,loading=false,visible=local.visible,browseRevision=0;
+ // Cache successful per-material responses within this scope, so one failed
+ // material cannot erase other material and retry never refetches successes.
+ const browseCache=new Map();
  const more=button('Show more',()=>{visible+=PAGE_SIZE;renderBrowse();});
- browse.append(filters,browseStatus,inventory,more);main.append(browse);more.hidden=true;
+ const retryBrowse=button('Retry unavailable materials',()=>loadBrowse());retryBrowse.hidden=true;
+ browse.append(filters,browseStatus,inventory,more,retryBrowse);main.append(browse);more.hidden=true;
  function cards(target,groups){target.replaceChildren();for(const g of groups){const a=g.canonical_asset,c=card(a.title,a.what_it_says);c.append(el('span',`${a.asset_type.replaceAll('_',' ')} · ${g.support_count} supporting references`,'badge'));
  const [label,check]=field('Use in Create',a.id);check.type='checkbox';check.checked=state.selected.has(a.id);label.className='check';check.onchange=()=>{main.querySelector('#create-handoff')?.remove();if(check.checked)state.selected.add(a.id);else state.selected.delete(a.id);updateSelection();for(const other of main.querySelectorAll('input[type=checkbox]'))if(other.name===a.id)other.checked=check.checked;};c.append(label);
  c.append(detail('Source & evidence',...(g.evidence_trail||[]).map(e=>el('p',`${sources.find(source=>source.id===e.source_id)?.title||'Material'}${e.chapter_or_section?' · '+e.chapter_or_section:''}\n${e.evidence}`,'evidence'))));c.append(button('Ask about this idea',()=>main.exploreContext.configureIdea?.(a.title)));target.append(c);}}
@@ -555,12 +569,58 @@ async function knowledgeView(){const active=beginView();
  searchPanel.append(el('h2',status==='loading'?'Searching…':status==='error'?'Search could not be completed':searchHeading(query)));
  if(status==='results'){searchPanel.append(el('p',groups.length?`${groups.length} matches (up to 50). Narrow the query for more specific results.`:'No matching ideas. Try different terms or browse useful ideas.','muted'));const grid=el('div',undefined,'grid');cards(grid,groups);searchPanel.append(grid);}});
  function renderBrowse(){const filtered=filterUnits(items,type.value,chapter.value);cards(inventory,filtered.slice(0,visible));browseStatus.textContent=`Browsing ${Math.min(visible,filtered.length)} of ${filtered.length} ideas`;more.hidden=visible>=filtered.length;}
- async function loadBrowse(){if(loaded||loading)return;loading=true;const ticket=++browseRevision;browseStatus.textContent='Loading inventory…';try{const scoped=s.value?sources.filter(source=>source.id===s.value):sources;const batches=await Promise.all(scoped.map(source=>api(`/sources/${source.id}/knowledge-units`)));if(!active()||ticket!==browseRevision)return;items=batches.flatMap(batch=>batch.items);loaded=true;
- type.replaceChildren(new Option('All types',''),...[...new Set(items.map(g=>g.canonical_asset.asset_type))].sort().map(value=>new Option(value.replaceAll('_',' '),value)));
- const chapters=[...new Set(items.flatMap(g=>[g.canonical_asset.chapter_or_section,...(g.evidence_trail||[]).map(e=>e.chapter_or_section)]).filter(Boolean))].sort();chapter.replaceChildren(new Option('All chapters / sections',''),...chapters.map(value=>new Option(value,value)));type.value=local.type;chapter.value=local.section;renderBrowse();}catch(error){if(active()&&ticket===browseRevision){browseStatus.textContent='Inventory could not be loaded. Close and reopen Browse to retry.';throw error;}}finally{if(ticket===browseRevision)loading=false;}}
+ function updateBrowseFilters(){
+  const types=[...new Set(items.map(g=>g.canonical_asset.asset_type))].sort();
+  type.replaceChildren(new Option('All types',''),...types.map(value=>new Option(value.replaceAll('_',' '),value)));
+  if(!types.includes(local.type))local.type='';type.value=local.type;
+  const chapters=[...new Set(items.flatMap(g=>[g.canonical_asset.chapter_or_section,...(g.evidence_trail||[]).map(e=>e.chapter_or_section)]).filter(Boolean))].sort();
+  chapter.replaceChildren(new Option('All chapters / sections',''),...chapters.map(value=>new Option(value,value)));
+  if(!chapters.includes(local.section))local.section='';chapter.value=local.section;
+ }
+ async function loadBrowse(){
+  if(loaded||loading)return;
+  const scoped=s.value?sources.filter(source=>source.id===s.value):sources;
+  if(!scoped.length){browseStatus.textContent='Choose at least one library with materials to explore.';retryBrowse.hidden=true;return;}
+  const pending=scoped.filter(source=>!browseCache.has(source.id));
+  if(!pending.length){loaded=true;updateBrowseFilters();renderBrowse();if(!items.length)browseStatus.textContent='No prepared ideas are available in these materials yet.';return;}
+  loading=true;const ticket=++browseRevision;
+  retryBrowse.hidden=true;browseStatus.textContent=`Loading ideas from ${scoped.length} materials…`;
+  let cursor=0,completed=0,failures=0;
+  const refresh=()=>{
+   if(!active()||ticket!==browseRevision)return;
+   items=scoped.flatMap(source=>browseCache.get(source.id)||[]);
+   updateBrowseFilters();renderBrowse();
+   browseStatus.textContent=`Loading ideas · ${completed} of ${pending.length} remaining material checks completed · ${items.length} ideas available`;
+  };
+  const worker=async()=>{
+   while(cursor<pending.length){
+    const source=pending[cursor++];
+    try{
+     const response=await api(`/sources/${encodeURIComponent(source.id)}/knowledge-units`);
+     if(!Array.isArray(response?.items)||response.items.some(group=>!group?.canonical_asset?.id))throw Error('Invalid knowledge inventory response');
+     if(active()&&ticket===browseRevision)browseCache.set(source.id,response.items);
+    }catch{failures++;}
+    completed++;
+    // Limit DOM rebuilds while still showing progress and usable early results.
+    if(completed===1||completed%4===0||completed===pending.length)refresh();
+    if(!active()||ticket!==browseRevision)return;
+   }
+  };
+  try{
+   await Promise.all(Array.from({length:Math.min(4,pending.length)},()=>worker()));
+   if(!active()||ticket!==browseRevision)return;
+   items=scoped.flatMap(source=>browseCache.get(source.id)||[]);
+   loaded=failures===0;updateBrowseFilters();renderBrowse();
+   retryBrowse.hidden=!failures;
+   const text=`${items.length} ${items.length===1?'idea':'ideas'} across ${browseCache.size} of ${scoped.length} materials`;
+   browseStatus.textContent=failures?`${text} · ${failures} ${failures===1?'material':'materials'} could not be loaded. Showing available ideas; retry the others.`:
+    items.length?`Browsing ${Math.min(visible,filterUnits(items,type.value,chapter.value).length)} of ${filterUnits(items,type.value,chapter.value).length} matching ideas · ${text}`:
+    'No prepared ideas are available in the selected materials yet.';
+  }finally{if(ticket===browseRevision)loading=false;}
+ }
  browse.ontoggle=()=>{if(browse.open)return run(loadBrowse);};
- type.onchange=chapter.onchange=()=>{visible=PAGE_SIZE;renderBrowse();};
- qi.oninput=()=>{main.querySelector('#create-handoff')?.remove();local.query=qi.value;local.results=null;controller.invalidate();browse.open=false;};
+ type.onchange=chapter.onchange=()=>{local.type=type.value;local.section=chapter.value;visible=PAGE_SIZE;renderBrowse();};
+ qi.oninput=()=>{main.querySelector('#create-handoff')?.remove();local.query=qi.value;findAction.textContent=qi.value.trim()?'Find matching ideas':'Explore ideas';local.results=null;controller.invalidate();browse.open=false;};
  s.onchange=()=>{state.source=s.value||null;resetScopeResults();replaceScope('knowledge');};
  main.captureExplore=()=>{local.query=qi.value;local.type=type.value;local.section=chapter.value;local.visible=visible;local.browseOpen=browse.open;local.selectedIds=[...state.selected];};
  // Restore deterministic search/filter state, without repeating any AI action.

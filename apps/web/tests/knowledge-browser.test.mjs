@@ -62,7 +62,7 @@ class Element {
 }
 function descendants(node){return [node,...node.children.flatMap(descendants)];}
 const groups=Array.from({length:25},(_,i)=>({canonical_asset:{id:`a${i}`,title:`Unit ${i}`,what_it_says:'Synthetic evidence',asset_type:i<12?'concept':'principle',chapter_or_section:i<12?'Chapter 1':'Chapter 2'},support_count:1,evidence_trail:[{source_id:'s1',chunk_id:`c${i}`,evidence:'Synthetic evidence'}]}));
-async function viewFixture({library='lib1', libs=[{id:'lib1',name:'Reading'}], sources=[{id:'s1',title:'First source',library_id:'lib1'}], materials=[]}={}){
+async function viewFixture({library='lib1', libs=[{id:'lib1',name:'Reading'}], sources=[{id:'s1',title:'First source',library_id:'lib1'}], materials=[],apiImpl=null}={}){
  const main=new Element('main'),requests=[],notices=[],handoffs=[],events=[];
  const el=(tag,text)=>new Element(tag,text);
  const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:materials,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
@@ -70,7 +70,7 @@ async function viewFixture({library='lib1', libs=[{id:'lib1',name:'Reading'}], s
  heading(){},libraries:async()=>libs,sourceItems:async()=>sources,message:m=>notices.push(m),navigate(){},openCreate:scope=>handoffs.push(scope),
  document:{dispatchEvent:e=>events.push(e.type)},
  run:async fn=>fn(),
- api:async path=>{requests.push(path);return {items:path==='/sources'?sources:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
+ api:async path=>{requests.push(path);return apiImpl?apiImpl(path):{items:path==='/sources'?sources:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
  field:(label,name)=>{const l=el('label',label),input=el('input');input.name=name;l.append(input);return [l,input];},
  select:(label,options,current='')=>{const l=el('label',label),s=el('select');s.value=current;s.children=options.map(([value,text])=>Object.assign(el('option',text),{value}));l.append(s);return [l,s];},
  form:fn=>Object.assign(el('form'),{submit:fn}),submit:text=>el('button',text),
@@ -215,4 +215,91 @@ test('Ask payload uses exact selected sources and no library-wide fallback',asyn
  for(const id of ['lib1','lib3']){const input=checkboxByValue(f,id);input.checked=false;input.onchange();}
  await ctx.generateKnowledgeAnswer('What does this source teach?');
  assert.equal(requests.length,1);
+});
+
+
+test('empty Find action opens Browse without search requests or AI calls',async()=>{
+ const f=await viewFixture();
+ const query=f.nodes().find(node=>node.name==='q');
+ const form=f.nodes().find(node=>node.id==='ke-search-form');
+ const browse=f.nodes().find(node=>node.id==='ke-browse');
+ const button=f.nodes().find(node=>node.textContent==='Explore ideas');
+ assert.ok(button);
+ assert.equal(query.value,'');
+ await form.submit();
+ assert.equal(browse.open,true);
+ assert.ok(f.requests.includes('/sources/s1/knowledge-units'));
+ assert.ok(f.requests.every(path=>!path.startsWith('/knowledge-assets/search')));
+ assert.equal(f.nodes().filter(node=>node.tag==='h3').length,10);
+ query.value='narrative';query.oninput();
+ assert.equal(button.textContent,'Find matching ideas');
+ query.value='';query.oninput();
+ assert.equal(button.textContent,'Explore ideas');
+ const enhancements=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
+ assert.match(enhancements,/request\.required=false;request\.minLength=2;/);
+});
+
+test('no selected libraries cannot browse and cannot silently broaden scope',async()=>{
+ const f=await viewFixture({library:null,libs:multiLibraries,sources:multiSources});
+ const chosen=f.nodes().find(node=>node.value==='libraries'&&node.type==='radio');
+ chosen.checked=true;chosen.onchange();
+ await f.nodes().find(node=>node.id==='ke-search-form').submit();
+ assert.ok(f.notices.some(message=>message.includes('Select at least one library')));
+ assert.ok(!f.requests.some(path=>path.includes('/knowledge-units')));
+});
+
+test('Browse isolates failed materials, keeps usable results and retries only failures',async()=>{
+ const src=[{id:'s1',title:'First',library_id:'lib1'},{id:'s2',title:'Second',library_id:'lib1'},{id:'s3',title:'Third',library_id:'lib1'}];
+ const counts=new Map();
+ const f=await viewFixture({sources:src,apiImpl:async path=>{
+  if(path==='/sources')return {items:src};
+  counts.set(path,(counts.get(path)||0)+1);
+  if(path.includes('/s2/')&&counts.get(path)===1)throw new Error('intermittent error');
+  const id=path.match(/\/sources\/(s\d+)\//)[1];
+  return {items:[{canonical_asset:{id,title:'Unit '+id,what_it_says:'Grounded',asset_type:'principle'},support_count:1,evidence_trail:[{source_id:id,evidence:'Test evidence'}]}]};
+ }});
+ const browse=f.nodes().find(node=>node.id==='ke-browse');browse.open=true;await browse.ontoggle();
+ assert.equal(f.nodes().filter(node=>node.tag==='h3').length,2);
+ assert.ok(f.nodes().find(node=>node.textContent?.includes('material could not be loaded')));
+ const retry=f.nodes().find(node=>node.textContent==='Retry unavailable materials');
+ assert.equal(retry.hidden,false);await retry.click();
+ assert.equal(f.nodes().filter(node=>node.tag==='h3').length,3);
+ assert.equal(retry.hidden,true);
+ assert.equal(counts.get('/sources/s1/knowledge-units'),1);
+ assert.equal(counts.get('/sources/s2/knowledge-units'),2);
+ assert.equal(counts.get('/sources/s3/knowledge-units'),1);
+});
+
+test('Browse uses at most four parallel requests for a large selection',async()=>{
+ const many=Array.from({length:52},(_,i)=>({id:`s${i}`,library_id:'lib1',title:`Material ${i}`}));
+ let active=0,maxActive=0;
+ const f=await viewFixture({sources:many,apiImpl:async path=>{
+  if(path==='/sources')return {items:many};
+  active++;maxActive=Math.max(maxActive,active);
+  await new Promise(resolve=>setImmediate(resolve));
+  active--;
+  return {items:[]};
+ }});
+ const browse=f.nodes().find(node=>node.id==='ke-browse');browse.open=true;await browse.ontoggle();
+ assert.equal(f.requests.filter(path=>path.endsWith('/knowledge-units')).length,52);
+ assert.equal(maxActive,4);
+ assert.ok(f.nodes().find(node=>node.textContent==='No prepared ideas are available in the selected materials yet.'));
+});
+
+test('switching library scope discards stale Browse responses',async()=>{
+ const src=multiSources;
+ const pending=[];
+ const f=await viewFixture({library:null,libs:multiLibraries,sources:src,apiImpl:async path=>{
+  if(path==='/sources')return {items:src};
+  if(path.includes('/knowledge-units'))return await new Promise(resolve=>pending.push({path,resolve}));
+  return {items:[]};
+ }});
+ const browse=f.nodes().find(node=>node.id==='ke-browse');browse.open=true;
+ const load=browse.ontoggle();
+ await Promise.resolve();
+ const lib1=checkboxByValue(f,'lib1');lib1.checked=true;lib1.onchange();
+ for(const item of pending)item.resolve({items:[{canonical_asset:{id:'old',title:'Stale',asset_type:'concept'},support_count:1,evidence_trail:[]}]});
+ await load;
+ assert.equal(f.nodes().filter(node=>node.tag==='h3').length,0);
+ assert.ok(!f.ctx.state.selected.has('old'));
 });

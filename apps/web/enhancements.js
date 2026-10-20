@@ -340,10 +340,15 @@ function decorateKnowledgeView() {
   if(!searchForm||!viewState)return;
   const request=searchForm.elements.namedItem('q');
   const askButton=button('Ask across sources',()=>{
-    if(request.value.trim().length<2){request.reportValidity();return;}
+    if(request.value.trim().length<2){
+      showKnowledgeScopePrompt('Enter a question first', 'Type at least two characters to ask an AI-grounded question. To browse without a question, choose Explore ideas.', '#explore-request');
+      return;
+    }
     generateKnowledgeAnswer(request.value,askButton);
   },'primary');
-  request.required=true;request.minLength=2;
+  // Search form accepts an empty request to browse without AI. Only Ask requires
+  // a question; never make the shared textarea required for the whole form.
+  request.required=false;request.minLength=2;
   document.querySelector('#explore-actions').append(askButton);
   const sourceScope=document.querySelector('#ke-source-scope');
   const updateAskLabel=()=>{askButton.textContent=sourceScope?.value?'Ask this material':'Ask across sources';};

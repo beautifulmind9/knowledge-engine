@@ -73,6 +73,10 @@ class SourceIdentityUpdate(BaseModel):
     author: str | None = Field(default=None, max_length=500)
 
 
+class SourceLibraryUpdate(BaseModel):
+    library_id: str = Field(min_length=1)
+
+
 def persist_state():
     save_state(libraries, sources, extraction_jobs, knowledge_assets)
 
@@ -243,6 +247,36 @@ def update_source_identity(source_id: str, payload: SourceIdentityUpdate):
     persist_state()
     return {"id": source["id"], "title": source["title"], "author": source["author"],
             "title_origin": source["title_origin"], "author_origin": source["author_origin"]}
+
+
+@router.put("/{source_id}/library")
+def move_source_to_library(source_id: str, payload: SourceLibraryUpdate):
+    """Change only library membership; all source/asset identities remain stable."""
+    source = find_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Material not found.")
+    if not any(library["id"] == payload.library_id for library in libraries):
+        raise HTTPException(status_code=404, detail="Destination library not found.")
+    previous_library = source["library_id"]
+    if previous_library == payload.library_id:
+        return {"id": source_id, "library_id": previous_library, "changed": False}
+    source["library_id"] = payload.library_id
+    try:
+        # Existing state persistence provides hosted optimistic reconciliation.
+        # Do not touch file, chunks, Knowledge Assets, or output history.
+        persist_state()
+    except StateMutationConflict as error:
+        # The persistence layer restores the latest authoritative state when
+        # reconciliation fails; never overwrite that restored state here.
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except Exception as error:
+        # Restore the previous in-memory membership after a failed save.
+        source["library_id"] = previous_library
+        raise HTTPException(
+            status_code=500,
+            detail="Material move could not be saved. Refresh its current location before retrying.",
+        ) from error
+    return {"id": source_id, "library_id": payload.library_id, "changed": True}
 
 
 @router.get("/{source_id}")

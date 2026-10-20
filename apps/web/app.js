@@ -377,6 +377,23 @@ async function sourceView(id){
  if(eligible.length){const recovery=el('section',undefined,'material-recovery');recovery.append(el('h2','Resume preparation safely'),el('p','Resolve the interrupted attempt first. Preparation will only continue when you choose Continue preparing.','muted'),button('Resolve preparation issue',async()=>{for(const item of eligible)await api(`/knowledge-extractions/${encodeURIComponent(item.job_id)}/recover`,{method:'POST'});if(active())await navigate('material',{id,replace:true});}));rail.append(recovery);}
  const manage=detail('Manage material');manage.className='material-manage';
  if(libraryName)manage.append(el('p',`In ${libraryName}`,'muted'));
+ const destinations=libraryData.filter(library=>library.id!==source.library_id);
+ if(destinations.length){
+  const move=detail('Move to another library');
+  move.append(el('p','Move this material without uploading or preparing it again. Its original file, ideas and saved work are kept.','muted'));
+  const moveForm=form(async fd=>{
+   const destination=fd.get('destination_library');
+   if(!destinations.some(library=>library.id===destination))throw Error('Choose an available destination library.');
+   await api(`/sources/${encodeURIComponent(id)}/library`,{method:'PUT',body:{library_id:destination}});
+   if(!active())return;
+   // Existing library-filtered views and knowledge scopes must be refreshed.
+   state.library=destination;state.source=id;createMaterials=null;exploreState=null;state.selected.clear();
+   if(await navigate('material',{id,library:destination,replace:true}))message('Material moved. Its file and prepared knowledge were kept.');
+  });
+  const [destinationLabel,destinationInput]=select('Destination library',[['','Choose a library'],...destinations.map(library=>[library.id,library.name])]);
+  destinationInput.name='destination_library';destinationInput.required=true;
+  moveForm.append(destinationLabel,submit('Move material'));move.append(moveForm);manage.append(move);
+ }
  if(source.file_name)manage.append(el('p',`Original file: ${source.file_name}${source.file_type?` · ${source.file_type.replace('.','').toUpperCase()}`:''}`,'muted'));
  if(source.file_path){const original=el('a','Open original file');original.href=`/sources/${encodeURIComponent(id)}/file`;original.target='_blank';original.rel='noopener';manage.append(original);}
  if(source.file_path&&summary.file_replacement_allowed){

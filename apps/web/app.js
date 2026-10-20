@@ -19,7 +19,7 @@ const integritySession={result:null,inFlight:false,render:null};
 function beginView(){const revision=++viewRevision;return ()=>revision===viewRevision;}
 let homeDraft=newInteractionDraft(),exploreState=null,explorePicker=false,materialAddDraft=null;
 function captureDraft(){main.querySelector('#create-brief')?.captureInteraction();main.captureExplore?.();}
-function freshExplore(query=''){return {query,chapter:'',idea:'',contextOpen:false,contextMode:'both',promptMode:null,type:'',section:'',visible:PAGE_SIZE,browseOpen:false,results:null,answer:null};}
+function freshExplore(query=''){return {query,chapter:'',idea:'',contextOpen:false,contextMode:'both',promptMode:null,type:'',section:'',visible:PAGE_SIZE,browseOpen:false,results:null,answer:null,scopeMode:null,libraryIds:[],materialIds:[]};}
 function draftMeaningful(){return !!interactionDraft.originalRequest.trim()||Object.values(interactionDraft.values).some(v=>v.provenance==='user-corrected'&&v.value?.length)||interactionDraft.scope.value.assetIds.length>0;}
 async function openCreate(handoff=null){
  captureDraft();
@@ -452,22 +452,74 @@ async function developerSourceView(id){
 function download(name,text,type='text/plain'){const a=el('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function knowledgeView(){const active=beginView();
  heading('LIBRARY / ASK & EXPLORE','Ideas you can put to work.',explorePicker?'Choose ideas for your Create draft, or explore your materials.':'Find useful ideas or ask a grounded question about your materials.');
- exploreState ||= freshExplore();const local=exploreState;main.exploreContext={state:local,sourceIds:()=>s.value?[s.value]:sources.map(item=>item.id),sourceInfo:()=>sources.map(({id,title,author})=>({id,title,author})),scopeLabel:()=>s.value?[sources.find(item=>item.id===s.value)?.title||'the selected material',sources.find(item=>item.id===s.value)?.author].filter(Boolean).join(' · '):broadScope,handoff:(request,sourceIds)=>openCreate({request,materials:sourceIds,library:state.library,selectedIds:[...state.selected],outputType:'knowledge_answer'})};
- const [sourceList,scopeLibraries]=await Promise.all([sourceItems(),libraries()]);if(!active())return;
- let sources=sourceList;
- if(createMaterials?.length)sources=sources.filter(source=>createMaterials.includes(source.id));
+ exploreState ||= freshExplore();const local=exploreState;
+ // Search scope is independent of the currently opened Library page. Never
+ // interpret an empty *selected* scope as permission to search everything.
+ const [sourceData,scopeLibraries]=await Promise.all([api('/sources'),libraries()]);if(!active())return;
+ const allSources=sourceData.items;
+ const libraryIds=new Set(scopeLibraries.map(library=>library.id));
+ if(!['all','libraries','materials'].includes(local.scopeMode)){
+  if(createMaterials?.length){local.scopeMode='materials';local.materialIds=[...createMaterials];}
+  else if(state.library&&libraryIds.has(state.library)){local.scopeMode='libraries';local.libraryIds=[state.library];}
+  else local.scopeMode='all';
+ }
+ local.libraryIds=[...new Set(local.libraryIds||[])].filter(id=>libraryIds.has(id));
+ local.materialIds=[...new Set(local.materialIds||[])].filter(id=>allSources.some(source=>source.id===id));
+ if(local.scopeMode==='materials'&&!local.materialIds.length){local.scopeMode='libraries';local.libraryIds=[];}
+ if(local.scopeMode==='materials'&&!local.libraryIds.length)local.libraryIds=[...new Set(allSources.filter(source=>local.materialIds.includes(source.id)).map(source=>source.library_id))];
+ const scopeSources=()=>local.scopeMode==='all'?allSources:local.scopeMode==='materials'?allSources.filter(source=>local.materialIds.includes(source.id)):allSources.filter(source=>local.libraryIds.includes(source.library_id));
+ let sources=scopeSources();
  if(!sources.some(source=>source.id===state.source))state.source=null;
- const broadScope=createMaterials?.length?sources.map(source=>source.title).join(', '):state.library?scopeLibraries.find(l=>l.id===state.library)?.name||'Current library':'Across your library';
- const [l,s]=select('Search scope',[['',broadScope],...sources.map(source=>[source.id,source.title])],state.source||'');
+ const [l,s]=select('Material (optional)',[['','All materials in the selected scope'],...sources.map(source=>[source.id,source.title])],state.source||'');
  s.id='ke-source-scope';
+ const selectedSourceIds=()=>s.value?[s.value]:sources.map(source=>source.id);
+ const scopeLabel=()=>s.value?sources.find(source=>source.id===s.value)?.title||'selected material':local.scopeMode==='all'?'all libraries':local.scopeMode==='materials'?`${sources.length} selected materials`:local.libraryIds.map(id=>scopeLibraries.find(library=>library.id===id)?.name).filter(Boolean).join(' · ')||'no libraries selected';
+ main.exploreContext={state:local,sourceIds:selectedSourceIds,sourceInfo:()=>sources.map(({id,title,author})=>({id,title,author})),scopeLabel,handoff:(request,sourceIds)=>openCreate({request,materials:sourceIds,library:null,selectedIds:[...state.selected],outputType:'knowledge_answer'})};
+ const scopePicker=detail('Search within · '+scopeLabel());scopePicker.id='ke-library-scope';scopePicker.className='explore-library-scope';
+ const [allLabel,allRadio]=field('All libraries','ke-library-mode');allRadio.type='radio';allRadio.name='ke-library-mode';allRadio.value='all';
+ const [selectedLabel,selectedRadio]=field('Selected libraries','ke-library-mode');selectedRadio.type='radio';selectedRadio.name='ke-library-mode';selectedRadio.value='libraries';
+ allRadio.checked=local.scopeMode==='all';selectedRadio.checked=local.scopeMode!=='all';
+ const choices=el('div',undefined,'explore-library-choices');
+ const inputs=scopeLibraries.map(library=>{const [label,input]=field(library.name,'library-'+library.id);input.type='checkbox';input.value=library.id;input.checked=local.libraryIds.includes(library.id);label.className='check';choices.append(label);return input;});
+ const selectedNote=el('p',local.scopeMode==='materials'?'This view is limited to specific materials. Changing libraries will replace that selection.':'','muted');
+ const scopeStatus=el('p',undefined,'muted');
+ scopePicker.append(allLabel,selectedLabel,choices,selectedNote,scopeStatus);
+ function updateScopeDisplay(){
+  sources=scopeSources();
+  if(!sources.some(source=>source.id===s.value)){s.value='';state.source=null;}
+  const current=state.source&&sources.some(source=>source.id===state.source)?state.source:'';
+  s.replaceChildren(new Option('All materials in the selected scope',''),...sources.map(source=>new Option(source.title,source.id)));
+  s.value=current;
+  scopePicker.children[0].textContent='Search within · '+scopeLabel();
+  scopeStatus.textContent=`${sources.length} ${sources.length===1?'material':'materials'} in scope${local.scopeMode==='libraries'&&!local.libraryIds.length?' · Choose at least one library':''}`;
+  choices.hidden=local.scopeMode==='all';
+  selectedNote.hidden=local.scopeMode!=='materials';
+  allRadio.checked=local.scopeMode==='all';selectedRadio.checked=local.scopeMode!=='all';
+ }
+ function resetScopeResults(){
+  main.querySelector('#create-handoff')?.remove();state.selected.clear();updateSelection();controller.invalidate();browseRevision++;loaded=false;loading=false;items=[];visible=PAGE_SIZE;inventory.replaceChildren();more.hidden=true;browseStatus.textContent='';browse.open=false;type.replaceChildren(new Option('All types',''));chapter.replaceChildren(new Option('All chapters / sections',''));local.results=null;local.answer=null;local.browseOpen=false;local.type='';local.section='';local.visible=PAGE_SIZE;
+  document.dispatchEvent(new Event('ke-scope-change'));main.exploreContext?.refreshAskLabel?.();
+ }
+ function applyLibraryScope(mode){
+  local.scopeMode=mode;local.libraryIds=inputs.filter(input=>input.checked).map(input=>input.value);local.materialIds=[];
+  createMaterials=[];state.library=null;state.source=null;
+  updateScopeDisplay();resetScopeResults();replaceScope('knowledge');
+ }
+ allRadio.onchange=()=>{if(allRadio.checked)applyLibraryScope('all');};
+ selectedRadio.onchange=()=>{if(selectedRadio.checked)applyLibraryScope('libraries');};
+ for(const input of inputs)input.onchange=()=>{
+  if(input.checked&&!selectedRadio.checked)selectedRadio.checked=true;
+  applyLibraryScope('libraries');
+ };
+ updateScopeDisplay();
  const [ql,qi]=field('What are you looking for or wondering about?','q','textarea',local.query);
  qi.placeholder='e.g. One-on-one facilitation approach';
- const search=form(async()=>{if(qi.value.trim().length<2){controller.invalidate();message('Enter at least two characters to search.');return;}browse.open=false;await controller.search(qi.value.trim(),s.value);});
- search.id='ke-search-form';qi.id='explore-request';qi.rows=3;const captureActions=actions(submit('Find matching ideas'));captureActions.id='explore-actions';search.append(l,ql,captureActions);main.append(search);
+ const search=form(async()=>{if(qi.value.trim().length<2){controller.invalidate();message('Enter at least two characters to search.');return;}if(!selectedSourceIds().length){controller.invalidate();message('Select at least one library with material before searching.');return;}browse.open=false;await controller.search(qi.value.trim(),s.value);});
+ search.id='ke-search-form';qi.id='explore-request';qi.rows=3;const captureActions=actions(submit('Find matching ideas'));captureActions.id='explore-actions';search.append(scopePicker,l,ql,captureActions);main.append(search);
  const searchPanel=el('section');searchPanel.hidden=true;searchPanel.id='ke-search-results';searchPanel.setAttribute('aria-live','polite');
  const searchHeading=query=>query.trim().length>64||query.includes('\n')?'Related ideas':`Search results for “${query}”`;
  const selectedCount=el('p',undefined,'muted');
- const handoffButton=button('',()=>explorePicker?navigate('workshop',{selectedIds:[...state.selected]}):openCreate({request:local.query,library:state.library,materials:s.value?[s.value]:createMaterials||[],selectedIds:[...state.selected]}),'primary');
+ const handoffButton=button('',()=>{const ids=selectedSourceIds();if(!ids.length){message('Select at least one library with material before continuing.');return;}return explorePicker?navigate('workshop',{library:null,materials:ids,selectedIds:[...state.selected]}):openCreate({request:local.query,library:null,materials:ids,selectedIds:[...state.selected]});},'primary');
  const updateSelection=()=>{selectedCount.textContent=`${state.selected.size} ideas selected for Create`;handoffButton.textContent=state.selected.size?'Use selected ideas in Create':'Use this scope in Create';};updateSelection();
  main.append(searchPanel,actions(handoffButton,selectedCount));
  const browse=detail('Browse useful ideas');browse.id='ke-browse';
@@ -482,7 +534,23 @@ async function knowledgeView(){const active=beginView();
  function cards(target,groups){target.replaceChildren();for(const g of groups){const a=g.canonical_asset,c=card(a.title,a.what_it_says);c.append(el('span',`${a.asset_type.replaceAll('_',' ')} · ${g.support_count} supporting references`,'badge'));
  const [label,check]=field('Use in Create',a.id);check.type='checkbox';check.checked=state.selected.has(a.id);label.className='check';check.onchange=()=>{main.querySelector('#create-handoff')?.remove();if(check.checked)state.selected.add(a.id);else state.selected.delete(a.id);updateSelection();for(const other of main.querySelectorAll('input[type=checkbox]'))if(other.name===a.id)other.checked=check.checked;};c.append(label);
  c.append(detail('Source & evidence',...(g.evidence_trail||[]).map(e=>el('p',`${sources.find(source=>source.id===e.source_id)?.title||'Material'}${e.chapter_or_section?' · '+e.chapter_or_section:''}\n${e.evidence}`,'evidence'))));c.append(button('Ask about this idea',()=>main.exploreContext.configureIdea?.(a.title)));target.append(c);}}
- const controller=createSearchController(async(query,scope)=>{const q=new URLSearchParams({q:query,consolidated:'true',limit:'50'});if(state.library)q.set('library_id',state.library);const scoped=scope?[scope]:createMaterials?.length?sources.map(source=>source.id):[null];const batches=await Promise.all(scoped.map(id=>{const params=new URLSearchParams(q);if(id)params.set('source_id',id);return api('/knowledge-assets/search?'+params);}));return [...new Map(batches.flatMap(batch=>batch.items).map(group=>[group.canonical_asset.id,group])).values()].slice(0,50);},(groups,status,query)=>{
+ const controller=createSearchController(async(query,scope)=>{
+  // Existing API accepts one library or source per request. In selected-library
+  // mode query only the chosen libraries, never the unrestricted endpoint.
+  const q=new URLSearchParams({q:query,consolidated:'true',limit:'50'});
+  const scopes=scope?[{source_id:scope,library_id:allSources.find(source=>source.id===scope)?.library_id}]:local.scopeMode==='all'?[{}]:local.scopeMode==='materials'?sources.map(source=>({source_id:source.id,library_id:source.library_id})):local.libraryIds.map(library_id=>({library_id}));
+  if(!scopes.length)return [];
+  const batches=await Promise.all(scopes.map(filters=>{const params=new URLSearchParams(q);for(const [key,value] of Object.entries(filters))if(value)params.set(key,value);return api('/knowledge-assets/search?'+params);}));
+  // The existing API supplies comparable relevance scores for the same
+  // query. Merge locally without widening the selected library scope.
+  // This does not claim exhaustive global ranking beyond the result caps.
+  const ranked=batches.flatMap((batch,scopeIndex)=>(batch.items||[]).map((group,index)=>({group,scopeIndex,index})));
+  ranked.sort((a,b)=>(b.group.relevance_score||0)-(a.group.relevance_score||0)||
+   (b.group.support_count||0)-(a.group.support_count||0)||a.scopeIndex-b.scopeIndex||a.index-b.index);
+  const merged=[],seen=new Set();
+  for(const {group} of ranked){const id=group.canonical_asset?.id;if(!id||seen.has(id))continue;seen.add(id);merged.push(group);if(merged.length===50)break;}
+  return merged;
+ },(groups,status,query)=>{
  if(!active())return;if(status==='results')local.results={groups,query};searchPanel.hidden=status==='idle';searchPanel.replaceChildren();if(status==='idle')return;
  searchPanel.append(el('h2',status==='loading'?'Searching…':status==='error'?'Search could not be completed':searchHeading(query)));
  if(status==='results'){searchPanel.append(el('p',groups.length?`${groups.length} matches (up to 50). Narrow the query for more specific results.`:'No matching ideas. Try different terms or browse useful ideas.','muted'));const grid=el('div',undefined,'grid');cards(grid,groups);searchPanel.append(grid);}});
@@ -493,7 +561,7 @@ async function knowledgeView(){const active=beginView();
  browse.ontoggle=()=>{if(browse.open)return run(loadBrowse);};
  type.onchange=chapter.onchange=()=>{visible=PAGE_SIZE;renderBrowse();};
  qi.oninput=()=>{main.querySelector('#create-handoff')?.remove();local.query=qi.value;local.results=null;controller.invalidate();browse.open=false;};
- s.onchange=()=>{main.querySelector('#create-handoff')?.remove();state.source=s.value||null;state.selected.clear();updateSelection();controller.invalidate();browseRevision++;loaded=false;loading=false;items=[];visible=PAGE_SIZE;inventory.replaceChildren();more.hidden=true;browseStatus.textContent='';browse.open=false;type.replaceChildren(new Option('All types',''));chapter.replaceChildren(new Option('All chapters / sections',''));local.results=null;local.answer=null;local.browseOpen=false;local.type='';local.section='';local.visible=PAGE_SIZE;replaceScope('knowledge');document.dispatchEvent(new Event('ke-scope-change'));};
+ s.onchange=()=>{state.source=s.value||null;resetScopeResults();replaceScope('knowledge');};
  main.captureExplore=()=>{local.query=qi.value;local.type=type.value;local.section=chapter.value;local.visible=visible;local.browseOpen=browse.open;local.selectedIds=[...state.selected];};
  // Restore deterministic search/filter state, without repeating any AI action.
  if(local.results){const grid=el('div',undefined,'grid');searchPanel.hidden=false;searchPanel.append(el('h2',searchHeading(local.results.query)),grid);cards(grid,local.results.groups);}
@@ -777,7 +845,7 @@ if (logoutButton && csrfToken()) {
  captureDraft();
  if(route.newDraft){interactionDraft=route.newDraft;delete route.newDraft;}
  const previousLibrary=state.library;state.view=route.view;state.library=route.library||null;
- if(route.view==='knowledge'){exploreState=route.exploreState||freshExplore();route.exploreState=exploreState;explorePicker=!!route.picker;}
+ if(route.view==='knowledge'){exploreState=route.exploreState||freshExplore();if(!route.exploreState&&route.scopeMode){exploreState.scopeMode=route.scopeMode;exploreState.libraryIds=route.scopeLibraryIds||[];}route.exploreState=exploreState;explorePicker=!!route.picker;}
  if(['workshop','knowledge'].includes(route.view)){const materials=route.materials||[];if(previousLibrary!==state.library||JSON.stringify(materials)!==JSON.stringify(createMaterials||[]))state.selected.clear();createMaterials=materials;state.source=route.source||(materials.length===1?materials[0]:null);if(route.view==='knowledge'&&exploreState.selectedIds)state.selected=new Set(exploreState.selectedIds);else if(route.selectedIds)state.selected=new Set(route.selectedIds);}
  const parent={knowledge:'library',material:'library',work:'outputs'}[route.view]||route.view;
  for(const b of document.querySelectorAll('nav button')){if(b.dataset.view===parent)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}

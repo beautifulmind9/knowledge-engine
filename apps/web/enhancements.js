@@ -264,7 +264,7 @@ async function generateKnowledgeAnswer(question, trigger) {
 
   const sourceIds = selectedKnowledgeSourceIds();
   if (!sourceIds.length) {
-    showKnowledgeScopePrompt("No materials in scope", "Add a prepared material before asking. No AI request was made.", "#ke-source-scope");
+    showKnowledgeScopePrompt("No materials in scope", "Select at least one library with prepared material before asking. No AI request was made.", "#ke-library-scope");
     return;
   }
   const scopedQuestion = scopedKnowledgeQuestion(scopeQuestion(question, !!document.querySelector('#ke-source-scope')?.value));
@@ -347,7 +347,7 @@ function decorateKnowledgeView() {
   document.querySelector('#explore-actions').append(askButton);
   const sourceScope=document.querySelector('#ke-source-scope');
   const updateAskLabel=()=>{askButton.textContent=sourceScope?.value?'Ask this material':'Ask across sources';};
-  sourceScope?.addEventListener('change',updateAskLabel);updateAskLabel();
+  sourceScope?.addEventListener('change',updateAskLabel);main.exploreContext.refreshAskLabel=updateAskLabel;updateAskLabel();
   const actionNote=makeElement('p','Asking uses AI. Find matching ideas searches prepared knowledge locally.','muted');
   actionNote.className='explore-action-note';
   document.querySelector('#explore-actions').after(actionNote);

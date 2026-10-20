@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {PAGE_SIZE, filterUnits, filterSearchResults, scopeQuestion, createSearchController} from '../knowledge-browser.js';
+import {routeHash, parseRoute} from '../navigation.js';
 
 test('scope wording follows single or multiple sources',()=>{
  assert.equal(scopeQuestion('What does this source teach?',false),'What do these sources teach?');
@@ -61,15 +62,15 @@ class Element {
 }
 function descendants(node){return [node,...node.children.flatMap(descendants)];}
 const groups=Array.from({length:25},(_,i)=>({canonical_asset:{id:`a${i}`,title:`Unit ${i}`,what_it_says:'Synthetic evidence',asset_type:i<12?'concept':'principle',chapter_or_section:i<12?'Chapter 1':'Chapter 2'},support_count:1,evidence_trail:[{source_id:'s1',chunk_id:`c${i}`,evidence:'Synthetic evidence'}]}));
-async function viewFixture(){
- const main=new Element('main'),requests=[];
+async function viewFixture({library='lib1', libs=[{id:'lib1',name:'Reading'}], sources=[{id:'s1',title:'First source',library_id:'lib1'}], materials=[]}={}){
+ const main=new Element('main'),requests=[],notices=[],handoffs=[],events=[];
  const el=(tag,text)=>new Element(tag,text);
- const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:null,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
- main,state:{source:null,library:'lib1',selected:new Set()},el,
- heading(){},libraries:async()=>[{id:'lib1',name:'Reading'}],sourceItems:async()=>[{id:'s1',title:'First source'}],message(){},navigate(){},
- document:{dispatchEvent(){}},
+ const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:materials,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
+ main,state:{source:null,library,selected:new Set()},el,
+ heading(){},libraries:async()=>libs,sourceItems:async()=>sources,message:m=>notices.push(m),navigate(){},openCreate:scope=>handoffs.push(scope),
+ document:{dispatchEvent:e=>events.push(e.type)},
  run:async fn=>fn(),
- api:async path=>{requests.push(path);return {items:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
+ api:async path=>{requests.push(path);return {items:path==='/sources'?sources:path.startsWith('/knowledge-assets/search')?[{canonical_asset:{id:'search',title:'One-on-one facilitation approach',what_it_says:'Facilitation approach',asset_type:'principle'},support_count:1,evidence_trail:[]}]:groups};},
  field:(label,name)=>{const l=el('label',label),input=el('input');input.name=name;l.append(input);return [l,input];},
  select:(label,options,current='')=>{const l=el('label',label),s=el('select');s.value=current;s.children=options.map(([value,text])=>Object.assign(el('option',text),{value}));l.append(s);return [l,s];},
  form:fn=>Object.assign(el('form'),{submit:fn}),submit:text=>el('button',text),
@@ -81,10 +82,10 @@ async function viewFixture(){
  };
  const source=readFileSync(new URL('../app.js',import.meta.url),'utf8');
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('async function knowledgeView()'),source.indexOf('async function workshopView()')),ctx);
- await ctx.knowledgeView();return {main,requests,ctx,nodes:()=>descendants(main)};
+ await ctx.knowledgeView();return {main,requests,notices,handoffs,events,ctx,nodes:()=>descendants(main)};
 }
 test('browse loads on demand, pages by ten, filters, preserves evidence and selection',async()=>{
- const f=await viewFixture();assert.equal(f.requests.length,0);
+ const f=await viewFixture();assert.deepEqual(f.requests,['/sources']);
  const browse=f.nodes().find(n=>n.id==='ke-browse');browse.open=true;await browse.ontoggle();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,10);
  assert.equal(f.nodes().filter(n=>n.textContent==='Source & evidence').length,10);
@@ -92,7 +93,7 @@ test('browse loads on demand, pages by ten, filters, preserves evidence and sele
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,20);
  const type=f.nodes().find(n=>n.textContent==='Idea type').children[0];type.value='principle';type.onchange();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,10);
- const checkbox=f.nodes().find(n=>n.type==='checkbox');checkbox.checked=true;checkbox.onchange();assert.ok(f.ctx.state.selected.has(checkbox.name));
+ const checkbox=f.nodes().find(n=>n.type==='checkbox'&&n.name?.startsWith('a'));checkbox.checked=true;checkbox.onchange();assert.ok(f.ctx.state.selected.has(checkbox.name));
  const chapter=f.nodes().find(n=>n.textContent==='Chapter / section').children[0];chapter.value='Chapter 1';chapter.onchange();
  assert.equal(f.nodes().filter(n=>n.tag==='h3').length,0);
 });
@@ -123,7 +124,7 @@ test('chapter and example questions require their relevant context',()=>{
 test('late grounded answer cannot render after scope changes',async()=>{
  const text=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
  let resolve;const rendered=[],requests=[];
- const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],beginProcessingStatus:()=>1,endProcessingStatus:()=>{},
+ const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['s1','s2'],beginProcessingStatus:()=>1,endProcessingStatus:()=>{},announceProcessingStatus:()=>{},
  document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,
  detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){},setAttribute(){},removeAttribute(){}}),makeElement:()=>({}),
  apiFetch:(url,options)=>{requests.push(JSON.parse(options.body));return new Promise(r=>{resolve=r;});},
@@ -133,4 +134,85 @@ test('late grounded answer cannot render after scope changes',async()=>{
  assert.equal(requests[0].situation,'What do these sources teach?');assert.equal(requests[0].save,false);
  ctx.answerRevision++;resolve({ok:true,json:async()=>({output:{content:'Old scope'}})});await pending;
  assert.equal(rendered.length,0);
+});
+
+
+const multiLibraries=[{id:'lib1',name:'Storytelling'},{id:'lib2',name:'Marketing'},{id:'lib3',name:'Unrelated'}];
+const multiSources=[{id:'s1',title:'Story 1',library_id:'lib1'},{id:'s2',title:'Marketing 1',library_id:'lib2'},{id:'s3',title:'Other 1',library_id:'lib3'}];
+function checkboxByValue(f,id){return f.nodes().find(n=>n.tag==='input'&&n.type==='checkbox'&&n.value===id);}
+function searchURLs(f){return f.requests.filter(path=>path.startsWith('/knowledge-assets/search')).map(path=>new URL(path,'http://local'));}
+test('selected subset scopes Find, Browse and Create exactly to the chosen libraries',async()=>{
+ const f=await viewFixture({library:null,libs:multiLibraries,sources:multiSources});
+ const lib1=checkboxByValue(f,'lib1'),lib3=checkboxByValue(f,'lib3');
+ lib1.checked=true;lib1.onchange();lib3.checked=true;lib3.onchange();
+ assert.deepEqual([...f.main.exploreContext.sourceIds()].sort(),['s1','s3']);
+ const selector=f.nodes().find(n=>n.id==='ke-source-scope');
+ assert.deepEqual(selector.children.map(option=>option.value),['','s1','s3']);
+ const request=f.nodes().find(n=>n.name==='q');request.value='One-on-one facilitation approach';
+ await f.nodes().find(n=>n.id==='ke-search-form').submit();
+ assert.deepEqual(searchURLs(f).map(url=>url.searchParams.get('library_id')),['lib1','lib3']);
+ assert.ok(searchURLs(f).every(url=>!url.searchParams.has('source_id')));
+ const browse=f.nodes().find(n=>n.id==='ke-browse');browse.open=true;await browse.ontoggle();
+ assert.ok(f.requests.includes('/sources/s1/knowledge-units'));
+ assert.ok(f.requests.includes('/sources/s3/knowledge-units'));
+ assert.ok(!f.requests.includes('/sources/s2/knowledge-units'));
+ const handoff=f.nodes().find(n=>n.textContent==='Use this scope in Create');await handoff.click();
+ assert.deepEqual(f.handoffs.at(-1).materials,['s1','s3']);
+ assert.equal(f.handoffs.at(-1).library,null);
+ assert.ok(f.events.includes('ke-scope-change'));
+});
+
+test('selected no-library state fails closed for search and Create, and all restores unrestricted search',async()=>{
+ const f=await viewFixture({library:null,libs:multiLibraries,sources:multiSources});
+ const chosen=f.nodes().find(n=>n.value==='libraries'&&n.type==='radio');chosen.checked=true;chosen.onchange();
+ assert.equal(f.main.exploreContext.sourceIds().length,0);
+ const request=f.nodes().find(n=>n.name==='q');request.value='One-on-one facilitation approach';
+ await f.nodes().find(n=>n.id==='ke-search-form').submit();
+ assert.equal(searchURLs(f).length,0);
+ await f.nodes().find(n=>n.textContent==='Use this scope in Create').click();
+ assert.equal(f.handoffs.length,0);
+ assert.ok(f.notices.some(x=>x.includes('Select at least one library')));
+ const all=f.nodes().find(n=>n.value==='all'&&n.type==='radio');all.checked=true;all.onchange();
+ assert.deepEqual(f.main.exploreContext.sourceIds(),['s1','s2','s3']);
+ await f.nodes().find(n=>n.id==='ke-search-form').submit();
+ assert.equal(searchURLs(f).length,1);
+ assert.ok(!searchURLs(f)[0].searchParams.has('library_id'));
+});
+
+test('a single selected library works and selected material scopes do not widen silently',async()=>{
+ const f=await viewFixture({library:'lib2',libs:multiLibraries,sources:multiSources});
+ assert.deepEqual(f.main.exploreContext.sourceIds(),['s2']);
+ const m=await viewFixture({library:'lib1',libs:multiLibraries,sources:multiSources,materials:['s1']});
+ assert.deepEqual(m.main.exploreContext.sourceIds(),['s1']);
+ const request=m.nodes().find(n=>n.name==='q');request.value='One-on-one facilitation approach';
+ await m.nodes().find(n=>n.id==='ke-search-form').submit();
+ assert.equal(searchURLs(m)[0].searchParams.get('source_id'),'s1');
+ assert.equal(searchURLs(m)[0].searchParams.get('library_id'),'lib1');
+});
+
+test('library scope survives refresh via route hash without converting selected to all',()=>{
+ const route={view:'knowledge',library:null,materials:[],source:null,exploreState:{scopeMode:'libraries',libraryIds:['lib1','lib3']}};
+ const hash=routeHash(route),parsed=parseRoute(hash);
+ assert.deepEqual(parsed.scopeLibraryIds,['lib1','lib3']);
+ assert.equal(parsed.scopeMode,'libraries');
+ assert.equal(parsed.library,null);
+ assert.equal(parseRoute(routeHash({view:'knowledge',exploreState:{scopeMode:'libraries',libraryIds:[]}})).scopeMode,'libraries');
+});
+
+test('Ask payload uses exact selected sources and no library-wide fallback',async()=>{
+ const f=await viewFixture({library:null,libs:multiLibraries,sources:multiSources});
+ for(const id of ['lib1','lib3']){const input=checkboxByValue(f,id);input.checked=true;input.onchange();}
+ const src=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
+ const requests=[],rendered=[];
+ const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>f.main.exploreContext.sourceIds(),beginProcessingStatus:()=>1,endProcessingStatus:()=>{},announceProcessingStatus:()=>{},showKnowledgeScopePrompt:()=>{},
+ document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){},setAttribute(){},removeAttribute(){}}),makeElement:()=>({}),
+ apiFetch:async(_url,options)=>{requests.push(JSON.parse(options.body));return {ok:true,json:async()=>({output:{title:'Grounded answer'}})};},renderKnowledgeAnswer:(...args)=>rendered.push(args)};
+ vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('async function generateKnowledgeAnswer('),src.indexOf('function decorateKnowledgeView(')),ctx);
+ await ctx.generateKnowledgeAnswer('What does this source teach?');
+ assert.deepEqual([...requests[0].source_ids],['s1','s3']);
+ assert.equal(requests[0].library_id,null);assert.equal(requests[0].save,false);
+ assert.equal(rendered.length,1);
+ for(const id of ['lib1','lib3']){const input=checkboxByValue(f,id);input.checked=false;input.onchange();}
+ await ctx.generateKnowledgeAnswer('What does this source teach?');
+ assert.equal(requests.length,1);
 });

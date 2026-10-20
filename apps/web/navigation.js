@@ -12,6 +12,10 @@ export function routeHash(route) {
   if (['workshop', 'knowledge'].includes(route.view)) {
     for (const id of route.materials || []) query.append('material', id);
     if (route.view === 'knowledge' && route.source) query.set('source', route.source);
+    if (route.view === 'knowledge' && route.exploreState?.scopeMode) {
+      query.set('scope_mode', route.exploreState.scopeMode);
+      for (const id of route.exploreState.libraryIds || []) query.append('scope_library', id);
+    }
   }
   return '#/' + path + (query.size ? '?' + query : '');
 }
@@ -24,7 +28,7 @@ export function parseRoute(hash = '') {
     if (path.startsWith('my-work/') && path.slice(8)) { view = 'work'; id = decodeURIComponent(path.slice(8)); }
     if (path.startsWith('internal/material/') && path.slice(18)) { view = 'developerMaterial'; id = decodeURIComponent(path.slice(18)); }
     if (!view) return {view:'home'};
-    return {view, id, picker:path === 'create/ideas' || query.get('picker') === '1', library:query.get('library'), add:query.get('add') === '1', materials:[...new Set(query.getAll('material'))], source:query.get('source')};
+    return {view, id, picker:path === 'create/ideas' || query.get('picker') === '1', library:query.get('library'), add:query.get('add') === '1', materials:[...new Set(query.getAll('material'))], source:query.get('source'), scopeMode:query.get('scope_mode'), scopeLibraryIds:[...new Set(query.getAll('scope_library'))]};
   } catch { return {view:'home'}; }
 }
 export function createNavigation(browser, render) {

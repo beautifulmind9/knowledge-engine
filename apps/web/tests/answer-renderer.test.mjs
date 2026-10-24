@@ -84,6 +84,26 @@ test('unresolvable identifiers use neutral evidence language instead of exposing
   assert.ok(!/deadbeef|asset_abcdef12|chunk-private-7|chunk_id/.test(answer.textContent));
 });
 
+test('unknown longer source IDs cannot borrow a selected source prefix or evidence', () => {
+  const index = createAnswerEvidenceIndex(snapshot, sourceInfo);
+  const unknown = index.source('source_3c7cb4e7_foreign');
+  assert.equal(unknown.label, 'Source & evidence');
+  assert.deepEqual(unknown.evidence, []);
+  const answer = renderGroundedAnswer('Claim (Source: source_3c7cb4e7_foreign).', {document,snapshot,sourceInfo});
+  assert.ok(!answer.textContent.includes('Marketing Made Simple'));
+  assert.ok(!answer.textContent.includes('Make the message clear'));
+  assert.ok(answer.textContent.includes('cannot be verified'));
+});
+
+test('member evidence outside the provided material scope is not displayed as support', () => {
+  const units=[{canonical_asset:{id:'asset_a',source_id:'source_a',title:'A selected idea'},
+    asset_ids:['asset_a'],source_ids:['source_a'],evidence_trail:[
+      {asset_id:'asset_a',source_id:'source_b',evidence:'Unselected synthetic quotation'}]}];
+  const index=createAnswerEvidenceIndex(units,[{id:'source_a',title:'Selected material'}]);
+  assert.deepEqual(index.asset('asset_a').evidence,[]);
+  assert.notEqual(index.asset('asset_a').label,'Selected material');
+});
+
 test('model-provided HTML is rendered as text and never creates executable elements', () => {
   const answer = renderGroundedAnswer('<img src=x onerror=alert(1)> <script>run()</script>', {document});
   const nodes = descendants(answer);

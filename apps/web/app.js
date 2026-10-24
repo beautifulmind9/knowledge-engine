@@ -6,7 +6,7 @@ import {renderGroundedAnswer, observeAnswerTableOverflow} from './answer-rendere
 import {api, apiFetch, csrfToken} from './api.js';
 import {createNavigation} from './navigation.js';
 import {newInteractionDraft, captureRequest, correctDraft, interpretDraft, draftNeedsInterpretation, workshopRequest, evidenceIdentity, confirmDraft, preparedGenerationRequest} from './interaction-draft.js';
-import { PAGE_SIZE, filterUnits, createSearchController } from './knowledge-browser.js';
+import { PAGE_SIZE, filterUnits, createSearchController, ideaEvidenceSummary } from './knowledge-browser.js';
 import {beginProcessingStatus,updateProcessingStatus,endProcessingStatus,getProcessingStatus,subscribeProcessingStatus,renderProcessingStatus,attachProcessingAnnouncer,announceProcessingStatus} from './processing-status.js';
 const main=document.querySelector('main'), feedback=document.querySelector('#feedback');
 const processingRegion=document.querySelector('#processing-status');
@@ -621,7 +621,8 @@ async function knowledgeView(){const active=beginView();
  const updateSelection=()=>{selectedCount.textContent=`${state.selected.size} ideas selected for Create`;handoffButton.textContent=state.selected.size?'Use selected ideas in Create':'Use this scope in Create';};updateSelection();
  main.append(searchPanel,actions(handoffButton,selectedCount));
  const browse=detail('Browse useful ideas');browse.id='ke-browse';
- browse.append(el('p','Explore ideas from the materials above.','muted'));
+ const evidenceNote='References may overlap. Material counts identify saved sources, not independent studies or evidence strength. Inspect the evidence for applicability and limitations.';
+ browse.append(el('p','Explore ideas from the materials above.','muted'),el('p',evidenceNote,'muted'));
  const filters=el('div',undefined,'form-grid');
  const [tl,type]=select('Idea type',[['','All types']]);
  const [cl,chapter]=select('Chapter / section',[['','All chapters / sections']]);filters.append(tl,cl);
@@ -633,9 +634,14 @@ async function knowledgeView(){const active=beginView();
  const more=button('Show more',()=>{visible+=PAGE_SIZE;renderBrowse();});
  const retryBrowse=button('Retry unavailable materials',()=>loadBrowse());retryBrowse.hidden=true;
  browse.append(filters,browseStatus,inventory,more,retryBrowse);main.append(browse);more.hidden=true;
- function cards(target,groups){target.replaceChildren();for(const g of groups){const a=g.canonical_asset,c=card(a.title,a.what_it_says);c.append(el('span',`${a.asset_type.replaceAll('_',' ')} · ${g.support_count} supporting references`,'badge'));
+ function cards(target,groups){target.replaceChildren();for(const g of groups){const a=g.canonical_asset,c=card(a.title,a.what_it_says);c.append(el('span',`${a.asset_type.replaceAll('_',' ')} · ${ideaEvidenceSummary(g)}`,'badge'));
+ if(g.matched_terms?.length)c.append(el('p','Word matches: '+g.matched_terms.join(', '),'idea-word-matches'));
  const [label,check]=field('Use in Create',a.id);check.type='checkbox';check.checked=state.selected.has(a.id);label.className='check';check.onchange=()=>{main.querySelector('#create-handoff')?.remove();if(check.checked)state.selected.add(a.id);else state.selected.delete(a.id);updateSelection();for(const other of main.querySelectorAll('input[type=checkbox]'))if(other.name===a.id)other.checked=check.checked;};c.append(label);
- c.append(detail('Source & evidence',...(g.evidence_trail||[]).map(e=>el('p',`${sources.find(source=>source.id===e.source_id)?.title||'Material'}${e.chapter_or_section?' · '+e.chapter_or_section:''}\n${e.evidence}`,'evidence'))));c.append(button('Ask about this idea',()=>main.exploreContext.configureIdea?.(a.title)));target.append(c);}}
+ const evidence=detail('Source & evidence');
+ if(g.support_count>1)evidence.append(el('p','Related findings are consolidated here. Each reference keeps its own source; grouping does not establish equivalent findings or independent support.','muted'));
+ for(const e of g.evidence_trail||[])evidence.append(el('p',`${sources.find(source=>source.id===e.source_id)?.title||'Material'}${e.chapter_or_section?' · '+e.chapter_or_section:''}${e.title&&e.title!==a.title?' · '+e.title:''}\n${e.evidence||'Evidence text unavailable.'}`,'evidence'));
+ if(!g.evidence_trail?.length)evidence.append(el('p','Evidence is not available in this preview.','muted'));
+ c.append(evidence);c.append(button('Ask about this idea',()=>main.exploreContext.configureIdea?.(a.title)));target.append(c);}}
  const controller=createSearchController(async(query,scope)=>{
   // Existing API accepts one library or source per request. In selected-library
   // mode query only the chosen libraries, never the unrestricted endpoint.
@@ -653,9 +659,16 @@ async function knowledgeView(){const active=beginView();
   for(const {group} of ranked){const id=group.canonical_asset?.id;if(!id||seen.has(id))continue;seen.add(id);merged.push(group);if(merged.length===50)break;}
   return merged;
  },(groups,status,query)=>{
- if(!active())return;if(status==='results')local.results={groups,query};searchPanel.hidden=status==='idle';searchPanel.replaceChildren();if(status==='idle')return;
+ if(!active())return;if(status==='results'){local.results={groups,query};local.searchVisible=PAGE_SIZE;}searchPanel.hidden=status==='idle';searchPanel.replaceChildren();if(status==='idle')return;
  searchPanel.append(el('h2',status==='loading'?'Searching…':status==='error'?'Search could not be completed':searchHeading(query)));
- if(status==='results'){searchPanel.append(el('p',groups.length?`${groups.length} matches (up to 50). Narrow the query for more specific results.`:'No matching ideas. Try different terms or browse useful ideas.','muted'));const grid=el('div',undefined,'grid');cards(grid,groups);searchPanel.append(grid);}});
+ if(status==='results')renderSearchResults(groups);});
+ function renderSearchResults(groups){
+  let visible=local.searchVisible||PAGE_SIZE;
+  const status=el('p',undefined,'muted'),grid=el('div',undefined,'grid');
+  const more=button('Show more matching ideas',()=>{visible+=PAGE_SIZE;render();});
+  function render(){local.searchVisible=visible;cards(grid,groups.slice(0,visible));status.textContent=groups.length?`Showing ${Math.min(visible,groups.length)} of ${groups.length} word-matched ideas (up to 50). Ordered by matches to your request; applicability needs evidence review.`:'No matching ideas. Try different terms or browse useful ideas.';more.hidden=visible>=groups.length;}
+  searchPanel.append(status,el('p',evidenceNote,'muted'),grid,more);render();
+ }
  function renderBrowse(){const filtered=filterUnits(items,type.value,chapter.value);cards(inventory,filtered.slice(0,visible));browseStatus.textContent=`Browsing ${Math.min(visible,filtered.length)} of ${filtered.length} ideas`;more.hidden=visible>=filtered.length;}
  function updateBrowseFilters(){
   const types=[...new Set(items.map(g=>g.canonical_asset.asset_type))].sort();
@@ -712,7 +725,7 @@ async function knowledgeView(){const active=beginView();
  s.onchange=()=>{state.source=s.value||null;resetScopeResults();replaceScope('knowledge');};
  main.captureExplore=()=>{local.query=qi.value;local.type=type.value;local.section=chapter.value;local.visible=visible;local.browseOpen=browse.open;local.selectedIds=[...state.selected];};
  // Restore deterministic search/filter state, without repeating any AI action.
- if(local.results){const grid=el('div',undefined,'grid');searchPanel.hidden=false;searchPanel.append(el('h2',searchHeading(local.results.query)),grid);cards(grid,local.results.groups);}
+ if(local.results){searchPanel.hidden=false;searchPanel.append(el('h2',searchHeading(local.results.query)));renderSearchResults(local.results.groups);}
  if(local.browseOpen){browse.open=true;await loadBrowse();}
  if(active())document.dispatchEvent(new Event('ke-explore-ready'));
 }
@@ -872,15 +885,24 @@ async function workshopView(){
      more.onclick=()=>{expanded=!expanded;ideas.className='preview-ideas'+(expanded?' expanded':'');more.textContent=expanded?'Show fewer ideas':`View all ${r.knowledge_units.length} ideas`;more.setAttribute('aria-expanded',String(expanded));};
      preview.append(more);
    }
-   preview.append(el('p','Relevance is a match to your request, not a judgement that the knowledge covers everything you need.','muted'));
+   preview.append(el('p','Ideas match words in your request. Review their applicability; matches do not establish that the research covers everything you need.','muted'));
    const coverage=el('div',undefined,'source-coverage');coverage.append(el('h3','Source coverage'));
+   const base=r.evidence_base;
+   if(Number.isInteger(base?.selected_count)){
+     const retained=new Set(r.knowledge_units.flatMap(g=>g.source_ids||[])).size;
+     coverage.append(el('p',`${retained} of ${base.selected_count} selected ${base.selected_count===1?'material':'materials'} represented in this preview · ${base.ready_count||0} fully prepared`));
+     if((base.preparing_count||0)+(base.attention_count||0)+(base.unavailable_count||0)>0)coverage.append(el('p','Some selected material is not fully prepared or available. This preview reflects the knowledge currently available; the remaining content is unknown.','muted'));
+     if(retained<base.selected_count)coverage.append(el('p','A selected material without a retained idea may have no matching words or fall outside the result limit. This does not show that it contains no useful evidence.','muted'));
+   }
    const rows=r.source_coverage||[...new Set(r.knowledge_units.flatMap(g=>g.source_ids))].map(id=>({title:sourceData.items.find(s=>s.id===id)?.title||'Material',prepared_sections:null,total_sections:null}));
    for(const source of rows){
      const known=Number.isInteger(source.prepared_sections)&&Number.isInteger(source.total_sections);
-     const partial=known&&source.prepared_sections<source.total_sections;
-     coverage.append(el('p',source.title+' · '+(known?preparationLabel(source.prepared_sections,source.total_sections):'Preparation progress unavailable')+(source.relevant_idea_count?` · ${source.relevant_idea_count} relevant ${source.relevant_idea_count===1?'idea':'ideas'}`:'')));
+     const count=source.relevant_idea_count;
+     coverage.append(el('p',source.title+' · '+(known?preparationLabel(source.prepared_sections,source.total_sections):'Preparation progress unavailable')+(Number.isInteger(count)?` · ${count} ${count===1?'idea':'ideas'} retained`:'')));
+     const retrieval=r.retrieval_coverage?.sources?.find(row=>row.source_id===source.source_id);
+     if(count===0&&retrieval)coverage.append(el('p',retrieval.candidate_idea_count>0?'Retrieved ideas from this material fell outside the preview limit.':'No word-matched idea was retrieved from this material for this request and selection. Remaining unprepared content is unknown.','muted'));
    }
-   if(rows.length)preview.append(coverage);
+   if(rows.length||base?.selected_count>0)preview.append(coverage);
    if(!r.knowledge_unit_count)preview.append(el('p','No relevant ideas found in this scope. Try adjusting your request or knowledge scope.','muted'));
    const s=r.synthesis_context;
    if(s?.tensions?.length)for(const t of s.tensions)preview.append(el('p',t.reason));
@@ -919,6 +941,7 @@ async function outputView(id){
  const review=card('Quality review',quality.validation_status.replaceAll('_',' '));review.append(el('p',o.provider==='manual'?'Manually supplied or edited':'Created with AI'),el('p',quality.note),list(quality.issues.map(i=>i.message)));if(quality.timing_checks)review.append(list(quality.timing_checks.map(c=>`${c.criterion.replaceAll('_',' ')}: ${c.status} · Requested: ${c.requested_minutes??'unknown'} min · Calculated: ${c.calculated_minutes??'unknown'} min`)));
  const exportLink=el('a','Export Markdown');exportLink.href=`/outputs/${id}/export`;const reading=renderGroundedAnswer(o.content,{document,snapshot:o.knowledge_snapshot||[],sourceInfo});reading.className=`${reading.className||''} reading`.trim();main.append(actions(button('← My work',()=>navigate('outputs')),exportLink),reading);const answerTableObserver=observeAnswerTableOverflow(reading);main._answerTableObserver?.disconnect();main._answerTableObserver=answerTableObserver;
  const evidence=detail('Ideas and evidence used');main.append(evidence);
+ if(['knowledge_answer','research_synthesis'].includes(o.output_type))evidence.append(el('p','References identify where ideas came from. They do not establish independent studies, evidence strength, causal support or research completeness. Review applicability and limitations in the source evidence.','muted'));
  const citedIds=o.generation_metadata?.citation_asset_ids||(o.reasoning_sections?.length
    ?o.reasoning_sections.flatMap(section=>section.supporting_asset_ids||[]):null);
  const references=citedIds?[...new Set(citedIds)].map(asset_id=>({asset_id,

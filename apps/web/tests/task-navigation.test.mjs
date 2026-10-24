@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {createNavigation, parseRoute, routeHash} from '../navigation.js';
-import {scopeQuestion, PAGE_SIZE, filterUnits, createSearchController} from '../knowledge-browser.js';
+import {scopeQuestion, PAGE_SIZE, filterUnits, createSearchController, ideaEvidenceSummary} from '../knowledge-browser.js';
 import {revisionPayload} from '../output-revision.js';
 import * as interaction from '../interaction-draft.js';
 import * as materialAdd from '../material-add.js';
@@ -50,7 +50,7 @@ async function fixture(hash='',authenticated=false,enhance=false){
  const audit={interpretation:{completed_chunks:1,total_chunks:3},overlap_rate:0,superseded_assets:[],old_schema_assets:[],missing_evidence:[],missing_keywords:[],evidence_needing_review:[],asset_types:{},confidence_distribution:{},jobs:[{id:'j1',chunk_id:'c1',status:'failed'}]};
  const events=new Map();
  const document={addEventListener(type,fn){const callbacks=events.get(type)||[];callbacks.push(fn);events.set(type,callbacks);},dispatchEvent(event){for(const callback of events.get(event.type)||[])callback(event);},body,querySelector:s=>s==='main'?main:s==='#feedback'?feedback:s==='#processing-status'?processingRegion:body.querySelector(s),querySelectorAll:s=>s==='[data-view]'?nav:s==='nav button'?nav.filter(n=>n.tag==='button'):body.querySelectorAll(s),createElement:tag=>new Node(tag),createTextNode:text=>Object.assign(new Node('#text'),{textContent:String(text)})};
- const ctx={attachProcessingAnnouncer:()=>{},announceProcessingStatus:()=>{},...interaction,...materialAdd,...knowledgeBuild,...materialPreparation,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,revisionPayload,renderGroundedAnswer,observeAnswerTableOverflow,subscribeProcessingStatus:()=>()=>{},renderProcessingStatus:()=>{},beginProcessingStatus:()=>1,updateProcessingStatus:()=>true,endProcessingStatus:()=>true,getProcessingStatus:()=>null,processingRegion,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path==='/sources/summaries')return [{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
+ const ctx={attachProcessingAnnouncer:()=>{},announceProcessingStatus:()=>{},...interaction,...materialAdd,...knowledgeBuild,...materialPreparation,console,URLSearchParams,Event,window:browser,createNavigation,PAGE_SIZE,filterUnits,createSearchController,ideaEvidenceSummary,revisionPayload,renderGroundedAnswer,observeAnswerTableOverflow,subscribeProcessingStatus:()=>()=>{},renderProcessingStatus:()=>{},beginProcessingStatus:()=>1,updateProcessingStatus:()=>true,endProcessingStatus:()=>true,getProcessingStatus:()=>null,processingRegion,Option:function(text,value){const n=new Node('option');n.textContent=text;n.value=value;return n;},FormData:class {constructor(form){this.values=form?all(form).filter(n=>n.name&&!n.disabled&&!(n.type==='checkbox'&&!n.checked)).flatMap(n=>n.tag==='select'?n.selectedOptions.filter(o=>!o.disabled).map(o=>[n.name,o.value]):[[n.name,n.value]]):[];}get(name){return this.values.find(pair=>pair[0]===name)?.[1]||'';}[Symbol.iterator](){return this.values[Symbol.iterator]();}},Set,Map,Date,document,api:async(path,options)=>{requests.push({path,options});if(options){if(path==='/workshops/prepare')return {prepared_snapshot_id:'server-snapshot-reference-12345',interaction_revision:options.body.interaction_revision,source_coverage:[{title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1}],knowledge_unit_count:1,knowledge_units:[{canonical_asset:{title:'An idea'},source_ids:['s1']}],synthesis_context:{agreements:[],tensions:[],limitations:''}};if(path==='/workshops/generate')return {saved_output:{id:'new-work'}};if(path.endsWith('/process'))source.chunks_path='chunks';return {processed_this_run:1};}if(path==='/outputs/modes')return {items:[{id:'writing',label:'Writing',formats:['Email','Essay']},{id:'knowledge_answer',label:'Knowledge answer'}]};if(path==='/libraries')return {items:[{id:'l1',name:'Reading'}]};if(path.startsWith('/sources?')||path==='/sources')return {items:[source]};if(path==='/sources/summaries')return [{source_id:'s1',readiness:'partly_ready',completed_parts:1,total_parts:3,coverage_text:'1 of 3 parts ready',has_usable_knowledge:true,operation:'idle',attention_category:null,attention_message:null,file_state:'available',read_state:'read',next_action:'continue_building',recovery:[]}];if(path.endsWith('/summary'))return {has_usable_knowledge:true,readiness:audit.interpretation.completed_chunks===audit.interpretation.total_chunks?'ready':'partly_ready',completed_parts:audit.interpretation.completed_chunks,total_parts:audit.interpretation.total_chunks,coverage_text:`${audit.interpretation.completed_chunks} of ${audit.interpretation.total_chunks} parts ready`,next_action:'continue_building',recovery:[{job_id:'j1',allowed:true}]};if(path.endsWith('/audit'))return audit;if(path.endsWith('/chunks'))return {items:[{id:'c1',chunk_index:1,word_count:100}]};if(path.endsWith('/knowledge-units'))return {items:[{canonical_asset:{title:'An idea',what_it_says:'Useful insight'}}]};if(path==='/sources/s1')return source;if(path.endsWith('/quality'))return {validation_status:'passed',issues:[]};if(path.endsWith('/history'))return {items:[]};if(/^\/outputs\/[^/]+$/.test(path))return {id:path.split('/').at(-1),title:'My essay',content:'The artifact',version:1,output_type:'writing',provider:'manual',applied_knowledge:[],design_choices:[]};if(path==='/usage')return {configured:true,free_tier_confirmed:true,calls_today:0,daily_call_limit:10};if(path==='/data/integrity')return {ok:true,issues:[]};if(path==='/outputs')return {items:[{id:'o1',title:'My essay',root_output_id:'o1',output_type:'writing',version:1}],count:1};throw Error(path);},csrfToken:()=>authenticated?'fixture-token':null};
  vm.createContext(ctx);vm.runInContext(readFileSync(new URL('../create-draft.js',import.meta.url),'utf8').replaceAll('export ',''),ctx);if(enhance){const extension={document,Event,scopeQuestion,apiFetch:async(path,options)=>({ok:true,json:async()=>ctx.api(path,{...options,body:JSON.parse(options.body)})})};vm.createContext(extension);vm.runInContext(readFileSync(new URL('../enhancements.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),extension);}
  vm.runInContext(app.replace(/^import .*;\n/gm,''),ctx);await new Promise(resolve=>setImmediate(resolve));
  return {ctx,main,document,browser,nav,requests,source,audit,nodes:()=>all(main),click:async text=>{const n=all(main).find(n=>(n.tag==='button'||n.tag==='a')&&n.textContent===text);assert.ok(n,text);if(n.onclick)await n.onclick({preventDefault(){}});else if(n.listeners.click)await Promise.all(n.listeners.click.map(fn=>fn()));else await n.closest('form').onsubmit({preventDefault(){}});}};
@@ -132,7 +132,7 @@ test('Create previews retrieved ideas and sends explicit selections; picker pres
  await f.click('Continue');const preview=f.requests.find(r=>r.path==='/workshops/prepare');assert.deepEqual([...preview.options.body.asset_ids],['idea1']);assert.deepEqual([...preview.options.body.source_ids],['s1']);assert.equal(preview.options.body.situation,situation.value);
  assert.ok(f.nodes().some(n=>n.textContent==='1 relevant idea found'));
  await f.click('Choose ideas myself');assert.equal(parseRoute(f.browser.location.hash).view,'knowledge');await f.click('Use selected ideas in Create');assert.equal(f.nodes().find(n=>n.name==='original_request').value,'Write a thoughtful essay');
- await f.click('Create essay');await new Promise(resolve=>setImmediate(resolve));assert.equal(f.browser.location.hash,'#/my-work/new-work?library=l1');assert.ok(f.requests.some(r=>r.path==='/workshops/generate'));
+ await f.click('Create essay');await new Promise(resolve=>setImmediate(resolve));assert.equal(f.browser.location.hash,'#/my-work/new-work');const generated=f.requests.find(r=>r.path==='/workshops/generate');assert.ok(generated);assert.deepEqual([...generated.options.body.source_ids],['s1']);
 });
 test('Stored work shows artifact first, expandable evidence, history, compare and revision',async()=>{
  const f=await fixture();const requests=[];
@@ -264,12 +264,12 @@ test('chosen material subset bounds picker search/browse and stays consistent on
  f.ctx.api=(path,options)=>{if(!options&&(path==='/sources'||path.startsWith('/sources?')))return Promise.resolve({items:sources});if(path.startsWith('/knowledge-assets/search?')){f.requests.push({path});return Promise.resolve({items:[]});}return original(path,options);};
  await f.ctx.navigate('workshop',{library:'l1',materials:['s1','s2']});f.document.querySelector('[name="original_request"]').value='Write an essay using chosen books';await f.click('Continue');
  await f.click('Choose ideas myself');const scope=f.document.querySelector('#ke-source-scope');assert.deepEqual(scope.options.map(o=>o.value),['','s1','s2']);assert.equal(scope.value,'');
- f.document.querySelector('[name="q"]').value='useful ideas';await f.click('Find matching ideas');const searches=f.requests.filter(r=>r.path.startsWith('/knowledge-assets/search?'));assert.deepEqual(searches.map(r=>new URLSearchParams(r.path.split('?')[1]).get('source_id')),['s1','s2']);
+ const query=f.document.querySelector('[name="q"]');query.value='useful ideas';query.oninput();await f.click('Find matching ideas');const searches=f.requests.filter(r=>r.path.startsWith('/knowledge-assets/search?'));assert.deepEqual(searches.map(r=>new URLSearchParams(r.path.split('?')[1]).get('source_id')),['s1','s2']);
  const browse=f.document.querySelector('#ke-browse');browse.open=true;await browse.ontoggle();assert.ok(!f.requests.some(r=>r.path==='/sources/s3/knowledge-units'));
  scope.value='s2';scope.onchange();vm.runInContext("state.selected.add('idea-from-s2')",f.ctx);await f.click('Use this scope in Create');
- const materials=f.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_'));assert.deepEqual(materials.filter(n=>n.checked).map(n=>n.value),['s1','s2']);assert.deepEqual([...f.requests.filter(r=>r.path==='/workshops/prepare').at(-1).options.body.asset_ids],['idea-from-s2']);
+ const materials=f.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_'));assert.deepEqual(materials.filter(n=>n.checked).map(n=>n.value),['s2']);assert.deepEqual([...f.requests.filter(r=>r.path==='/workshops/prepare').at(-1).options.body.source_ids],['s2']);assert.deepEqual([...f.requests.filter(r=>r.path==='/workshops/prepare').at(-1).options.body.asset_ids],['idea-from-s2']);
  materials.forEach(o=>o.checked=o.value==='s1');await materials[0].onchange();const last=f.requests.filter(r=>r.path==='/workshops/prepare').at(-1);assert.deepEqual([...last.options.body.source_ids],['s1']);assert.deepEqual([...last.options.body.asset_ids],[]);
- const refreshed=await fixture(f.browser.location.hash);refreshed.document.querySelector('[name=original_request]').value='Write an essay';await refreshed.click('Continue');assert.deepEqual(refreshed.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_')&&n.checked).map(n=>n.value),['s1']);assert.equal(refreshed.document.querySelector('[name="Library scope"]').value,'l1');
+ const refreshed=await fixture(f.browser.location.hash);refreshed.document.querySelector('[name=original_request]').value='Write an essay';await refreshed.click('Continue');assert.deepEqual(refreshed.nodes().filter(n=>n.type==='checkbox'&&n.name?.startsWith('material_')&&n.checked).map(n=>n.value),['s1']);assert.equal(refreshed.document.querySelector('[name="Library scope"]').value,'');
 });
 test('route IDs round-trip safely and malformed routes fall back to Home',()=>{
  const route={view:'material',id:'book / #?',library:'reading & notes'};assert.equal(parseRoute(routeHash(route)).id,route.id);assert.equal(parseRoute(routeHash(route)).library,route.library);assert.equal(parseRoute('#/library/material/%ZZ').view,'home');
@@ -373,12 +373,69 @@ test('detailed Create confirms concise intent and evidence, hides optional schem
  assert.equal(input.value,text);assert.equal(visiblyShown(input),false);
  assert.equal(shown.filter(n=>n.textContent==='Write an essay.').length,1);
  assert.ok(shown.some(n=>n.textContent==='Search scope · Across your library'));
- assert.ok(shown.some(n=>n.textContent?.includes('A book · Partly prepared · 1 relevant idea')));
+ assert.ok(shown.some(n=>n.textContent?.includes('A book · Partly prepared · 1 idea retained')));
  assert.ok(!shown.some(n=>/sections ready|Section coverage unavailable/.test(n.textContent||'')));
  assert.ok(shown.some(n=>n.textContent==='1 relevant idea found'));
  assert.ok(!shown.some(n=>['Task','Goal','Audience','Tone / style','Context','Structured output result'].includes(n.textContent)));
  assert.ok(!shown.some(n=>/Gemini|JSON|manual import|Ctrl|Command|All materials/.test(n.textContent||'')));
  const nodes=f.nodes();assert.ok(nodes.indexOf(f.document.querySelector('.source-coverage'))<nodes.indexOf(nodes.find(n=>n.textContent==='Create essay')));
+});
+
+test('Create shows incomplete selected scope and explains zero retained evidence without an irrelevance verdict',async()=>{
+ const f=await fixture('#/create'),original=f.ctx.api;
+ f.ctx.api=async(path,options)=>{
+  const result=await original(path,options);
+  if(path!=='/workshops/prepare')return result;
+  return {...result,evidence_base:{selected_count:3,ready_count:1,preparing_count:1,attention_count:0,unavailable_count:1},
+   source_coverage:[{source_id:'s1',title:'A book',prepared_sections:1,total_sections:3,relevant_idea_count:1},
+    {source_id:'s2',title:'Prepared comparison',prepared_sections:3,total_sections:3,relevant_idea_count:0},
+    {source_id:'s3',title:'Still preparing',prepared_sections:0,total_sections:3,relevant_idea_count:0}],
+   retrieval_coverage:{sources:[{source_id:'s2',candidate_idea_count:1,retained_idea_count:0},{source_id:'s3',candidate_idea_count:0,retained_idea_count:0}]}};
+ };
+ f.document.querySelector('[name=original_request]').value='Write an essay comparing the research';await f.click('Continue');
+ const text=f.nodes().map(node=>node.textContent||'').join('\n');
+ assert.match(text,/1 of 3 selected materials represented in this preview · 1 fully prepared/);
+ assert.match(text,/Prepared comparison · Prepared · 0 ideas retained/);
+ assert.match(text,/Retrieved ideas from this material fell outside the preview limit/);
+ assert.match(text,/No word-matched idea was retrieved.*Remaining unprepared content is unknown/);
+ assert.match(text,/does not show that it contains no useful evidence/);
+ assert.equal(f.requests.filter(request=>request.path==='/workshops/generate').length,0);
+});
+
+test('Create keeps selected preparation limitations visible when no idea or coverage row is returned',async()=>{
+ const f=await fixture('#/create'),original=f.ctx.api;
+ f.ctx.api=async(path,options)=>{const result=await original(path,options);return path==='/workshops/prepare'
+  ?{...result,knowledge_unit_count:0,knowledge_units:[],source_coverage:[],evidence_base:{selected_count:2,ready_count:1,preparing_count:1,attention_count:0,unavailable_count:0}}
+  :result;};
+ f.document.querySelector('[name=original_request]').value='Write an essay comparing the research';await f.click('Continue');
+ const coverage=f.document.querySelector('.source-coverage');assert.ok(coverage);
+ assert.ok(all(coverage).some(node=>node.textContent==='0 of 2 selected materials represented in this preview · 1 fully prepared'));
+ assert.ok(all(coverage).some(node=>node.textContent?.includes('remaining content is unknown')));
+ assert.ok(f.nodes().some(node=>node.textContent?.includes('No relevant ideas found in this scope')));
+ assert.equal(f.requests.filter(request=>request.path==='/workshops/generate').length,0);
+});
+
+test('Ask keeps reference accounting separate from research sufficiency and source-context fallback',async()=>{
+ const f=await fixture('#/library/explore'),card=new Node('section');f.main.append(card);
+ const makeElement=(tag,text,cls)=>Object.assign(new Node(tag),{textContent:text,className:cls});
+ const src=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
+ const ctx={document:f.document,knowledgeAnswerCard:()=>card,makeElement,
+  createAnswerEvidenceIndex:()=>({assetTitle:()=>'',asset:()=>({evidence:[]})}),
+  renderGroundedInline:text=>makeElement('span',text),renderGroundedAnswer:()=>makeElement('article'),
+  actions:(...nodes)=>{const node=new Node('div');node.append(...nodes);return node;},
+  button:text=>makeElement('button',text),observeAnswerTableOverflow:()=>null};
+ vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function renderKnowledgeAnswer('),src.indexOf('function appendEvidence(')),ctx);
+ ctx.renderKnowledgeAnswer({output:{title:'A contextual answer',content:'A limited answer',applied_knowledge:[]},
+  evidence_base:{selected_count:3,ready_count:1,preparing_count:1,attention_count:0,unavailable_count:1},
+  evidence_coverage:{selected_count:3,retrieved_source_count:1,used_source_count:1,used_sources:[{title:'A book'}],used_idea_count:1},
+  research_limitations:'Traceable references do not establish sufficient research.',
+  retrieval_coverage:{retained_without_word_matches_idea_count:1}},'Question',{sourceIds:['s1']});
+ const text=all(card).map(node=>node.textContent||'').join('\n');
+ assert.match(text,/Evidence considered from 1 material. Evidence cited from 1 of 3 selected materials/);
+ assert.match(text,/Traceable references do not establish sufficient research/);
+ assert.match(text,/some selected material is not fully available/);
+ assert.match(text,/Some retained ideas have no word matches.*selected ideas or general source context/);
+ assert.match(text,/Some selected materials have no retained idea/);
 });
 test('committed local correction prepares once; typing blocks stale generation and never calls a provider',async()=>{
  const f=await fixture('#/create');f.document.querySelector('[name=original_request]').value='Write an essay';await f.click('Continue');
@@ -520,7 +577,7 @@ test('unified exploration keeps optional context hidden and prompt selection loc
  assert.equal(f.nodes().filter(n=>n.tag==='textarea').length,1);
  assert.equal(f.nodes().filter(n=>n.name==='knowledge_question').length,0);
  assert.equal(f.document.querySelector('#explore-context').open,false);
- assert.ok(f.nodes().some(n=>n.textContent==='Across your library'));
+ assert.ok(f.nodes().some(n=>n.textContent==='Search within · all libraries'));
  assert.ok(!f.nodes().some(n=>n.textContent?.includes('All materials across libraries')));
  await f.click('Ask about a section');
  assert.equal(f.document.querySelector('#explore-context').open,true);

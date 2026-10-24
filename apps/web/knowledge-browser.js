@@ -33,6 +33,12 @@ export function filterSearchResults(items, query) {
   const terms = searchTerms(query);
   if (!terms.length) return [];
 
+  // Scored API results already account for every consolidated member. Preserve
+  // their eligibility and order: rescoring only the canonical preview can hide
+  // a match in another member or reverse the server's ranking.
+  const scored = items.filter(group => Number.isFinite(group.relevance_score));
+  const legacy = items.filter(group => !Number.isFinite(group.relevance_score));
+
   const normalizedQuery = normalize(query);
   // Short keyword searches stay precise. Full natural-language questions
   // contain background/context words that no single idea should have to repeat.
@@ -42,7 +48,7 @@ export function filterSearchResults(items, query) {
     ? 1
     : terms.length <= 5 ? Math.max(2, Math.ceil(terms.length * 0.67)) : 3;
 
-  return items
+  const fallback = legacy
     .map((group, index) => {
       const asset = group.canonical_asset || {};
       const title = normalize(asset.title);
@@ -53,6 +59,7 @@ export function filterSearchResults(items, query) {
         asset.evidence,
         ...(asset.keywords || []),
         asset.chapter_or_section,
+        ...(group.evidence_trail || []).map(item => item.evidence),
       ].filter(Boolean).join(' '));
       const matched = terms.filter(term => searchable.split(' ').includes(term));
       const titleMatches = terms.filter(term => title.split(' ').includes(term)).length;
@@ -70,6 +77,19 @@ export function filterSearchResults(items, query) {
     .filter(Boolean)
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map(item => item.group);
+  return [...scored, ...fallback];
+}
+
+export function ideaEvidenceSummary(group) {
+  const references = Number.isInteger(group.support_count) ? group.support_count
+    : (group.asset_ids || group.evidence_trail || []).length;
+  const materials = new Set([
+    ...(group.source_ids || []),
+    ...(group.evidence_trail || []).map(item => item.source_id),
+    group.canonical_asset?.source_id,
+  ].filter(Boolean)).size;
+  return `${references} supporting ${references === 1 ? 'reference' : 'references'} · ` +
+    (materials ? `${materials} ${materials === 1 ? 'material' : 'materials'}` : 'material count unavailable');
 }
 
 export function createSearchController(load, show) {

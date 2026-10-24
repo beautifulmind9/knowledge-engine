@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {PAGE_SIZE, filterUnits, filterSearchResults, scopeQuestion, createSearchController} from '../knowledge-browser.js';
+import {PAGE_SIZE, filterUnits, filterSearchResults, scopeQuestion, createSearchController, ideaEvidenceSummary} from '../knowledge-browser.js';
 import {routeHash, parseRoute} from '../navigation.js';
 
 test('scope wording follows single or multiple sources',()=>{
@@ -28,6 +28,25 @@ test('single-term search still supports exploration',()=>{
   {canonical_asset:{id:'b',title:'Facilitation checklist',what_it_says:'Check facilitation details.'}},
  ];
  assert.deepEqual(filterSearchResults(items,'facilitation').map(group=>group.canonical_asset.id),['a','b']);
+});
+
+test('scored results preserve backend order and member-only evidence without a second relevance gate',()=>{
+ const memberOnly={canonical_asset:{id:'member',title:'A contextual finding'},relevance_score:6.5,
+  matched_terms:['narrative','engagement'],evidence_trail:[{evidence:'Narrative engagement is context dependent.'}]};
+ const exactTitle={canonical_asset:{id:'exact',title:'Narrative engagement'},relevance_score:2.4};
+ const incidental={canonical_asset:{id:'incidental',title:'Audience seating'},relevance_score:1.1};
+ const items=[memberOnly,exactTitle,incidental];
+ assert.deepEqual(filterSearchResults(items,'Narrative engagement').map(group=>group.canonical_asset.id),['member','exact','incidental']);
+ assert.deepEqual(filterSearchResults(items,'Please explain narrative engagement in detail').map(group=>group.canonical_asset.id),['member','exact','incidental']);
+});
+
+test('legacy unscored responses retain member evidence and label reference/material counts precisely',()=>{
+ const memberOnly={canonical_asset:{id:'legacy',title:'A contextual finding'},evidence_trail:[{source_id:'s1',evidence:'Narrative engagement.'}]};
+ assert.equal(filterSearchResults([memberOnly],'Narrative engagement')[0],memberOnly);
+ assert.equal(ideaEvidenceSummary({support_count:1,source_ids:['s1']}),'1 supporting reference · 1 material');
+ assert.equal(ideaEvidenceSummary({support_count:3,source_ids:['s1','s1'],evidence_trail:[{source_id:'s2'}]}),'3 supporting references · 2 materials');
+ assert.equal(ideaEvidenceSummary({asset_ids:['a','b'],canonical_asset:{source_id:'s1'}}),'2 supporting references · 1 material');
+ assert.equal(ideaEvidenceSummary({support_count:1}),'1 supporting reference · material count unavailable');
 });
 
 test('new search clears old results and late responses cannot restore them',async()=>{
@@ -65,7 +84,7 @@ const groups=Array.from({length:25},(_,i)=>({canonical_asset:{id:`a${i}`,title:`
 async function viewFixture({library='lib1', libs=[{id:'lib1',name:'Reading'}], sources=[{id:'s1',title:'First source',library_id:'lib1'}], materials=[],apiImpl=null}={}){
  const main=new Element('main'),requests=[],notices=[],handoffs=[],events=[];
  const el=(tag,text)=>new Element(tag,text);
- const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:materials,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,URLSearchParams,Event,
+ const ctx={explorePicker:false,exploreState:{query:'',type:'',section:'',visible:10},freshExplore:()=>({query:'',type:'',section:'',visible:10}),beginView:()=>()=>true,createMaterials:materials,replaceScope(){},PAGE_SIZE,filterUnits,createSearchController,ideaEvidenceSummary,URLSearchParams,Event,
  main,state:{source:null,library,selected:new Set()},el,
  heading(){},libraries:async()=>libs,sourceItems:async()=>sources,message:m=>notices.push(m),navigate(){},openCreate:scope=>handoffs.push(scope),
  document:{dispatchEvent:e=>events.push(e.type)},
@@ -105,6 +124,29 @@ test('actual view sends consolidated query with scope; edits and scope changes c
  const results=f.nodes().find(n=>n.id==='ke-search-results');assert.equal(results.hidden,false);
  query.oninput();assert.equal(results.hidden,true);assert.equal(results.children.length,0);
  await form.submit();scope.value='';scope.onchange();assert.equal(results.hidden,true);
+});
+
+test('Find pages scored ideas without losing later selection, query, source evidence or Create scope',async()=>{
+ const scored=groups.map((group,index)=>({...group,source_ids:['s1'],relevance_score:groups.length-index,
+  matched_terms:['narrative'],evidence_trail:[{source_id:'s1',evidence:'A source-specific supporting excerpt.'}]}));
+ const f=await viewFixture({apiImpl:async path=>({items:path==='/sources'?[{id:'s1',title:'First source',library_id:'lib1'}]:scored})});
+ const input=f.nodes().find(node=>node.name==='q');input.value='Narrative engagement';input.oninput();
+ await f.nodes().find(node=>node.id==='ke-search-form').submit();
+ const panel=f.nodes().find(node=>node.id==='ke-search-results');
+ assert.equal(descendants(panel).filter(node=>node.tag==='h3').length,10);
+ assert.equal(descendants(panel).find(node=>node.tag==='h3').textContent,'Unit 0');
+ assert.ok(descendants(panel).some(node=>node.textContent==='Word matches: narrative'));
+ assert.ok(descendants(panel).some(node=>node.textContent==='concept · 1 supporting reference · 1 material'));
+ await descendants(panel).find(node=>node.textContent==='Show more matching ideas').click();
+ assert.equal(descendants(panel).filter(node=>node.tag==='h3').length,20);
+ const checked=descendants(panel).find(node=>node.name==='a14');checked.checked=true;checked.onchange();
+ f.main.captureExplore();
+ await f.nodes().find(node=>node.textContent==='Use selected ideas in Create').click();
+ assert.deepEqual([...f.handoffs[0].selectedIds],['a14']);
+ assert.deepEqual([...f.handoffs[0].materials],['s1']);
+ assert.equal(f.handoffs[0].request,input.value);
+ assert.equal(f.ctx.exploreState.searchVisible,20);
+ assert.ok(f.requests.every(path=>!path.includes('/workshops/generate')));
 });
 
 test('chapter and example questions require their relevant context',()=>{

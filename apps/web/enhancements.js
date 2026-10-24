@@ -145,6 +145,7 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
   answerTitle.append(renderGroundedInline(output.title || "Answer from your library", {document, snapshot, sourceInfo}));
   const evidenceBase = data.evidence_base;
   const evidenceCoverage = data.evidence_coverage;
+  card.append(makeElement('p', data.research_limitations || 'References identify where ideas came from. They do not establish independent studies, evidence strength, causal support or research completeness.', 'answer-evidence-limit'));
   if (evidenceBase?.selected_count) {
     const {selected_count:selected,ready_count:ready,preparing_count:preparing,attention_count:attention,unavailable_count:unavailable} = evidenceBase;
     const pieces = [`${selected} selected ${selected===1?'material':'materials'}`, `${ready} ready`];
@@ -173,7 +174,9 @@ function renderKnowledgeAnswer(data, originalQuestion, context) {
     const summary = makeElement('p', `Evidence considered from ${consideredLabel}. Evidence cited from ${usedCount} of ${evidenceCoverage.selected_count} selected materials.`, 'answer-source-coverage');
     card.insertBefore(summary, card.children[2] || null);
     if (usedNames.length) card.insertBefore(makeElement('p', `Cited materials: ${usedNames.join('; ')}`, 'answer-used-sources'), card.children[3] || null);
+    if (retrieved < evidenceCoverage.selected_count) card.append(makeElement('p', 'Some selected materials have no retained idea. They may have no matching words or fall outside the result limit; unprepared content remains unknown.', 'answer-evidence-limit'));
   }
+  if (data.retrieval_coverage?.retained_without_word_matches_idea_count) card.append(makeElement('p', 'Some retained ideas have no word matches. They may be selected ideas or general source context; review their applicability before drawing a conclusion.', 'answer-evidence-limit'));
 
   let content;
   if (Array.isArray(output.reasoning_sections) && output.reasoning_sections.length) {

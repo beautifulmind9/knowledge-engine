@@ -16,6 +16,7 @@ function humanIdentity(value, fallback = '') {
 
 function evidenceIndex(snapshot = [], sourceInfo = []) {
   const sources = new Map(sourceInfo.filter(item => item?.id && item?.title).map(item => [item.id, item]));
+  const permittedSources = new Set(sourceInfo.filter(item => item?.id).map(item => item.id));
   const assets = new Map();
   for (const group of snapshot) {
     const asset = group?.canonical_asset;
@@ -24,19 +25,29 @@ function evidenceIndex(snapshot = [], sourceInfo = []) {
     for (const id of [asset.id, group.asset_id, ...(group.asset_ids || [])]) {
       if (!id) continue;
       let cited = evidence.filter(item => item.asset_id === id);
-      if (!cited.length) {
+      const exactSources = new Set(cited.map(item => item.source_id).filter(Boolean));
+      const invalid = exactSources.size > 1 || (id === asset.id && asset.source_id &&
+        [...exactSources].some(source => source !== asset.source_id)) ||
+        (permittedSources.size > 0 && [...exactSources, ...(id === asset.id && asset.source_id ? [asset.source_id] : [])]
+          .some(source => !permittedSources.has(source)));
+      if (invalid) cited = [];
+      else if (!cited.length) {
         const knownSources = [...new Set(evidence.map(item => item.source_id).filter(Boolean))];
         const ownSource = id === asset.id ? asset.source_id : null;
         const source = ownSource || (knownSources.length === 1 ? knownSources[0] : null);
-        cited = evidence.filter(item => !item.asset_id && source && item.source_id === source);
+        cited = evidence.filter(item => !item.asset_id && source && item.source_id === source &&
+          (!permittedSources.size || permittedSources.has(source)));
       }
       assets.set(id, {title: asset.title || '', evidence: cited,
-        sourceId: id === asset.id ? asset.source_id : null});
+        sourceId: !invalid && id === asset.id ? asset.source_id : null});
     }
   }
   function sourceFor(reference) {
     if (!reference) return null;
-    const matches = [...sources.values()].filter(item => item.id === reference || item.id.startsWith(reference) || reference.startsWith(item.id) || item.id.split('_').at(-1)?.startsWith(reference));
+    // Full identity or an exact legacy digest is resolvable. A shared prefix
+    // must never attribute an unknown reference to the selected material.
+    if (sources.has(reference)) return sources.get(reference);
+    const matches = [...sources.values()].filter(item => item.id.split('_').at(-1) === reference);
     return matches.length === 1 ? matches[0] : null;
   }
   function evidenceForSource(source) {
@@ -106,7 +117,7 @@ function appendEvidenceDisclosure(parent, item, doc, className = '') {
   const summary = doc.createElement('summary'); summary.textContent = item?.label || 'Source & evidence'; disclosure.append(summary);
   const evidence = item?.evidence || [];
   if (!evidence.length) {
-    const note = doc.createElement('p'); note.textContent = 'Supporting evidence is available with the related knowledge.'; disclosure.append(note);
+    const note = doc.createElement('p'); note.textContent = 'This reference cannot be verified from the supplied evidence.'; disclosure.append(note);
   } else {
     for (const entry of evidence) {
       const block = doc.createElement('blockquote');

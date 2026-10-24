@@ -36,7 +36,7 @@ export function createNavigation(browser, render) {
   const entries=new Map();
   function go(route, replace = false, renderView = true) {
     const hash = routeHash(route);
-    const entry=++nextEntry;entries.set(entry,route);
+    const entry=++nextEntry;entries.set(entry,{route,hash});
     browser.history[replace || browser.location.hash === hash ? 'replaceState' : 'pushState']({keEntry:entry}, '', hash);
     lastHash = hash;lastEntry=entry;
     if (renderView) return render(route);
@@ -45,7 +45,10 @@ export function createNavigation(browser, render) {
     // Preserve the native skip-to-content link without changing the active view.
     if (browser.location.hash === '#main' || (browser.location.hash === lastHash && browser.history.state?.keEntry === lastEntry)) return;
     const saved=entries.get(browser.history.state?.keEntry);
-    return go(saved && routeHash(saved) === browser.location.hash ? saved : parseRoute(browser.location.hash), true);
+    // View state can acquire defaults after rendering (for example a scope
+    // mode). Compare the hash actually stored for this entry, retaining its
+    // in-memory query and selection rather than reparsing an opaque URL.
+    return go(saved?.hash === browser.location.hash ? saved.route : parseRoute(browser.location.hash), true);
   }
   browser.addEventListener('popstate', restore);
   browser.addEventListener('hashchange', restore);

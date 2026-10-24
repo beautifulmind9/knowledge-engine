@@ -193,11 +193,18 @@ test('Library state mapping uses one contextual primary action and preserves sou
   f.ctx.api=(path,options)=>path==='/sources/summaries'?Promise.resolve([summary]):original(path,options);
   await f.ctx.navigate('library');
   const row=f.nodes().find(n=>n.tag==='article'&&n.className==='library-row');
+  const titleNode=all(row).find(n=>n.tag==='h2'),authorNode=all(row).find(n=>n.className==='library-row-author');
+  assert.equal(all(row).filter(n=>n.textContent==='A book').length,1,'material title is visible once');
+  assert.equal(row.children.indexOf(authorNode),row.children.indexOf(titleNode)+1,'author follows the title');
+  const selection=all(row).find(n=>n.type==='checkbox'&&n.name==='move_s1');
+  assert.equal(selection.attributes['aria-label'],'Select A book');
   const buttons=row.children.flatMap(n=>n.tag==='div'&&n.className==='actions'?n.children:[]).filter(n=>n.tag==='button');
   assert.equal(buttons[0].textContent,label,`${readiness}/${usable}`);assert.equal(buttons[0].className,'primary');
   assert.equal(buttons.filter(n=>n.className==='primary').length,1);
   const openLinks=all(row).filter(n=>n.tag==='a'&&n.textContent==='Open material');
   assert.equal(openLinks.length,label==='Explore'?1:0,`${readiness}/${usable} uses one contextual action and a quiet material link`);
+  assert.equal(all(row).find(n=>n.tag==='h2').children.some(n=>n.tag==='a'),false,'material link stays out of the title heading');
+  if(label==='Explore')assert.ok(row.children.find(n=>n.className==='actions').children.includes(openLinks[0]));
   if(readiness==='ready'&&!usable)assert.ok(all(row).some(n=>n.textContent==='No usable knowledge is available from this material yet.'));
   if(label==='Explore'){
    await f.click(label);const route=parseRoute(f.browser.location.hash);

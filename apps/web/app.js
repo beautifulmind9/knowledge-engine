@@ -75,9 +75,6 @@ function renderLibraryRow(source,summary,summaryUnavailable=false,batchOutcome=n
  const row=el('article',undefined,'library-row');
  const title=el('h2',source.title,'library-row-title');row.append(title);
  const action=rowAction(summary);
- if(action==='Explore knowledge'){
-  const materialLink=el('a','Open material','library-row-material-link');materialLink.href='#/library/material/'+encodeURIComponent(source.id);materialLink.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};title.append(materialLink);
- }
  if(source.title_origin==='filename')row.append(el('p','Temporary name from filename','library-row-author'));
  if(source.author?.trim())row.append(el('p',source.author,'library-row-author'));
  if(summary){
@@ -113,6 +110,9 @@ function renderLibraryRow(source,summary,summaryUnavailable=false,batchOutcome=n
   }
   return navigate('material',{id:source.id});
  },'primary'));
+ if(action==='Explore knowledge'){
+  const materialLink=el('a','Open material','library-row-material-link');materialLink.href='#/library/material/'+encodeURIComponent(source.id);materialLink.onclick=event=>{event.preventDefault();return run(()=>navigate('material',{id:source.id}));};controls.append(materialLink);
+ }
  row.append(controls);return row;
 }
 async function homeView(){beginView();heading('HOME','What would you like to do?','What are you trying to learn, decide, make, plan or figure out?');
@@ -248,7 +248,7 @@ function bulkMoveSurface(sources,libs,active,onMoved){
  },'primary');
  toolbar.append(allLabel,count,move,clear);surface.append(toolbar,preview,result);update();
  return {surface,attach(row,source){
-  const [label,input]=field('Select '+source.title,'move_'+source.id);input.type='checkbox';label.className='library-material-select';
+  const label=el('label',undefined,'library-material-select'),input=el('input');input.type='checkbox';input.name='move_'+source.id;input.setAttribute('aria-label','Select '+source.title);label.append(input);
   input.checked=selected.has(source.id);input.disabled=busy;row.classList.toggle('is-selected',input.checked);
   input.onchange=()=>{if(busy)return;if(input.checked)selected.add(source.id);else selected.delete(source.id);preview.replaceChildren();update();};
   row.insertBefore(label,row.children[0]);boxes.set(source.id,{input,row});

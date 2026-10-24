@@ -5,18 +5,18 @@ import vm from 'node:vm';
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const implementation=app.slice(app.indexOf('async function moveMaterials('),app.indexOf('async function libraryView('));
 class Node {
- constructor(tag,text){this.tag=tag;this.textContent=text;this.children=[];this.classList={toggle:()=>{}};}
+ constructor(tag,text){this.tag=tag;this.textContent=text;this.children=[];this.attributes={};this.classList={toggle:()=>{}};}
  append(...nodes){this.children.push(...nodes);}
  replaceChildren(...nodes){this.children=nodes;}
  insertBefore(node){this.children.unshift(node);}
- setAttribute(){} focus(){this.focused=true;}
+ setAttribute(name,value){this.attributes[name]=value;} focus(){this.focused=true;}
 }
 const walk=node=>[node,...node.children.flatMap(walk)];
 function fixture(fail=[]){
  const calls=[],navigation=[];let refreshes=0,active=true,hold=null;
  const sources=[{id:'one',title:'First',library_id:'a'},{id:'two',title:'Second',library_id:'a'}];
  const libs=[{id:'a',name:'Original'},{id:'b',name:'Destination'}];
- const el=(tag,text)=>new Node(tag,text);
+ const el=(tag,text,className)=>Object.assign(new Node(tag,text),{className});
  const ctx=vm.createContext({Set,Map,api:async(path,options)=>{calls.push({path,options});if(hold)await hold;if(fail.includes(path.split('/')[2]))throw Error('private failure');},el,field:(label,name)=>{const l=el('label',label),i=el('input');i.name=name;l.append(i);return [l,i];},select:(label,values)=>{const l=el('label',label),s=el('select');s.values=values;s.value='';l.append(s);return [l,s];},button:(text,onclick)=>Object.assign(el('button',text),{onclick}),actions:(...nodes)=>{const n=el('div');n.append(...nodes);return n;},list:items=>{const n=el('ul');n.append(...items.map(t=>el('li',t)));return n;},navigate:(...args)=>navigation.push(args),state:{}});
  vm.runInContext(implementation,ctx);
  const bulk=ctx.bulkMoveSurface(sources,libs,()=>active,async()=>{refreshes++;});
@@ -46,6 +46,15 @@ test('select all and clear do not call APIs; busy batch locks selection and igno
  const f=fixture();const all=walk(f.bulk.surface).find(n=>n.name==='select_all');all.checked=true;all.onchange();assert.ok(f.find('2 selected'));
  await f.find('Clear selection').onclick();assert.ok(f.find('0 selected'));assert.equal(f.calls.length,0);f.choose();await f.find('Move selected').onclick();f.destination().value='b';f.destination().onchange();
  let release;f.hold(new Promise(resolve=>{release=resolve;}));const confirm=f.find('Confirm move'),pending=confirm.onclick();assert.equal(all.disabled,true);await confirm.onclick();assert.equal(f.calls.length,1);release();await pending;assert.equal(f.calls.length,2);
+});
+test('card selection is icon-only with a descriptive accessible name',()=>{
+ const f=fixture();
+ for(const [index,row] of f.rows.entries()){
+  const label=walk(row).find(n=>n.tag==='label'),input=walk(row).find(n=>n.type==='checkbox');
+  assert.equal(label.className,'library-material-select');
+  assert.equal(label.textContent,undefined);
+  assert.equal(input.attributes['aria-label'],`Select ${index?'Second':'First'}`);
+ }
 });
 test('navigation does not update detached view, and already-in-destination items cause no writes',async()=>{
  const f=fixture();const results=await f.ctx.moveMaterials([{id:'same',library_id:'b'},{id:'a/b',library_id:'a'}],'b');assert.equal(results.length,2);assert.equal(f.calls[0].path,'/sources/a%2Fb/library');

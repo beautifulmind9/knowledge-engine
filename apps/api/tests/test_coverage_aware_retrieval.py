@@ -58,10 +58,12 @@ def test_multisource_raw_pool_preserves_relevant_candidates_without_importing_ir
     assert "source_b" in candidate_sources
     assert "source_c" in candidate_sources
     assert "source_irrelevant" not in candidate_sources
-    assert len(candidates) <= 40
+    # Keep every admitted member until consolidation; a raw cap used to lose
+    # independent evidence before the result limit was applied.
+    assert len(candidates) == 102
 
 
-def test_multi_source_selection_diversifies_comparable_evidence_but_not_irrelevant_material():
+def test_multi_source_selection_does_not_replace_stronger_evidence_for_diversity():
     payload = WorkshopPrepareRequest(
         situation="Audience positioning",
         goal="Compare audience positioning",
@@ -83,7 +85,8 @@ def test_multi_source_selection_diversifies_comparable_evidence_but_not_irreleva
     ]
     selected = workshop._coverage_aware_group_selection(groups, raw, payload)
     selected_sources = {group["source_ids"][0] for group in selected}
-    assert selected_sources == {"source_a", "source_b", "source_c"}
+    assert selected_sources == {"source_a"}
+    assert [group["asset_ids"] for group in selected] == [["a_0"], ["a_1"], ["a_2"]]
 
 
 def test_single_source_retrieval_keeps_existing_global_ranking():

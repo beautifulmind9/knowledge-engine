@@ -70,8 +70,13 @@ def revise_output(output_id, request):
         from app.services.workshop_generation import generate_workshop_output
         payload=WorkshopGenerateRequest(**{k:v for k,v in parent["brief"].items() if k != "retrieval_query"})
         from app.services.workshop import synthesis_context
-        prepared={"brief":parent["brief"], "knowledge_units":parent["knowledge_snapshot"], "knowledge_unit_count":len(parent["knowledge_snapshot"]),
-                  "synthesis_context":synthesis_context(parent["knowledge_snapshot"])}
+        from app.services.evidence_safety import validate_preparation, require_available_sources
+        prepared={"brief":parent["brief"], "knowledge_units":parent["knowledge_snapshot"], "knowledge_unit_count":len(parent["knowledge_snapshot"])}
+        # Validate historical context before doing pairwise synthesis work. A
+        # rejected revision leaves the parent available for reading/export.
+        represented_sources=validate_preparation(prepared, payload)
+        require_available_sources(represented_sources | set(payload.source_ids))
+        prepared["synthesis_context"]=synthesis_context(parent["knowledge_snapshot"])
         result=generate_workshop_output(payload, prepared=prepared, revision={"instruction":request.instruction, "previous_output":parent["content"]})
     return save_output(result, parent, request.instruction)
 

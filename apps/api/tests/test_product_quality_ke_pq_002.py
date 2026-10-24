@@ -24,8 +24,9 @@ def asset(name, text, source='source_a'):
 
 
 def payload(text='Storytelling psychology', mode='research_synthesis', **kwargs):
+    selected = kwargs.pop('source_ids', ['source_a'])
     return WorkshopGenerateRequest(situation=text, goal=text, output_type=mode,
-                                   source_ids=['source_a'], save=False, **kwargs)
+                                   source_ids=selected, save=False, **kwargs)
 
 
 def pool(monkeypatch, assets):
@@ -78,7 +79,7 @@ def test_long_request_can_reverse_direct_and_marketing_ranking(monkeypatch):
     assert {a['id'] for a in long} == {'asset_direct', 'asset_marketing'}
 
 
-def test_repetition_is_deduplicated_within_fields_but_reweighted_across_fields():
+def test_repeated_constraints_do_not_reweight_the_same_request_terms():
     item = asset('asset_a', 'Storytelling psychology')
     base = payload()
     repeated = payload('Storytelling psychology storytelling psychology')
@@ -87,7 +88,7 @@ def test_repetition_is_deduplicated_within_fields_but_reweighted_across_fields()
     assert workshop.build_workshop_query(base) == workshop.build_workshop_query(constrained)
     assert workshop._workshop_relevance(item, constrained)[0] > workshop._workshop_relevance(item, base)[0]
     duplicated = payload(constraints=['Storytelling psychology', 'Storytelling psychology'])
-    assert workshop._workshop_relevance(item, duplicated)[0] > workshop._workshop_relevance(item, constrained)[0]
+    assert workshop._workshop_relevance(item, duplicated) == workshop._workshop_relevance(item, constrained)
 
 
 def test_weak_incidental_match_is_admitted(monkeypatch):
@@ -115,7 +116,7 @@ def test_weak_only_evidence_does_not_gate_generation(monkeypatch, mode):
     result = workshop_generation.generate_workshop_output(request, prepared=snapshot)
     assert len(calls) == 1
     assert result['knowledge_unit_count'] == 1
-    assert ('evidence_coverage' in result) == (mode == 'knowledge_answer')
+    assert 'evidence_coverage' in result
     assert ('reasoning_sections' in calls[0][2].get('properties', {})) is False
     assert ('sections' in calls[0][2].get('properties', {})) == (mode == 'knowledge_answer')
 
@@ -134,7 +135,7 @@ def test_normal_group_shape_counts_one_used_idea_and_only_cited_member_source(mo
     snapshot = prepared(items)
     assert len(snapshot['knowledge_units']) == 1
     calls = fake_provider(monkeypatch, 'knowledge_answer', ref='asset_a')
-    result = workshop_generation.generate_workshop_output(payload(mode='knowledge_answer'), prepared=snapshot)
+    result = workshop_generation.generate_workshop_output(payload(mode='knowledge_answer', source_ids=['source_a', 'source_b']), prepared=snapshot)
     coverage = result['evidence_coverage']
     assert len(calls) == 1
     assert result['output']['reasoning_sections'][0]['supporting_asset_ids'] == ['asset_a']
@@ -162,7 +163,7 @@ def test_member_and_canonical_references_count_once_without_counting_unused_unit
          'evidence_refs': ['asset_a', 'asset_b', 'asset_b']}],
         'applied_knowledge': [{'asset_id': 'asset_a', 'usage_note': 'Synthetic use.'}], 'design_choices': []}
     monkeypatch.setattr(ai_gateway, 'generate', lambda *_: SimpleNamespace(output_text=json.dumps(response), id='synthetic'))
-    result = workshop_generation.generate_workshop_output(payload(mode='knowledge_answer'), prepared=snapshot)
+    result = workshop_generation.generate_workshop_output(payload(mode='knowledge_answer', source_ids=['source_a', 'source_b']), prepared=snapshot)
     assert result['knowledge_unit_count'] == 2
     assert result['evidence_coverage']['used_idea_count'] == 1
     assert result['evidence_coverage']['used_source_ids'] == ['source_a', 'source_b']
@@ -180,7 +181,7 @@ def test_one_member_cannot_establish_cross_source_agreement_or_broad_coverage(mo
         'applied_knowledge': [{'asset_id': 'asset_a', 'usage_note': 'Synthetic use.'}], 'design_choices': []}
     monkeypatch.setattr(ai_gateway, 'generate', lambda *_: SimpleNamespace(output_text=json.dumps(response), id='synthetic'))
     with pytest.raises(GroundedAnswerValidationError, match='distinct materials|broader source coverage'):
-        workshop_generation.generate_workshop_output(payload(mode='knowledge_answer'), prepared=snapshot)
+        workshop_generation.generate_workshop_output(payload(mode='knowledge_answer', source_ids=['source_a', 'source_b']), prepared=snapshot)
 
 
 def test_legacy_provenance_does_not_expand_ambiguous_group():
@@ -200,7 +201,7 @@ def test_saved_output_and_export_preserve_context_without_crediting_uncited_sour
     snapshot = prepared([asset('asset_a', 'Storytelling psychology'),
                          asset('asset_b', 'Storytelling psychology', 'source_b')])
     calls = fake_provider(monkeypatch, 'research_synthesis')
-    result = workshop_generation.generate_workshop_output(payload(), prepared=snapshot)
+    result = workshop_generation.generate_workshop_output(payload(source_ids=['source_a', 'source_b']), prepared=snapshot)
     saved = save_output(result)
     assert len(calls) == 1
     assert saved['source_ids'] == ['source_a']
@@ -225,7 +226,7 @@ def test_answer_api_save_export_and_manual_revision_keep_snapshot_provenance(cli
         'applied_knowledge': [{'asset_id': 'asset_a', 'usage_note': 'Canonical idea used.'}], 'design_choices': []}
     monkeypatch.setattr(ai_gateway, 'generate', lambda *_: SimpleNamespace(output_text=json.dumps(response), id='synthetic'))
     monkeypatch.setattr(workshop_generation, 'prepare_workshop', lambda *_: snapshot)
-    request = payload(mode='knowledge_answer').model_dump()
+    request = payload(mode='knowledge_answer', source_ids=['source_a', 'source_b']).model_dump()
     request['save'] = True
     generated = client.post('/workshops/generate', json=request)
     assert generated.status_code == 200

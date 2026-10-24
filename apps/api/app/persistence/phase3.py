@@ -15,7 +15,10 @@ from app.persistence.phase2 import (
     Phase2Coordinator, VERSION as PHASE2_VERSION, MARKER as PHASE2_MARKER,
     OWNED, META, job_dto, source_projection,
 )
-from app.persistence.partitions import PartitionConflict, PartitionMutation, PartitionVersionError
+from app.persistence.partitions import (
+    PartitionCapacityExceeded, PartitionConflict, PartitionMutation,
+    PartitionVersionError,
+)
 from app.persistence.postgres import StaleStateWriteError, HostedStateStoreError
 
 VERSION = 3
@@ -443,8 +446,26 @@ class Phase3Coordinator(Phase2Coordinator):
         if not row or row['marker']!=MARKER:
             raise PartitionConflict('V3 authority marker changed.')
 
-    def active_assets(self, *, source_ids=None, chunk_id=None, asset_type=None, asset_ids=None):
+    def _check_asset_read_capacity(self, tx, clauses, params, max_items, max_bytes):
+        """Measure matching rows before transferring JSON payloads to the app."""
+        if max_items is None and max_bytes is None:
+            return
+        row=tx._one('SELECT count(*) AS item_count, '
+                    'COALESCE(sum(pg_column_size(a.payload)),0) AS payload_bytes '
+                    'FROM knowledge_engine.partition_assets a '
+                    'JOIN knowledge_engine.partition_sources s USING(workspace_key,source_id) WHERE '
+                    +' AND '.join(clauses),tuple(params))
+        count=row['item_count'];size=row['payload_bytes']
+        if ((max_items is not None and count>max_items)
+                or (max_bytes is not None and size>max_bytes)):
+            raise PartitionCapacityExceeded(count,size)
+
+    def active_assets(self, *, source_ids=None, chunk_id=None, asset_type=None, asset_ids=None,
+                      max_items=None, max_bytes=None):
         with self.transaction() as tx:
+            # Capacity preflight and payload fetch must observe one committed
+            # snapshot; READ COMMITTED would permit an unbudgeted second read.
+            tx.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             self._assert_v3_marker(tx)
             clauses=['a.workspace_key=%s','a.active','NOT s.deleted','a.generation=s.generation']
             params=[tx.workspace]
@@ -456,16 +477,21 @@ class Phase3Coordinator(Phase2Coordinator):
                 clauses.append("a.payload->>'asset_type'=%s");params.append(asset_type)
             if asset_ids is not None:
                 clauses.append('a.asset_id=ANY(%s)');params.append(list(asset_ids))
+            self._check_asset_read_capacity(tx,clauses,params,max_items,max_bytes)
+            suffix=' ORDER BY a.ordinal,a.asset_id'
+            if max_items is not None:
+                suffix+=' LIMIT %s';params.append(max_items+1)
             rows=tx._all('SELECT a.payload FROM knowledge_engine.partition_assets a '
                          'JOIN knowledge_engine.partition_sources s USING(workspace_key,source_id) WHERE '
-                         +' AND '.join(clauses)+' ORDER BY a.ordinal,a.asset_id',tuple(params))
+                         +' AND '.join(clauses)+suffix,tuple(params))
             return [r['payload'] for r in rows]
 
     def search_candidates(self, tokens, normalized_query, *, source_ids=None, source_id=None,
-                          asset_type=None, limit=None):
-        """Exact-match superset query; no candidate limit until indexed parity is proven."""
+                          asset_type=None, limit=None, max_items=None, max_bytes=None):
+        """Exact-match superset query with explicit caller-owned capacity rejection."""
         if not tokens:return []
         with self.transaction() as tx:
+            tx.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             self._assert_v3_marker(tx)
             clauses=['a.workspace_key=%s','a.active','NOT s.deleted','a.generation=s.generation']
             params=[tx.workspace]
@@ -482,9 +508,13 @@ class Phase3Coordinator(Phase2Coordinator):
             for token in tokens:
                 terms.append(f'position(%s in {fields})>0');params.append(token)
             clauses.append('('+' OR '.join(terms)+')')
+            self._check_asset_read_capacity(tx,clauses,params,max_items,max_bytes)
+            suffix=' ORDER BY a.ordinal,a.asset_id'
+            if max_items is not None:
+                suffix+=' LIMIT %s';params.append(max_items+1)
             rows=tx._all('SELECT a.payload FROM knowledge_engine.partition_assets a '
                          'JOIN knowledge_engine.partition_sources s USING(workspace_key,source_id) WHERE '
-                         +' AND '.join(clauses)+' ORDER BY a.ordinal,a.asset_id',tuple(params))
+                         +' AND '.join(clauses)+suffix,tuple(params))
             return [r['payload'] for r in rows]
 
     def active_assets_many(self, source_ids):

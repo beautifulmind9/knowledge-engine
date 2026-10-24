@@ -11,10 +11,13 @@ import time
 
 from fastapi import HTTPException
 from app.models.workshop import WorkshopPrepareRequest
+from app.services.evidence_safety import validate_preparation, check_json_budget, MAX_PREPARED_BYTES
 
 TTL_SECONDS = 30 * 60
 MAX_SNAPSHOTS = 128
+MAX_CACHED_EVIDENCE_BYTES = 8 * 1024 * 1024
 _snapshots = OrderedDict()
+_snapshot_sizes = {}
 _lock = Lock()
 
 
@@ -23,15 +26,21 @@ def _brief(payload):
 
 
 def remember_preparation(payload, prepared):
+    validate_preparation(prepared, payload)
+    size = check_json_budget(prepared, MAX_PREPARED_BYTES,
+                             message='This evidence preview is too large. Choose fewer materials or ideas.')
     snapshot_id = secrets.token_urlsafe(32)
     with _lock:
         now = time.monotonic()
         for key, entry in list(_snapshots.items()):
             if entry[0] <= now:
                 del _snapshots[key]
+                _snapshot_sizes.pop(key, None)
         _snapshots[snapshot_id] = (now + TTL_SECONDS, _brief(payload), deepcopy(prepared))
-        while len(_snapshots) > MAX_SNAPSHOTS:
-            _snapshots.popitem(last=False)
+        _snapshot_sizes[snapshot_id] = size
+        while len(_snapshots) > MAX_SNAPSHOTS or sum(_snapshot_sizes.get(key, 0) for key in _snapshots) > MAX_CACHED_EVIDENCE_BYTES:
+            old_id, _ = _snapshots.popitem(last=False)
+            _snapshot_sizes.pop(old_id, None)
     return {**prepared, "prepared_snapshot_id": snapshot_id,
             "interaction_revision": payload.interaction_revision}
 
@@ -49,4 +58,6 @@ def resolve_preparation(payload):
             payload.library_id and not any(l["id"] == payload.library_id for l in libraries)
         ):
             raise HTTPException(409, "A reviewed material is no longer available. Update knowledge before creating.")
-        return deepcopy(entry[2])
+        prepared = deepcopy(entry[2])
+    validate_preparation(prepared, payload)
+    return prepared

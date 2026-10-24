@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from copy import deepcopy
 from typing import get_args
 from pydantic import ValidationError
 
@@ -18,9 +19,67 @@ from app.models.workshop_generation import (
     WorkshopGeneratedOutput,
 )
 from app.services.workshop import prepare_workshop
+from app.services.evidence_safety import check_provider_context, validate_preparation
 
 
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
+RESEARCH_LIMITATION = (
+    "Retrieval and citation counts describe traceability within the selected scope. "
+    "They do not establish relevance to each claim, independent studies, evidence "
+    "quality, causality, or research sufficiency. Material omitted from the retained "
+    "context may be unmatched or outside the result limit; unprepared material is unknown. "
+    "Retained ideas without word matches may be explicit selections or source context, "
+    "rather than evidence of relevance to the question."
+)
+
+
+def _retrieved_sources(units):
+    return {sid for unit in units
+            for sid in (unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))}
+
+
+def _describe_sources(ids):
+    from app.db.mock_data import sources
+    source_by_id = {source["id"]: source for source in sources}
+    return [{"title": source_by_id[sid].get("title") or "",
+             "author": source_by_id[sid].get("author") or ""}
+            for sid in sorted(ids) if sid in source_by_id]
+
+
+def _applied_coverage(units, applied):
+    canonical_by_asset, sources_by_asset = reference_maps(units)
+    references = {item.asset_id for item in applied}
+    source_ids = {sid for aid in references for sid in sources_by_asset.get(aid, set())}
+    return {
+        "applied_idea_count": len({canonical_by_asset[aid] for aid in references if aid in canonical_by_asset}),
+        "applied_source_ids": sorted(source_ids),
+        "applied_source_count": len(source_ids),
+        "applied_sources": _describe_sources(source_ids),
+    }
+
+
+def _retrieval_coverage(prepared):
+    """Keep recorded retrieval facts; legacy snapshots establish only retained facts."""
+    units = prepared["knowledge_units"]
+    coverage = dict(prepared.get("retrieval_coverage") or {})
+    known = [unit for unit in units if "matched_terms" in unit]
+    coverage.update(
+        retained_idea_count=len(units),
+        retained_source_ids=sorted(_retrieved_sources(units)),
+        retained_word_matched_idea_count=sum(bool(unit["matched_terms"]) for unit in known),
+        retained_without_word_matches_idea_count=sum(not unit["matched_terms"] for unit in known),
+        retained_match_status_unknown_idea_count=len(units) - len(known),
+        limitations=RESEARCH_LIMITATION,
+    )
+    return coverage
+
+
+def _scope_ready(state):
+    return (
+        state.get("selected_count", 0) > 0
+        and state.get("ready_count", 0) == state.get("selected_count", 0)
+        and not any(state.get(key, 0) for key in ("preparing_count", "attention_count", "unavailable_count"))
+    )
 
 
 class GroundedAnswerValidationError(RuntimeError):
@@ -173,6 +232,10 @@ def generate_workshop_output(payload: WorkshopGenerateRequest, prepared=None, re
         from app.services.prepared_evidence import resolve_preparation
         prepared = resolve_preparation(payload)
     prepared = prepared or prepare_workshop(payload)
+    validate_preparation(prepared, payload)
+    # AI revisions may receive a saved parent's brief/snapshot by reference.
+    # Neither successful generation nor a preflight rejection may mutate it.
+    prepared = deepcopy(prepared)
     prepared["brief"].update(
         {
             "creative_intent": payload.creative_intent,
@@ -240,8 +303,31 @@ Rules:
         },
     }
 
+    research_mode = payload.output_type in {"knowledge_answer", "research_synthesis"}
+    if research_mode:
+        from app.services.workshop import evidence_base_state
+        preparation_base = prepared.get("evidence_base")
+        preparation_basis = "preparation_snapshot" if preparation_base is not None else "generation_preflight"
+        if preparation_base is None:
+            preparation_base = evidence_base_state(payload.source_ids, payload.library_id)
+        model_input["evidence_base"] = preparation_base
+        model_input["evidence_base_basis"] = preparation_basis
+        retrieval_coverage = _retrieval_coverage(prepared)
+        model_input["retrieval_coverage"] = retrieval_coverage
+        model_input["instructions"] += (
+            "\nEvidence-base readiness and retrieval coverage describe preparation and retained context only. "
+            "They do not prove that the evidence is relevant or sufficient for the requested conclusion. "
+            "State material applicability limits and unresolved questions where they affect a claim. "
+            "Distinguish research findings from advice, source interpretation, and your own adaptation; "
+            "do not infer empirical quality or independent studies from asset types or reference counts. "
+            "Unavailable or unprepared material is unknown. Missing retained evidence does not establish "
+            "that the selected materials contain no relevant research. Retained ideas without word matches "
+            "can be explicit selections or representative source context; do not imply that retrieval "
+            "establishes their applicability to this question."
+        )
+
     model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
-    from app.services.ai_gateway import generate
+    from app.services.ai_gateway import generate, single_provider_attempt
     knowledge_answer = payload.output_type == "knowledge_answer"
     schema_model = GroundedAnswerDocument if knowledge_answer else WorkshopGeneratedOutput
     available_asset_ids = {
@@ -274,7 +360,9 @@ Grounded reasoning requirements for this answer:
         grounded_answer_provider_schema(available_asset_ids, available_canonical_ids)
         if knowledge_answer else schema_model.model_json_schema()
     )
-    interaction = generate(model, model_input, provider_schema)
+    check_provider_context(model_input, provider_schema)
+    with single_provider_attempt():
+        interaction = generate(model, model_input, provider_schema)
 
     if not interaction.output_text:
         raise RuntimeError("The AI returned no Workshop output.")
@@ -319,13 +407,13 @@ Grounded reasoning requirements for this answer:
             *(item.usage_note for item in generated.applied_knowledge),
             *generated.design_choices,
         ])
-        scope_is_complete = (
-            evidence_base.get("selected_count", 0) > 0
-            and evidence_base.get("ready_count", 0) == evidence_base.get("selected_count", 0)
-            and not any(evidence_base.get(key, 0) for key in ("preparing_count", "attention_count", "unavailable_count"))
-        )
+        # Readiness at validation cannot retroactively expand what was prepared
+        # for the model. Both snapshots must support a broad-scope claim.
+        selected_ids = set(evidence_base.get("selected_source_ids", [])) | set(preparation_base.get("selected_source_ids", []))
         if _BROAD_COVERAGE_CLAIM.search(answer_text) and (
-            not scope_is_complete or len(cited_source_ids) < evidence_base.get("selected_count", 0)
+            not _scope_ready(evidence_base) or not _scope_ready(preparation_base)
+            or len(cited_source_ids) < max(evidence_base.get("selected_count", 0), preparation_base.get("selected_count", 0))
+            or not selected_ids.issubset(cited_source_ids)
         ):
             raise GroundedAnswerValidationError("The answer claimed broader source coverage than its cited evidence supports. No answer was accepted.", category="unsupported_broad_coverage_claim")
         content_parts = []
@@ -380,26 +468,37 @@ Grounded reasoning requirements for this answer:
                               for aid in section.supporting_asset_ids)
         used_idea_ids = {canonical_by_asset[aid] for aid in referenced_ids
                          if aid in canonical_by_asset}
-        retrieved_source_ids = {
-            source_id for unit in prepared["knowledge_units"]
-            for source_id in (unit.get("source_ids") or ([unit.get("source_id")] if unit.get("source_id") else []))
-        }
-        from app.db.mock_data import sources as source_records
-        source_by_id = {source["id"]: source for source in source_records}
-        describe_sources = lambda ids: [
-            {"title": source_by_id[source_id].get("title") or "", "author": source_by_id[source_id].get("author") or ""}
-            for source_id in sorted(ids) if source_id in source_by_id
-        ]
-        result["evidence_base"] = evidence_base
+        retrieved_source_ids = _retrieved_sources(prepared["knowledge_units"])
+        result["evidence_base"] = preparation_base
+        result["evidence_base_at_validation"] = evidence_base
         result["evidence_coverage"] = {
-            "selected_count": evidence_base["selected_count"],
-            "selected_source_ids": evidence_base.get("selected_source_ids", []),
+            "selected_count": preparation_base["selected_count"],
+            "selected_source_ids": preparation_base.get("selected_source_ids", []),
             "used_idea_count": len(used_idea_ids),
             "retrieved_source_ids": sorted(retrieved_source_ids),
             "used_source_ids": sorted(used_source_ids),
             "retrieved_source_count": len(retrieved_source_ids),
             "used_source_count": len(used_source_ids),
-            "retrieved_sources": describe_sources(retrieved_source_ids),
-            "used_sources": describe_sources(used_source_ids),
+            "retrieved_sources": _describe_sources(retrieved_source_ids),
+            "used_sources": _describe_sources(used_source_ids),
+            **_applied_coverage(prepared["knowledge_units"], generated.applied_knowledge),
+            "section_cited_source_ids": sorted(used_source_ids),
+            "section_cited_source_count": len(used_source_ids),
         }
+    elif payload.output_type == "research_synthesis":
+        retrieved_source_ids = _retrieved_sources(prepared["knowledge_units"])
+        result["evidence_base"] = preparation_base
+        result["evidence_coverage"] = {
+            "selected_count": preparation_base["selected_count"],
+            "selected_source_ids": preparation_base.get("selected_source_ids", []),
+            "retrieved_idea_count": len(prepared["knowledge_units"]),
+            "retrieved_source_ids": sorted(retrieved_source_ids),
+            "retrieved_source_count": len(retrieved_source_ids),
+            "retrieved_sources": _describe_sources(retrieved_source_ids),
+            **_applied_coverage(prepared["knowledge_units"], generated.applied_knowledge),
+        }
+    if research_mode:
+        result["evidence_base_basis"] = preparation_basis
+        result["retrieval_coverage"] = retrieval_coverage
+        result["research_limitations"] = RESEARCH_LIMITATION
     return result

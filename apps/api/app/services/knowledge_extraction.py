@@ -1,5 +1,6 @@
 from collections import Counter
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import re
 
@@ -19,6 +20,12 @@ from app.models.knowledge_extraction import (
 )
 from app.services.knowledge_extraction_prompt import build_knowledge_extraction_request
 from app.services.text_chunking import load_chunks
+from app.services.evidence_safety import (
+    INTERPRETATION_FIELDS, MAX_WORKSHOP_REQUEST_BYTES, check_candidate_budget,
+    MAX_CANDIDATE_ASSETS, MAX_CANDIDATE_BYTES, check_json_budget,
+    reject_candidate_capacity, validate_raw_sources, validate_units,
+)
+from app.persistence.partitions import PartitionCapacityExceeded
 
 
 STOPWORDS = {
@@ -288,8 +295,25 @@ def list_knowledge_assets(
     coordinator=authority.coordinator()
     if coordinator is not None and getattr(coordinator,'version',2)>=3:
         selected=source_ids if source_ids is not None else ([source_id] if source_id else None)
-        return coordinator.active_assets(source_ids=selected,chunk_id=chunk_id,asset_type=asset_type)
+        if source_ids is not None and source_id:
+            selected = [sid for sid in source_ids if sid == source_id]
+        try:
+            items = coordinator.active_assets(
+                source_ids=selected, chunk_id=chunk_id, asset_type=asset_type,
+                max_items=MAX_CANDIDATE_ASSETS, max_bytes=MAX_CANDIDATE_BYTES)
+        except PartitionCapacityExceeded:
+            reject_candidate_capacity()
+        # PostgreSQL READ COMMITTED gives the aggregate and fetch statements
+        # separate snapshots. Repeat the authoritative application budget so a
+        # concurrent insert or payload update cannot bypass the preflight.
+        check_candidate_budget(items)
+        validate_raw_sources(items, None if selected is None else set(selected))
+        return items
     items = [a for a in knowledge_assets if a.get("active", True)]
+
+    if source_ids is not None:
+        selected_ids = set(source_ids)
+        items = [item for item in items if item.get("source_id") in selected_ids]
 
     if source_id:
         items = [item for item in items if item.get("source_id") == source_id]
@@ -344,6 +368,21 @@ def _evidence_supported_by_text(evidence: str | None, chunk_text: str | None) ->
 
 def query_tokens(query: str) -> list[str]:
     return [token for token in normalize_text(query).split() if len(token) > 1]
+
+
+def lexical_variants(term: str) -> set[str]:
+    """Return the original token plus a conservative English plural stem.
+
+    This is deliberately narrower than stemming or synonym expansion: it only
+    lets plural question wording meet an existing singular source term. The
+    original request term remains the scored and displayed diagnostic identity.
+    """
+    variants = {term}
+    if len(term) > 4 and term.endswith("ies"):
+        variants.add(term[:-3] + "y")
+    elif len(term) > 3 and term.endswith("s") and not term.endswith(("ss", "us", "is")):
+        variants.add(term[:-1])
+    return variants
 
 
 def _meaningful_tokens(value: str | None) -> set[str]:
@@ -401,36 +440,63 @@ def _jaccard(left: set[str], right: set[str]) -> float:
     return len(left & right) / len(left | right)
 
 
-def knowledge_asset_similarity(left: dict, right: dict) -> float:
-    if left.get("asset_type") != right.get("asset_type"):
-        return 0.0
+@dataclass(frozen=True)
+class _TensionFeatures:
+    terms: frozenset[str]
+    negated: bool
+    numbers: frozenset[str]
 
-    if potential_tension(left, right):
-        return 0.0
 
-    left_evidence = normalize_text(left.get("evidence"))
-    right_evidence = normalize_text(right.get("evidence"))
-    if left_evidence and left_evidence == right_evidence:
+def _tension_features(asset):
+    text = normalize_text((asset.get("what_it_says") or "") + " " + (asset.get("action") or ""))
+    tokens = set(text.split())
+    return _TensionFeatures(
+        frozenset(token for token in tokens if len(token) > 2 and token not in STOPWORDS),
+        bool(tokens & {"not", "never", "avoid", "without", "stop", "don", "cannot"}),
+        frozenset(re.findall(r"\b\d+\b", text)),
+    )
+
+
+def _features_tension(left, right):
+    if _jaccard(left.terms, right.terms) < 0.35:
+        return False
+    return left.negated != right.negated or bool(left.numbers and right.numbers and left.numbers != right.numbers)
+
+
+@dataclass(frozen=True)
+class _SimilarityFeatures:
+    asset_type: str | None
+    evidence: str
+    title: str
+    title_terms: frozenset[str]
+    content_terms: frozenset[str]
+    tension: _TensionFeatures
+
+
+def _similarity_features(asset):
+    return _SimilarityFeatures(
+        asset.get("asset_type"), normalize_text(asset.get("evidence")), normalize_text(asset.get("title")),
+        frozenset(_meaningful_tokens(asset.get("title"))),
+        frozenset(_meaningful_tokens(_asset_similarity_text(asset))), _tension_features(asset),
+    )
+
+
+def _features_similarity(left, right):
+    if left.asset_type != right.asset_type or _features_tension(left.tension, right.tension):
+        return 0.0
+    if left.evidence and left.evidence == right.evidence:
         return 1.0
-
-    left_title = normalize_text(left.get("title"))
-    right_title = normalize_text(right.get("title"))
-    if left_title and left_title == right_title:
+    if left.title and left.title == right.title:
         return 0.98
-
-    title_similarity = _jaccard(
-        _meaningful_tokens(left.get("title")),
-        _meaningful_tokens(right.get("title")),
-    )
-    content_similarity = _jaccard(
-        _meaningful_tokens(_asset_similarity_text(left)),
-        _meaningful_tokens(_asset_similarity_text(right)),
-    )
-
+    title_similarity = _jaccard(left.title_terms, right.title_terms)
+    content_similarity = _jaccard(left.content_terms, right.content_terms)
     if title_similarity >= 0.65 and content_similarity >= 0.35:
         return max(0.80, (title_similarity + content_similarity) / 2)
-
     return (title_similarity * 0.35) + (content_similarity * 0.65)
+
+
+def knowledge_asset_similarity(left: dict, right: dict) -> float:
+    return _features_similarity(_similarity_features(left), _similarity_features(right))
 
 
 def _asset_quality_score(asset: dict) -> int:
@@ -467,23 +533,33 @@ def _asset_quality_score(asset: dict) -> int:
 
 
 def consolidate_knowledge_assets(items: list[dict], similarity_threshold: float = 0.78):
+    check_candidate_budget(items)
     clusters: list[list[dict]] = []
+    # Scope this cache to a single consolidation. Normalization must not run for
+    # every pair in a full candidate pool, and no private text is cached globally.
+    # Equal features can share comparison work while every original member stays
+    # in the cluster and evidence trail.
+    cluster_features: list[dict[_SimilarityFeatures, None]] = []
 
     for asset in items:
         matching_cluster = None
+        features = _similarity_features(asset)
 
-        for cluster in clusters:
+        for index, cluster in enumerate(clusters):
+            comparisons = cluster_features[index]
             if all(
-                not potential_tension(asset, existing) for existing in cluster
+                not _features_tension(features.tension, existing.tension) for existing in comparisons
             ) and any(
-                knowledge_asset_similarity(asset, existing) >= similarity_threshold
-                for existing in cluster
+                _features_similarity(features, existing) >= similarity_threshold
+                for existing in comparisons
             ):
                 matching_cluster = cluster
+                comparisons[features] = None
                 break
 
         if matching_cluster is None:
             clusters.append([asset])
+            cluster_features.append({features: None})
         else:
             matching_cluster.append(asset)
 
@@ -511,7 +587,9 @@ def consolidate_knowledge_assets(items: list[dict], similarity_threshold: float 
                 "chunk_ids": chunk_ids,
                 "supporting_evidence": evidence,
                 "source_ids": sorted({a["source_id"] for a in cluster}),
-                "evidence_trail": [{"asset_id":a["id"],"source_id":a["source_id"],"chunk_id":a["chunk_id"],"evidence":a.get("evidence"),"chapter_or_section":a.get("chapter_or_section")} for a in cluster],
+                "evidence_trail": [{"asset_id":a["id"],"source_id":a["source_id"],"chunk_id":a["chunk_id"],"evidence":a.get("evidence"),"chapter_or_section":a.get("chapter_or_section"),
+                                    "interpretation": {key:deepcopy(a[key]) for key in INTERPRETATION_FIELDS if key in a}}
+                                   for a in cluster],
                 "duplicate_asset_ids": [
                     asset_id
                     for asset_id in asset_ids
@@ -534,10 +612,21 @@ def search_knowledge_assets(
     query: str,
     source_id: str | None = None,
     asset_type: str | None = None,
-    limit: int = 20,
+    limit: int | None = 20,
     library_id: str | None = None,
+    *,
+    diagnostics=None,
 ):
+    check_json_budget(query, MAX_WORKSHOP_REQUEST_BYTES,
+                      message='This search request is too large. Shorten the question.')
     tokens = sorted(set(query_tokens(query)) - STOPWORDS - {"one", "approach"})
+    diagnostic_scope_ids = sorted(source["id"] for source in sources
+                                  if (source_id is None or source["id"] == source_id)
+                                  and (library_id is None or source.get("library_id") == library_id))
+    if diagnostics is not None:
+        diagnostics.request("knowledge_search", query, scope={"source_id": source_id, "library_id": library_id,
+                            "source_ids": diagnostic_scope_ids, "asset_type": asset_type}, limit=limit, terms=tokens,
+                            acquisition="active in-scope assets; indexed mode may return only a lexical superset")
     if not tokens:
         return []
 
@@ -546,24 +635,42 @@ def search_knowledge_assets(
     if coordinator is not None and getattr(coordinator,'version',2)>=3:
         selected_sources=None
         if library_id:
-            from app.db.mock_data import libraries, sources
             if not any(l['id']==library_id for l in libraries):raise ValueError('Library not found.')
             allowed={s['id'] for s in sources if s.get('library_id')==library_id}
             if source_id and source_id not in allowed:
                 raise ValueError('Selected source does not belong to this library.')
             selected_sources=sorted({source_id} if source_id else allowed)
-        candidates=coordinator.search_candidates(tokens,normalized_query,source_ids=selected_sources,
-                                                   source_id=source_id,asset_type=asset_type)
+        acquisition_tokens = sorted({variant for token in tokens for variant in lexical_variants(token)})
+        try:
+            candidates=coordinator.search_candidates(
+                acquisition_tokens, normalized_query, source_ids=selected_sources,
+                source_id=source_id, asset_type=asset_type,
+                max_items=MAX_CANDIDATE_ASSETS, max_bytes=MAX_CANDIDATE_BYTES)
+        except PartitionCapacityExceeded:
+            reject_candidate_capacity()
     else:
         candidates = list_knowledge_assets(source_id=source_id,asset_type=asset_type)
+    if source_id:
+        validate_raw_sources(candidates, {source_id})
     if library_id:
-        from app.db.mock_data import libraries, sources
         if not any(l["id"] == library_id for l in libraries):
             raise ValueError("Library not found.")
         allowed = {s["id"] for s in sources if s["library_id"] == library_id}
         if source_id and source_id not in allowed:
             raise ValueError("Selected source does not belong to this library.")
+        if coordinator is not None and getattr(coordinator, 'version', 2) >= 3:
+            validate_raw_sources(candidates, allowed)
         candidates = [a for a in candidates if a["source_id"] in allowed]
+    validate_raw_sources(candidates, {source_id} if source_id else (allowed if library_id else None))
+    check_candidate_budget(candidates)
+    if diagnostics is not None:
+        from app.services.source_summary import source_summaries
+        for summary in source_summaries(source_ids=diagnostic_scope_ids):
+            diagnostics.preparation(summary.source_id, readiness=summary.readiness,
+                                    completed_parts=summary.completed_parts, total_parts=summary.total_parts,
+                                    has_usable_knowledge=summary.has_usable_knowledge,
+                                    attention_category=summary.attention_category,
+                                    candidate_count=sum(item.get("source_id") == summary.source_id for item in candidates))
     ranked = []
 
     for asset in candidates:
@@ -574,37 +681,37 @@ def search_knowledge_assets(
         keywords = [normalize_text(value) for value in asset.get("keywords", [])]
         special = normalize_text(_asset_special_text(asset))
 
-        score = 0
+        contributions = []
         matched_terms = set()
-
-        if normalized_query and normalized_query in title:
-            score += 12
-        if normalized_query and normalized_query in what_it_says:
-            score += 8
-
+        # The integer part measures distinct query-term coverage. The bounded
+        # fractional part breaks ties using each term's strongest field and
+        # exact-phrase matches. Repeating a word in many asset fields cannot
+        # outrank broader overlap confined to the source evidence.
+        denominator = (len(tokens) * 5) + 21
         for token in tokens:
-            token_matched = False
-            if token in title.split():
-                score += 5
-                token_matched = True
-            if any(token in keyword.split() for keyword in keywords):
-                score += 4
-                token_matched = True
-            if token in what_it_says.split():
-                score += 3
-                token_matched = True
-            if token in special.split():
-                score += 2
-                token_matched = True
-            if token in why_it_matters.split():
-                score += 1
-                token_matched = True
-            if token in evidence.split():
-                score += 1
-                token_matched = True
-
-            if token_matched:
+            variants = lexical_variants(token)
+            fields = (("title", title, 5), ("keywords", " ".join(keywords), 4),
+                      ("what_it_says", what_it_says, 3), ("special", special, 2),
+                      ("why_it_matters", why_it_matters, 1), ("evidence", evidence, 1))
+            for field, text, weight in fields:
+                matched = sorted(variants & set(text.split()))
+                if not matched:
+                    continue
                 matched_terms.add(token)
+                contributions.append({"term": token, "field": field, "weight": weight,
+                                      "matched_variant": matched[0],
+                                      "points": 1 + weight / denominator})
+                break
+
+        for field, text, weight in (("title", title, 12), ("what_it_says", what_it_says, 8)):
+            if normalized_query and normalized_query in text:
+                contributions.append({"field": field, "bonus": "exact_phrase", "weight": weight,
+                                      "points": weight / denominator})
+
+        score = sum(part["points"] for part in contributions)
+        if diagnostics is not None:
+            diagnostics.candidate(asset, score, matched_terms, contributions,
+                                  reason="no_query_overlap" if score <= 0 else None)
 
         if score <= 0:
             continue
@@ -625,7 +732,12 @@ def search_knowledge_assets(
         ),
         reverse=True,
     )
-    return ranked[:limit]
+    retained = ranked if limit is None else ranked[:limit]
+    if diagnostics is not None:
+        diagnostics.ranked(ranked, retained=retained)
+        for source_id in diagnostic_scope_ids:
+            diagnostics.preparation(source_id, positive_match_count=sum(item.get("source_id") == source_id for item in ranked))
+    return retained
 
 
 def search_consolidated_knowledge_assets(
@@ -634,13 +746,18 @@ def search_consolidated_knowledge_assets(
     asset_type: str | None = None,
     limit: int = 20,
     library_id: str | None = None,
+    *,
+    diagnostics=None,
 ):
     raw_results = search_knowledge_assets(
         query=query,
         source_id=source_id,
         asset_type=asset_type,
-        limit=max(limit * 3, 20),
+        # Consolidate the full positive in-scope pool before applying a result
+        # limit, retaining independent member evidence even in duplicate floods.
+        limit=None,
         library_id=library_id,
+        diagnostics=diagnostics,
     )
     groups = consolidate_knowledge_assets(raw_results)
 
@@ -668,6 +785,12 @@ def search_consolidated_knowledge_assets(
         ),
         reverse=True,
     )
+    validate_units(groups, {source_id} if source_id else (
+        {source['id'] for source in sources if source.get('library_id') == library_id} if library_id else None))
+    if diagnostics is not None:
+        diagnostics.groups(groups, limit=limit)
+        for source_id in {sid for group in groups for sid in group["source_ids"]}:
+            diagnostics.preparation(source_id, retained_group_count=sum(source_id in group["source_ids"] for group in groups[:limit]))
     return groups[:limit]
 
 
@@ -706,15 +829,7 @@ def summarize_knowledge_assets(source_id: str):
 
 def potential_tension(left, right):
     """Conservative review flag, never an assertion of semantic contradiction."""
-    ltext = normalize_text((left.get("what_it_says") or "") + " " + (left.get("action") or ""))
-    rtext = normalize_text((right.get("what_it_says") or "") + " " + (right.get("action") or ""))
-    lt,rt=set(ltext.split()),set(rtext.split())
-    if _jaccard(_meaningful_tokens(ltext), _meaningful_tokens(rtext)) < 0.35:
-        return False
-    neg={"not","never","avoid","without","stop","don","cannot"}
-    opposite=bool(lt & neg) != bool(rt & neg)
-    ln,rn=set(re.findall(r"\b\d+\b",ltext)),set(re.findall(r"\b\d+\b",rtext))
-    return opposite or bool(ln and rn and ln != rn)
+    return _features_tension(_tension_features(left), _tension_features(right))
 
 
 def recovery_eligibility(job, now=None):

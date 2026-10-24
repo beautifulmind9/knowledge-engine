@@ -1,0 +1,383 @@
+{
+  "description": "Synthetic analyst-labeled relevance fixture; no real research content or empirical strength claims. Labels are evaluation judgments, never inferred at runtime.",
+  "sources": [
+    {
+      "id": "creator_a",
+      "library_id": "marketing",
+      "title": "Synthetic creator_a"
+    },
+    {
+      "id": "psychology",
+      "library_id": "psychology",
+      "title": "Synthetic psychology"
+    },
+    {
+      "id": "psychology_b",
+      "library_id": "psychology",
+      "title": "Synthetic psychology_b"
+    },
+    {
+      "id": "business",
+      "library_id": "marketing",
+      "title": "Synthetic business"
+    },
+    {
+      "id": "writing",
+      "library_id": "creators",
+      "title": "Synthetic writing"
+    },
+    {
+      "id": "outside",
+      "library_id": "excluded",
+      "title": "Synthetic outside"
+    },
+    {
+      "id": "medicine",
+      "library_id": "medicine",
+      "title": "Synthetic medicine"
+    },
+    {
+      "id": "wellness",
+      "library_id": "medicine",
+      "title": "Synthetic wellness"
+    },
+    {
+      "id": "empty",
+      "library_id": "marketing",
+      "title": "Synthetic empty"
+    },
+    {
+      "id": "preparing",
+      "library_id": "marketing",
+      "title": "Synthetic preparing"
+    }
+  ],
+  "assets": [
+    {
+      "label": "direct",
+      "asset": {
+        "asset_type": "principle",
+        "id": "creator_study",
+        "source_id": "creator_a",
+        "chunk_id": "chunk_creator_study",
+        "title": "Micro-influencer narrative strategies",
+        "what_it_says": "Interviews examine creators and their audiences.",
+        "evidence": "Personality-led creators use storytelling, curiosity and narrative engagement when building lasting audience relationships.",
+        "keywords": [
+          "creators",
+          "relationships"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "direct",
+      "asset": {
+        "asset_type": "principle",
+        "id": "narrative_measure",
+        "source_id": "psychology",
+        "chunk_id": "chunk_narrative_measure",
+        "title": "Four dimensions measured",
+        "what_it_says": "An instrument assesses reader responses.",
+        "evidence": "Narrative engagement among personality-led creators relates to audience relationships, storytelling and curiosity.",
+        "keywords": [
+          "measurement"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "direct",
+      "asset": {
+        "asset_type": "principle",
+        "id": "narrative_measure_independent",
+        "source_id": "psychology_b",
+        "chunk_id": "chunk_narrative_measure_independent",
+        "title": "Four dimensions measured",
+        "what_it_says": "An instrument assesses reader responses.",
+        "evidence": "Narrative engagement among personality-led creators relates to audience relationships, storytelling and curiosity.",
+        "keywords": [
+          "measurement"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "transferable",
+      "asset": {
+        "asset_type": "principle",
+        "id": "business_advice",
+        "source_id": "business",
+        "chunk_id": "chunk_business_advice",
+        "title": "Storytelling audience guidance",
+        "what_it_says": "Storytelling addresses an audience.",
+        "evidence": "Storytelling can attract an audience in business presentations.",
+        "keywords": [
+          "storytelling",
+          "audience"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "transferable",
+      "asset": {
+        "asset_type": "principle",
+        "id": "writing_advice",
+        "source_id": "writing",
+        "chunk_id": "chunk_writing_advice",
+        "title": "Curiosity in writing",
+        "what_it_says": "Curiosity draws readers toward narrative.",
+        "evidence": "Curiosity in narrative nonfiction writing can support reader attention.",
+        "keywords": [
+          "curiosity",
+          "narrative"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "incidental",
+      "asset": {
+        "asset_type": "principle",
+        "id": "incidental",
+        "source_id": "business",
+        "chunk_id": "chunk_incidental",
+        "title": "Audience seating",
+        "what_it_says": "Arrange chairs for an audience.",
+        "evidence": "The audience sits in several rows.",
+        "keywords": [
+          "audience"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "partial",
+      "asset": {
+        "asset_type": "principle",
+        "id": "distinct_measure",
+        "source_id": "psychology",
+        "chunk_id": "chunk_distinct_measure",
+        "title": "Narrative engagement scoring limits",
+        "what_it_says": "A scale needs careful interpretation.",
+        "evidence": "Audience relationships are not equivalent to a narrative engagement measurement score.",
+        "keywords": [
+          "measurement",
+          "score"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "out_of_scope",
+      "asset": {
+        "asset_type": "principle",
+        "id": "outside_scope",
+        "source_id": "outside",
+        "chunk_id": "chunk_outside_scope",
+        "title": "Personality-led creator storytelling curiosity narrative engagement audience relationships",
+        "what_it_says": "Direct terminology from an unselected library.",
+        "evidence": "Personality-led creators build lasting audience relationships using storytelling, curiosity and narrative engagement.",
+        "keywords": [
+          "storytelling",
+          "curiosity",
+          "creators"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "direct",
+      "asset": {
+        "asset_type": "principle",
+        "id": "renal_direct",
+        "source_id": "medicine",
+        "chunk_id": "chunk_renal_direct",
+        "title": "Observation cohort results",
+        "what_it_says": "Investigators followed patients over time.",
+        "evidence": "Kidney disease patients receiving treatment had blood pressure outcomes and uncertain causal effects.",
+        "keywords": [
+          "cohort"
+        ],
+        "confidence_score": 4
+      }
+    },
+    {
+      "label": "incidental",
+      "asset": {
+        "asset_type": "principle",
+        "id": "renal_generic",
+        "source_id": "wellness",
+        "chunk_id": "chunk_renal_generic",
+        "title": "Blood pressure advice",
+        "what_it_says": "Blood pressure should be discussed.",
+        "evidence": "Blood pressure advice for a workplace wellness handout.",
+        "keywords": [
+          "blood",
+          "pressure"
+        ],
+        "confidence_score": 4
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "creator_exact",
+      "query": "How do storytelling, curiosity, and narrative engagement help personality-led creators build lasting audience relationships?",
+      "library_ids": [
+        "marketing",
+        "psychology",
+        "creators"
+      ],
+      "limit": 5,
+      "direct_ids": [
+        "creator_study",
+        "narrative_measure"
+      ],
+      "incidental_ids": [
+        "incidental"
+      ]
+    },
+    {
+      "id": "creator_short",
+      "query": "Storytelling curiosity narrative engagement personality-led creators audience relationships",
+      "library_ids": [
+        "marketing",
+        "psychology",
+        "creators"
+      ],
+      "limit": 5,
+      "direct_ids": [
+        "creator_study",
+        "narrative_measure"
+      ],
+      "incidental_ids": [
+        "incidental"
+      ]
+    },
+    {
+      "id": "creator_padded",
+      "query": "Please explain in detail how storytelling, curiosity, and narrative engagement help personality-led creators build lasting audience relationships. I would like to understand the answer to this question.",
+      "library_ids": [
+        "marketing",
+        "psychology",
+        "creators"
+      ],
+      "limit": 5,
+      "direct_ids": [
+        "creator_study",
+        "narrative_measure"
+      ],
+      "incidental_ids": [
+        "incidental"
+      ]
+    },
+    {
+      "id": "creator_paraphrase",
+      "query": "What connects creator relationships with curiosity and audience engagement through narrative storytelling?",
+      "library_ids": [
+        "marketing",
+        "psychology",
+        "creators"
+      ],
+      "limit": 5,
+      "direct_ids": [
+        "creator_study",
+        "narrative_measure"
+      ],
+      "incidental_ids": [
+        "incidental"
+      ]
+    },
+    {
+      "id": "medical_transfer",
+      "query": "How do kidney disease patients treatment blood pressure outcomes relate?",
+      "library_ids": [
+        "medicine"
+      ],
+      "limit": 2,
+      "direct_ids": [
+        "renal_direct"
+      ],
+      "incidental_ids": [
+        "renal_generic"
+      ]
+    },
+    {
+      "id": "empty_scope",
+      "query": "Storytelling curiosity narrative engagement",
+      "library_ids": [
+        "excluded_empty"
+      ],
+      "limit": 3,
+      "direct_ids": [],
+      "incidental_ids": []
+    },
+    {
+      "id": "creator_vocabulary_boundary",
+      "query": "What role do narratives, information gaps and identification play in durable connections between online personalities and followers?",
+      "library_ids": [
+        "marketing",
+        "psychology",
+        "creators"
+      ],
+      "limit": 5,
+      "direct_ids": [
+        "creator_study",
+        "narrative_measure"
+      ],
+      "incidental_ids": [
+        "incidental"
+      ],
+      "expectation": "unresolved_semantic_vocabulary"
+    },
+    {
+      "id": "partly_prepared_scope",
+      "query": "Storytelling curiosity narrative engagement personality-led creators audience relationships",
+      "library_ids": [
+        "marketing"
+      ],
+      "source_ids": [
+        "creator_a",
+        "preparing"
+      ],
+      "limit": 3,
+      "direct_ids": [
+        "creator_study"
+      ],
+      "incidental_ids": []
+    },
+    {
+      "id": "prepared_zero_match_scope",
+      "query": "Storytelling curiosity narrative engagement",
+      "library_ids": [
+        "marketing"
+      ],
+      "source_ids": [
+        "empty"
+      ],
+      "limit": 3,
+      "direct_ids": [],
+      "incidental_ids": []
+    }
+  ],
+  "preparation": {
+    "creator_a": {
+      "completed_parts": 1,
+      "total_parts": 2
+    },
+    "psychology": {
+      "completed_parts": 1,
+      "total_parts": 1
+    },
+    "empty": {
+      "completed_parts": 1,
+      "total_parts": 1
+    },
+    "preparing": {
+      "completed_parts": 1,
+      "total_parts": 2
+    }
+  }
+}

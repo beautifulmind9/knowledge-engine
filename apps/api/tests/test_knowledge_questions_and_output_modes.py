@@ -48,6 +48,9 @@ def test_output_format_is_part_of_workshop_request():
 
 
 def test_prepare_preserves_output_format(monkeypatch):
+    from app.db import mock_data
+    # The fake retrieval result must belong to the fake available scope too.
+    mock_data.sources.append({'id': 'source_1', 'library_id': 'synthetic', 'title': 'Synthetic material'})
     monkeypatch.setattr(workshop, "_retrieve_raw_assets", lambda payload: [_asset()])
     payload = WorkshopPrepareRequest(
         situation="Turn this idea into a useful post.",

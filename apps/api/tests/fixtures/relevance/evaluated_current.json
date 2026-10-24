@@ -1,0 +1,691 @@
+{
+  "fixture": "research_cases.json",
+  "kind": "synthetic lexical evaluation; labels are not runtime evidence judgments",
+  "cases": [
+    {
+      "case_id": "creator_exact",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "business_advice",
+        "writing_advice"
+      ],
+      "search_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "business_advice"
+        ],
+        [
+          "writing_advice"
+        ]
+      ],
+      "direct_retained": 2,
+      "direct_expected": 2,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "business",
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "writing"
+      ],
+      "selected_source_ids": [
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "business",
+        "writing",
+        "empty",
+        "preparing"
+      ],
+      "workshop_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "writing_advice",
+        "business_advice"
+      ],
+      "workshop_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "writing_advice"
+        ],
+        [
+          "business_advice"
+        ]
+      ],
+      "workshop_direct_retained": 2,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "psychology",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 2
+        },
+        {
+          "source_id": "psychology_b",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "business",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "writing",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "creator_short",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "business_advice",
+        "writing_advice"
+      ],
+      "search_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "business_advice"
+        ],
+        [
+          "writing_advice"
+        ]
+      ],
+      "direct_retained": 2,
+      "direct_expected": 2,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "business",
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "writing"
+      ],
+      "selected_source_ids": [
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "business",
+        "writing",
+        "empty",
+        "preparing"
+      ],
+      "workshop_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "writing_advice",
+        "business_advice"
+      ],
+      "workshop_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "writing_advice"
+        ],
+        [
+          "business_advice"
+        ]
+      ],
+      "workshop_direct_retained": 2,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "psychology",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 2
+        },
+        {
+          "source_id": "psychology_b",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "business",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "writing",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "creator_padded",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "business_advice",
+        "writing_advice"
+      ],
+      "search_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "business_advice"
+        ],
+        [
+          "writing_advice"
+        ]
+      ],
+      "direct_retained": 2,
+      "direct_expected": 2,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "business",
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "writing"
+      ],
+      "selected_source_ids": [
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "business",
+        "writing",
+        "empty",
+        "preparing"
+      ],
+      "workshop_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "writing_advice",
+        "business_advice"
+      ],
+      "workshop_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "writing_advice"
+        ],
+        [
+          "business_advice"
+        ]
+      ],
+      "workshop_direct_retained": 2,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "psychology",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 2
+        },
+        {
+          "source_id": "psychology_b",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "business",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "writing",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "creator_paraphrase",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "business_advice",
+        "writing_advice"
+      ],
+      "search_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "business_advice"
+        ],
+        [
+          "writing_advice"
+        ]
+      ],
+      "direct_retained": 2,
+      "direct_expected": 2,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "business",
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "writing"
+      ],
+      "selected_source_ids": [
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "business",
+        "writing",
+        "empty",
+        "preparing"
+      ],
+      "workshop_ids": [
+        "creator_study",
+        "narrative_measure",
+        "distinct_measure",
+        "writing_advice",
+        "business_advice"
+      ],
+      "workshop_members": [
+        [
+          "creator_study"
+        ],
+        [
+          "narrative_measure",
+          "narrative_measure_independent"
+        ],
+        [
+          "distinct_measure"
+        ],
+        [
+          "writing_advice"
+        ],
+        [
+          "business_advice"
+        ]
+      ],
+      "workshop_direct_retained": 2,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "psychology",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 2
+        },
+        {
+          "source_id": "psychology_b",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "business",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "writing",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "medical_transfer",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "renal_direct",
+        "renal_generic"
+      ],
+      "search_members": [
+        [
+          "renal_direct"
+        ],
+        [
+          "renal_generic"
+        ]
+      ],
+      "direct_retained": 1,
+      "direct_expected": 1,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "medicine",
+        "wellness"
+      ],
+      "selected_source_ids": [
+        "medicine",
+        "wellness"
+      ],
+      "workshop_ids": [
+        "renal_direct",
+        "renal_generic"
+      ],
+      "workshop_members": [
+        [
+          "renal_direct"
+        ],
+        [
+          "renal_generic"
+        ]
+      ],
+      "workshop_direct_retained": 1,
+      "source_preparation": [
+        {
+          "source_id": "medicine",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "wellness",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 1
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "empty_scope",
+      "expectation": "lexical_acceptance",
+      "search_ids": [],
+      "search_members": [],
+      "direct_retained": 0,
+      "direct_expected": 0,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [],
+      "selected_source_ids": [],
+      "workshop_ids": [],
+      "workshop_members": [],
+      "workshop_direct_retained": 0,
+      "source_preparation": [],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "creator_vocabulary_boundary",
+      "expectation": "unresolved_semantic_vocabulary",
+      "search_ids": [],
+      "search_members": [],
+      "direct_retained": 0,
+      "direct_expected": 2,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [],
+      "selected_source_ids": [
+        "creator_a",
+        "psychology",
+        "psychology_b",
+        "business",
+        "writing",
+        "empty",
+        "preparing"
+      ],
+      "workshop_ids": [],
+      "workshop_members": [],
+      "workshop_direct_retained": 0,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "psychology",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "psychology_b",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "business",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "writing",
+          "prepared_sections": null,
+          "total_sections": null,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "partly_prepared_scope",
+      "expectation": "lexical_acceptance",
+      "search_ids": [
+        "creator_study"
+      ],
+      "search_members": [
+        [
+          "creator_study"
+        ]
+      ],
+      "direct_retained": 1,
+      "direct_expected": 1,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [
+        "creator_a"
+      ],
+      "selected_source_ids": [
+        "creator_a",
+        "preparing"
+      ],
+      "workshop_ids": [
+        "creator_study"
+      ],
+      "workshop_members": [
+        [
+          "creator_study"
+        ]
+      ],
+      "workshop_direct_retained": 1,
+      "source_preparation": [
+        {
+          "source_id": "creator_a",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 1
+        },
+        {
+          "source_id": "preparing",
+          "prepared_sections": 1,
+          "total_sections": 2,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    },
+    {
+      "case_id": "prepared_zero_match_scope",
+      "expectation": "lexical_acceptance",
+      "search_ids": [],
+      "search_members": [],
+      "direct_retained": 0,
+      "direct_expected": 0,
+      "direct_before_incidental": true,
+      "workshop_source_ids": [],
+      "selected_source_ids": [
+        "empty"
+      ],
+      "workshop_ids": [],
+      "workshop_members": [],
+      "workshop_direct_retained": 0,
+      "source_preparation": [
+        {
+          "source_id": "empty",
+          "prepared_sections": 1,
+          "total_sections": 1,
+          "relevant_idea_count": 0
+        }
+      ],
+      "scope_preserved": true
+    }
+  ]
+}

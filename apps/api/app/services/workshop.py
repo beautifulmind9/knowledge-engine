@@ -1,10 +1,14 @@
 from collections import defaultdict
-from math import ceil
 
 from app.models.workshop import WorkshopPrepareRequest
+from app.services.evidence_safety import (
+    MAX_WORKSHOP_REQUEST_BYTES, check_candidate_budget, check_json_budget,
+    request_scope, validate_preparation, validate_raw_sources, validate_units,
+)
 from app.services.knowledge_extraction import (
     STOPWORDS,
     consolidate_knowledge_assets,
+    lexical_variants,
     list_knowledge_assets,
     normalize_text,
 )
@@ -205,7 +209,7 @@ def _asset_fields(asset: dict) -> dict[str, set[str]]:
 
 
 def _term_match_strength(term: str, fields: dict[str, set[str]]) -> int:
-    candidates = {term, *TERM_EXPANSIONS.get(term, set())}
+    candidates = lexical_variants(term) | TERM_EXPANSIONS.get(term, set())
 
     # Stronger fields are more intentional labels for the knowledge asset.
     weights = {
@@ -226,9 +230,8 @@ def _term_match_strength(term: str, fields: dict[str, set[str]]) -> int:
     return best
 
 
-def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest) -> tuple[int, list[str]]:
+def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest, *, diagnostics=None) -> tuple[float, list[str]]:
     fields = _asset_fields(asset)
-    score = 0
     matched_terms = set()
     mode_generic = MODE_CONSTRAINT_GENERIC_TERMS.get(payload.output_type, set())
 
@@ -241,26 +244,36 @@ def _workshop_relevance(asset: dict, payload: WorkshopPrepareRequest) -> tuple[i
         (payload.situation, 4, set()),
     ]
     sections.extend((constraint, 10, mode_generic) for constraint in payload.constraints)
-
-    for text, section_weight, extra_generic in sections:
-        section_matched = False
+    # Each request term contributes once at its strongest stated priority.
+    # Repeating the brief or constraints cannot manufacture extra relevance.
+    priorities = {}
+    for index, (text, section_weight, extra_generic) in enumerate(sections):
         for term in _meaningful_terms(text, extra_generic):
-            strength = _term_match_strength(term, fields)
-            if strength <= 0:
-                continue
-            score += section_weight * strength
-            matched_terms.add(term)
-            section_matched = True
-
-        # Matching a stated constraint is more useful than accumulating several
-        # weak matches from general prose.
-        if section_weight == 10 and section_matched:
-            score += 15
-
+            previous = priorities.get(term)
+            if previous is None or section_weight > previous[0]:
+                priorities[term] = (section_weight, "constraint" if index >= 3 else ("goal", "audience", "situation")[index])
+    denominator = len(priorities) * 60 + 1  # max section weight 10 × max field weight 6
+    contributions = []
+    field_weights = {"asset_type": 6, "chapter_or_section": 6, "title": 5, "keywords": 5,
+                     "special": 4, "what_it_says": 3, "why_it_matters": 2, "evidence": 1}
+    for term, (section_weight, section) in priorities.items():
+        variants = lexical_variants(term) | TERM_EXPANSIONS.get(term, set())
+        matches = [(weight, field, sorted(variants & fields[field]))
+                   for field, weight in field_weights.items() if variants & fields[field]]
+        if not matches:
+            continue
+        strength, field, matched = max(matches, key=lambda part: part[0])
+        matched_terms.add(term)
+        contributions.append({"term": term, "section": section, "section_weight": section_weight,
+                              "field": field, "strength": strength, "matched_variant": matched[0],
+                              "points": 1 + section_weight * strength / denominator})
+    score = sum(part["points"] for part in contributions)
+    if diagnostics is not None:
+        diagnostics.candidate(asset, score, matched_terms, contributions)
     return score, sorted(matched_terms)
 
 
-def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
+def _retrieve_raw_assets(payload: WorkshopPrepareRequest, *, diagnostics=None) -> list[dict]:
     from app.db.mock_data import sources, libraries
     selected = set(payload.source_ids)
     known = {s["id"] for s in sources}
@@ -273,12 +286,29 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
         if selected - library_sources:
             raise ValueError("Selected sources do not belong to this library.")
         selected = selected or library_sources
-        if not selected:
-            return []
+    scope_ids = sorted(selected if payload.library_id else selected or known)
+    if diagnostics is not None:
+        diagnostics.request("workshop", build_workshop_query(payload), scope={"source_ids": scope_ids},
+                            library_id=payload.library_id, asset_ids=payload.asset_ids,
+                            limit=payload.limit, output_type=payload.output_type,
+                            terms=build_workshop_query(payload).split(), acquisition="all active in-scope assets")
+        from app.services.source_summary import source_summaries
+        for summary in source_summaries(source_ids=scope_ids):
+            diagnostics.preparation(summary.source_id, readiness=summary.readiness,
+                                    attention_category=summary.attention_category,
+                                    has_usable_knowledge=summary.has_usable_knowledge,
+                                    completed_parts=summary.completed_parts, total_parts=summary.total_parts)
+    if payload.library_id and not selected:
+        return []
     if selected:
         candidates = list_knowledge_assets(source_ids=sorted(selected))
     else:
         candidates = list_knowledge_assets()
+    validate_raw_sources(candidates, set(scope_ids) if selected or payload.library_id else None)
+    check_candidate_budget(candidates)
+    if diagnostics is not None:
+        for source_id in scope_ids:
+            diagnostics.preparation(source_id, candidate_count=sum(item.get("source_id") == source_id for item in candidates))
 
     if payload.asset_ids:
         available = {a["id"] for a in candidates}
@@ -292,17 +322,25 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
             if selected_ids.intersection(group["asset_ids"])
             for aid in group["asset_ids"]
         }
+        if diagnostics is not None:
+            for asset in candidates:
+                if asset["id"] not in contributing_ids:
+                    diagnostics.candidate(asset, reason="not_selected_idea")
         candidates = [a for a in candidates if a["id"] in contributing_ids]
     multi_source_scope = len({item.get("source_id") for item in candidates if item.get("source_id")}) > 1
     ranked = []
     for item in candidates:
-        score, matched_terms = _workshop_relevance(item, payload)
+        score, matched_terms = _workshop_relevance(item, payload, diagnostics=diagnostics)
         if score <= 0 and not payload.asset_ids:
             if payload.output_type == "knowledge_answer" and not multi_source_scope:
                 # Broad source questions such as "What does this source teach?"
                 # should still return a representative evidence-grounded set.
                 score = 1
+                if diagnostics is not None:
+                    diagnostics.candidate(item, score, contributions=[{"bonus": "single_source_representative_fallback", "points": 1}])
             else:
+                if diagnostics is not None:
+                    diagnostics.candidate(item, reason="no_query_overlap")
                 continue
         ranked.append(
             {
@@ -320,28 +358,18 @@ def _retrieve_raw_assets(payload: WorkshopPrepareRequest) -> list[dict]:
         reverse=True,
     )
 
-    pool_limit = max(payload.limit * 5, 30)
-    if payload.output_type == "knowledge_answer" and multi_source_scope:
-        source_ids = {item.get("source_id") for item in ranked if item.get("source_id")}
-        per_source_limit = max(3, ceil(pool_limit / max(len(source_ids), 1)))
-        source_counts = defaultdict(int)
-        balanced_pool = []
-        for item in ranked:
-            source_id = item.get("source_id")
-            if source_id and source_counts[source_id] >= per_source_limit:
-                continue
-            balanced_pool.append(item)
-            if source_id:
-                source_counts[source_id] += 1
-            if len(balanced_pool) >= pool_limit:
-                break
-        ranked = balanced_pool
-
-    return ranked[:pool_limit]
+    # Raw limits and hard source quotas lose independent evidence and distinct
+    # findings before consolidation. Apply the limit to complete groups below.
+    if diagnostics is not None:
+        diagnostics.ranked(ranked)
+        for source_id in scope_ids:
+            diagnostics.preparation(source_id, positive_match_count=sum(
+                item.get("source_id") == source_id and bool(item.get("matched_terms")) for item in ranked))
+    return ranked
 
 
 def _coverage_aware_group_selection(groups, raw_assets, payload):
-    """Keep relevance primary while giving similarly relevant sources a chance to appear."""
+    """Use source diversity only to choose between equal-relevance candidates."""
     if payload.output_type != "knowledge_answer":
         return groups[: payload.limit]
 
@@ -355,62 +383,29 @@ def _coverage_aware_group_selection(groups, raw_assets, payload):
     if len(selected) < 2:
         return groups[: payload.limit]
 
-    raw_by_id = {item.get("id"): item for item in raw_assets if item.get("id")}
-    best_score = max((group.get("relevance_score", 0) for group in groups), default=0)
-    if best_score <= 0:
-        return groups[: payload.limit]
-
-    # Only reserve a source when its own evidence has meaningful query overlap
-    # and is at least half as relevant as the strongest candidate. This avoids
-    # forcing every selected material into a comparison for the sake of breadth.
-    threshold = best_score * 0.5
-    source_candidates = []
-    for source_id in sorted(selected):
-        best = None
-        for group in groups:
-            member_scores = [
-                raw_by_id.get(asset_id, {})
-                for asset_id in group.get("asset_ids", [])
-            ]
-            own = [item for item in member_scores if item.get("source_id") == source_id and item.get("matched_terms")]
-            source_score = max((item.get("relevance_score", 0) for item in own), default=0)
-            if source_score < threshold:
-                continue
-            candidate = (source_score, group)
-            if best is None or source_score > best[0]:
-                best = candidate
-        if best:
-            source_candidates.append((best[0], source_id, best[1]))
-
-    source_candidates.sort(key=lambda item: (-item[0], item[1], tuple(item[2].get("asset_ids", []))))
     chosen = []
-    chosen_ids = set()
-    for _, _, group in source_candidates:
-        marker = tuple(group.get("asset_ids", []))
-        if marker in chosen_ids:
-            continue
+    seen_sources = set()
+    pending = list(groups)
+    while pending and len(chosen) < payload.limit:
+        best_score = pending[0].get("relevance_score", 0)
+        tied = [group for group in pending if group.get("relevance_score", 0) == best_score]
+        # Original ordering remains the tie-breaker after unseen-source count.
+        group = max(tied, key=lambda item: len(set(item.get("source_ids", [])) - seen_sources))
         chosen.append(group)
-        chosen_ids.add(marker)
-        if len(chosen) >= payload.limit:
-            break
-    for group in groups:
-        marker = tuple(group.get("asset_ids", []))
-        if marker in chosen_ids:
-            continue
-        chosen.append(group)
-        chosen_ids.add(marker)
-        if len(chosen) >= payload.limit:
-            break
-    # Preserve the relevance ordering for presentation and provider context.
-    return sorted(chosen, key=lambda group: (
-        group.get("relevance_score", 0), group.get("support_count", 0),
-        group["canonical_asset"].get("confidence_score", 0),
-    ), reverse=True)
+        seen_sources.update(group.get("source_ids", []))
+        pending.remove(group)
+    return chosen
 
 
-def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
+def prepare_workshop(payload: WorkshopPrepareRequest, *, diagnostics=None) -> dict:
+    check_json_budget(payload.model_dump(mode='json'), MAX_WORKSHOP_REQUEST_BYTES,
+                      message='This request is too large. Shorten the request or attached instructions.')
     query = build_workshop_query(payload)
-    raw_assets = _retrieve_raw_assets(payload=payload)
+    # Keep the normal retrieval invocation unchanged when capture is disabled.
+    if diagnostics is None:
+        raw_assets = _retrieve_raw_assets(payload=payload)
+    else:
+        raw_assets = _retrieve_raw_assets(payload=payload, diagnostics=diagnostics)
     groups = consolidate_knowledge_assets(raw_assets)
 
     for group in groups:
@@ -437,14 +432,37 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
         ),
         reverse=True,
     )
-    groups = _coverage_aware_group_selection(groups, raw_assets, payload)
+    selected_groups = _coverage_aware_group_selection(groups, raw_assets, payload)
+    validate_units(selected_groups, request_scope(payload), selected_assets=payload.asset_ids)
+    from app.db.mock_data import sources
+    scope_ids = [source["id"] for source in sources
+                 if (not payload.source_ids or source["id"] in payload.source_ids)
+                 and (payload.library_id is None or source["library_id"] == payload.library_id)]
+    retrieval_coverage = {
+        "candidate_idea_count": len(groups), "retained_idea_count": len(selected_groups),
+        "lexically_matched_asset_count": sum(bool(item.get("matched_terms")) for item in raw_assets),
+        "candidate_without_word_matches_asset_count": sum(not item.get("matched_terms") for item in raw_assets),
+        "sources": [{"source_id": source_id,
+                     "candidate_idea_count": sum(source_id in group["source_ids"] for group in groups),
+                     "retained_idea_count": sum(source_id in group["source_ids"] for group in selected_groups),
+                     "lexically_matched_asset_count": sum(item.get("source_id") == source_id and bool(item.get("matched_terms")) for item in raw_assets)}
+                    for source_id in scope_ids],
+    }
+    if diagnostics is not None:
+        diagnostics.groups(groups, limit=payload.limit, selected_groups=selected_groups)
+        for row in retrieval_coverage["sources"]:
+            diagnostics.preparation(row["source_id"], retained_group_count=row["retained_idea_count"],
+                                    retained_asset_count=sum(item.get("source_id") == row["source_id"]
+                                                             for group in selected_groups
+                                                             for item in group.get("evidence_trail", [])))
+    groups = selected_groups
 
     by_type = defaultdict(list)
     for group in groups:
         asset_type = group["canonical_asset"].get("asset_type", "unknown")
         by_type[asset_type].append(group)
 
-    return {
+    prepared = {
         "brief": {
             "situation": payload.situation,
             "goal": payload.goal,
@@ -464,16 +482,20 @@ def prepare_workshop(payload: WorkshopPrepareRequest) -> dict:
         "knowledge_units": groups,
         "knowledge_by_type": dict(sorted(by_type.items())),
         "synthesis_context": synthesis_context(groups),
-        "source_coverage": source_coverage(groups),
+        "source_coverage": source_coverage(groups, source_ids=scope_ids),
+        "retrieval_coverage": retrieval_coverage,
+        "evidence_base": evidence_base_state(payload.source_ids, payload.library_id),
         "message": (
             "Workshop preparation complete. Relevant consolidated knowledge is ready "
             "for an output-generation step."
         ),
     }
+    validate_preparation(prepared, payload)
+    return prepared
 
 
 
-def source_coverage(groups):
+def source_coverage(groups, source_ids=None):
     """Preparation progress, distinct from lexical relevance or adequacy."""
     from app.db.mock_data import sources
     from app.services.source_interpretation import get_source_interpretation_summary
@@ -483,7 +505,7 @@ def source_coverage(groups):
             counts[source_id] += 1
     coverage = []
     for source in sources:
-        if source["id"] not in counts:
+        if (source_ids is None and source["id"] not in counts) or (source_ids is not None and source["id"] not in source_ids):
             continue
         item = {"source_id": source["id"], "title": source["title"],
                 "relevant_idea_count": counts[source["id"]],

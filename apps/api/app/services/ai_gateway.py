@@ -6,6 +6,8 @@ import logging
 import os
 import time
 from copy import deepcopy
+from contextlib import contextmanager
+from contextvars import ContextVar
 from threading import Lock
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -23,6 +25,17 @@ PROVIDER_QUOTA_TIMEZONE = ZoneInfo("America/Los_Angeles")
 _attempt_admission_lock = Lock()
 _MAX_PROVIDER_ATTEMPTS = 2
 _TRANSIENT_503_RETRY_DELAY_SECONDS = 2.0
+_single_attempt = ContextVar("gemini_single_attempt", default=False)
+
+
+@contextmanager
+def single_provider_attempt():
+    """Disable the gateway's transient retry for this request context only."""
+    token = _single_attempt.set(True)
+    try:
+        yield
+    finally:
+        _single_attempt.reset(token)
 
 
 def _sdk_version():
@@ -259,6 +272,7 @@ def copy_allowance_to_legacy_snapshot():
 
 def generate(model, payload, schema):
     from app.services.knowledge_extraction import persist_state
+    max_attempts = 1 if _single_attempt.get() else _MAX_PROVIDER_ATTEMPTS
     # Serialize both the payload and response schema once so the bounded 503
     # retry sends byte-for-byte equivalent provider arguments.
     provider_input = json.dumps(payload, ensure_ascii=False)
@@ -276,7 +290,7 @@ def generate(model, payload, schema):
         "response_contract_bytes": response_contract_bytes,
     }
 
-    for attempt_number in range(1, _MAX_PROVIDER_ATTEMPTS + 1):
+    for attempt_number in range(1, max_attempts + 1):
         attempt_started = timing_start()
         reservation_id = uuid4().hex
         attempted_at = datetime.now(timezone.utc)
@@ -340,7 +354,7 @@ def generate(model, payload, schema):
         retry_reason = "transient_503" if attempt_number == 2 else None
         attempt_metadata = {
             "attempt_number": attempt_number,
-            "max_attempts": _MAX_PROVIDER_ATTEMPTS,
+            "max_attempts": max_attempts,
             "retry_reason": retry_reason,
             **request_fingerprints,
         }
@@ -373,7 +387,7 @@ def generate(model, payload, schema):
             timing_emit("gemini_attempt", attempt_started, source_id=payload.get("source_id"),
                         chunk_id=payload.get("chunk_id"), attempt_number=attempt_number,
                         attempt_kind="initial" if attempt_number == 1 else "bounded_503_retry",
-                        result="http_503_retryable" if diagnostic.get("status_code") == 503 and attempt_number == 1 else "provider_error",
+                        result="http_503_retryable" if diagnostic.get("status_code") == 503 and attempt_number < max_attempts else "provider_error",
                         destination_category="gemini", http_status=diagnostic.get("status_code"),
                         reservation_id=reservation_id if PERSISTENCE_MODE == "hosted" else None,
                         provider_input_bytes=provider_input_bytes,
@@ -401,7 +415,7 @@ def generate(model, payload, schema):
             # Retry only a definite HTTP 503 response. Timeouts, connection
             # failures, validation errors and every other status remain single
             # attempts because their outcome is not the specified condition.
-            if diagnostic.get("status_code") == 503 and attempt_number == 1:
+            if diagnostic.get("status_code") == 503 and attempt_number < max_attempts:
                 time.sleep(_TRANSIENT_503_RETRY_DELAY_SECONDS)
                 continue
             if diagnostic.get("status_code") == 400 and diagnostic.get("message_category") == "invalid_request_generic":

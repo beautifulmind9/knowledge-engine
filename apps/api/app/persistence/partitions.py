@@ -29,6 +29,15 @@ class PartitionVersionError(RuntimeError):
     """An unsupported or malformed partition marker must fail closed."""
 
 
+class PartitionCapacityExceeded(RuntimeError):
+    """A read scope exceeds caller-provided count or serialized-size budgets."""
+
+    def __init__(self, item_count, payload_bytes):
+        super().__init__('Partition retrieval capacity exceeded.')
+        self.item_count = item_count
+        self.payload_bytes = payload_bytes
+
+
 @dataclass(frozen=True)
 class PartitionMutation:
     value: dict[str, Any]

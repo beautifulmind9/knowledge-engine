@@ -1,5 +1,11 @@
 # KE-PQ-002 — research relevance, sufficiency, and attribution
 
+The historical checkpoints below are preserved. See
+[the 2026-10-20 diagnosis and implementation](relevance-implementation.md) for the
+continuation from `95c8f65`, offline diagnostics, evaluated changes and current
+validation. Passing characterization tests below does not establish that the
+remaining research-quality limitations have been resolved.
+
 Status: evidence preserved; offline current-behavior baseline. No application changes.
 This case is independent of KE-PQ-001 and `acceptance/extraction_quality_2026-10-17/`.
 Neither that source nor its preregistration/manifest is changed or replaced.

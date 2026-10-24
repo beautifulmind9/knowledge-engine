@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 import fcntl
+from threading import Lock
 from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
@@ -51,6 +52,35 @@ allowed_hosts = [hosted_public_host] if hosted_public_host else LOCAL_HOSTS + (
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts, www_redirect=False)
 request_lock=asyncio.Lock()
 
+class RequestAdmission:
+    """Fail-fast process-local admission for the single hosted worker."""
+
+    def __init__(self, maximum=4):
+        self.maximum=maximum
+        self._active=0
+        self._lock=Lock()
+
+    def try_enter(self):
+        with self._lock:
+            if self._active>=self.maximum:
+                return False
+            self._active+=1
+            return True
+
+    def leave(self):
+        with self._lock:
+            if self._active<=0:
+                raise RuntimeError("Request admission counter underflow.")
+            self._active-=1
+
+resource_admission=RequestAdmission(4)
+
+def _requires_resource_admission(request):
+    path=request.url.path
+    # Keep liveness, authentication and static application delivery available
+    # while expensive authenticated API work is at capacity.
+    return path not in {"/", "/health", "/login", "/logout"} and not path.startswith("/static/")
+
 @app.middleware("http")
 async def local_requests(request:Request,call_next):
     timing_started = _timing_start()
@@ -86,31 +116,45 @@ async def local_requests(request:Request,call_next):
         gate = request.app.state.beta_access
         response = gate.enforce(request) if gate is not None else None
         if response is None:
-            if request.method == "GET" and request.url.path == "/health":
-                # Pure process liveness must remain responsive during provider work.
-                response=await invoke_route()
-            else:
-                from app.services.partition_authority import coordinator, refresh_authority
-                from starlette.concurrency import run_in_threadpool
-                await run_in_threadpool(refresh_authority)
-                phase2=coordinator()
-                if phase2:
-                    from app.db.request_state import request_projection
-                    parts=request.url.path.split('/')
-                    source_ids=[parts[2]] if len(parts)>2 and parts[1]=='sources' and parts[2]!='summaries' else None
-                    job_id=parts[2] if len(parts)>2 and parts[1]=='knowledge-extractions' else None
-                    # Blocking read is short and occurs before the async route;
-                    # no workspace mutex spans a provider request in active mode.
-                    from starlette.concurrency import run_in_threadpool
-                    projection=await run_in_threadpool(phase2.scoped,source_ids,job_id=job_id,
-                                                       include_jobs=source_ids is not None or job_id is not None)
-                    with request_projection(phase2,source_ids,job_id,preloaded=projection):
+            admitted = hosted_public_host is None or not _requires_resource_admission(request)
+            entered = False
+            if not admitted:
+                entered=resource_admission.try_enter()
+                if not entered:
+                    response=JSONResponse(
+                        {"detail":"Knowledge Engine is handling the maximum of four active requests. Retry shortly.",
+                         "code":"request_capacity_exceeded"},
+                        status_code=503,headers={"Retry-After":"1"})
+            try:
+                if response is None:
+                    if request.method == "GET" and request.url.path == "/health":
+                        # Pure process liveness must remain responsive during provider work.
                         response=await invoke_route()
-                else:
-                    from app.db.request_state import legacy_request
-                    async with request_lock:
-                        with legacy_request():
-                            response=await invoke_route()
+                    else:
+                        from app.services.partition_authority import coordinator, refresh_authority
+                        from starlette.concurrency import run_in_threadpool
+                        await run_in_threadpool(refresh_authority)
+                        phase2=coordinator()
+                        if phase2:
+                            from app.db.request_state import request_projection
+                            parts=request.url.path.split('/')
+                            source_ids=[parts[2]] if len(parts)>2 and parts[1]=='sources' and parts[2]!='summaries' else None
+                            job_id=parts[2] if len(parts)>2 and parts[1]=='knowledge-extractions' else None
+                            # Blocking read is short and occurs before the async route;
+                            # no workspace mutex spans a provider request in active mode.
+                            from starlette.concurrency import run_in_threadpool
+                            projection=await run_in_threadpool(phase2.scoped,source_ids,job_id=job_id,
+                                                               include_jobs=source_ids is not None or job_id is not None)
+                            with request_projection(phase2,source_ids,job_id,preloaded=projection):
+                                response=await invoke_route()
+                        else:
+                            from app.db.request_state import legacy_request
+                            async with request_lock:
+                                with legacy_request():
+                                    response=await invoke_route()
+            finally:
+                if entered:
+                    resource_admission.leave()
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["Cache-Control"]="no-store"
     response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"

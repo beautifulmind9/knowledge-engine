@@ -25,6 +25,12 @@ mandatory for cached state ownership, serialized operations, and in-memory login
 throttling. The blueprint pins the tested Python 3.14.2 and installs the existing locked
 dependencies. No Node/frontend build is needed. Local launch scripts are unchanged.
 
+The hosted application admits at most four authenticated API requests at once in that
+worker. A fifth fails immediately with HTTP 503, error code
+`request_capacity_exceeded`, and `Retry-After: 1`; it is not queued. Health, login,
+logout and static application delivery remain available at capacity. This guard is
+process-local and depends on the required one-instance/one-worker deployment.
+
 ## Environment checklist
 
 Enter the `sync: false` values privately in Render. The blueprint generates the
@@ -91,6 +97,19 @@ preserves usage accounting. See the
 for the detailed workflow, call snapshot, and regression evidence. R8-08 is
 complete; R8-09 external testing and R8-10 final release decision remain pending.
 Free services may sleep or restart; no paid fallback is configured.
+
+The repository does not record Render's numerical memory allocation, the connected
+Supabase project's identity, PostgreSQL version or connection allowance. Confirm those
+read-only facts before approving the proposed 256 MiB worker-RSS envelope. Historical
+restart acceptance predates the current release candidate; a current cold-start timing
+and persistence smoke check remains part of supervised-beta acceptance.
+
+`/data/export` is a tested portable local backup and contains source files and complete
+state. Its `RESTORE.txt` restores into a new local storage directory; it is not an
+automated Supabase restore procedure. For hosted disaster recovery, retain the private
+export off-service and document/test a quiesced import into a new empty hosted workspace.
+Export currently builds the ZIP in worker memory, so confirm that the current private
+workspace export fits the approved memory envelope.
 
 ## Hosted allowance ledger migration and rollback
 

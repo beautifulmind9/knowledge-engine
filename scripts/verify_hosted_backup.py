@@ -79,6 +79,17 @@ def load_and_verify(package: Path) -> tuple[dict, dict]:
     }
     if referenced != set(locators):
         raise RuntimeError("Backup artifacts do not exactly match active snapshot references.")
+    expected = manifest.get("expected_counts")
+    if expected is not None:
+        observed = {
+            "sources": len(snapshot.get("sources", [])),
+            "artifacts": len(referenced),
+            "knowledge_assets": len(snapshot.get("knowledge_assets", [])),
+            "extraction_jobs": len(snapshot.get("extraction_jobs", [])),
+            "outputs": len(snapshot.get("outputs", [])),
+        }
+        if expected != observed:
+            raise RuntimeError("Backup manifest counts do not match the snapshot.")
     return manifest, snapshot
 
 

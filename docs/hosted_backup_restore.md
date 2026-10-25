@@ -1,83 +1,191 @@
 # Hosted snapshot backup and restore
 
-This runbook covers the V1 hosted layout: one authoritative JSONB row in
-`knowledge_engine.state_snapshots`, the atomic allowance ledger in the same schema,
-and private artifacts in Supabase Storage. The current production workspace has no
-partition authority marker or partition tables. Do not invent one during backup or
-restore.
+This runbook backs up the V1 snapshot-authority database and its exact referenced
+Supabase Storage objects. It runs on persistent local disk outside Render and never
+uses hosted `/data/export`.
 
-The application `/data/export` is intentionally limited to 32 MiB of referenced
-artifacts in hosted mode. The current 465.76 MiB active set must be backed up from an
-operator machine to disk. The hosted worker must not build that archive.
+## 0. Local preflight and mandatory stop
 
-## Acquire a current backup
+Requirements: Python 3.10+, PostgreSQL 17 `psql`/`pg_dump`/`pg_restore`, this approved
+repository revision, and at least 2 GiB free on private persistent storage. Docker is
+optional for the recovery rehearsal. Python computes SHA-256, avoiding the macOS
+`shasum` versus Linux `sha256sum` difference. On macOS, `brew install postgresql@17`
+provides the clients; add its `bin` directory to `PATH`. Confirm all three PostgreSQL
+tools report major version 17.
 
-Prerequisites are PostgreSQL 17 client tools, `curl`, `jq`, Python 3, at least 1 GiB
-of free local disk, and the existing server-side database and Storage credentials.
-Never put credentials in the manifest or shell history. Work in a new directory with
-mode `0700`.
+```sh
+umask 077
+export KE_BACKUP_ROOT="/private/persistent/path/ke-backup-$(date -u +%Y%m%dT%H%M%SZ)"
+python scripts/backup_operator.py preflight "$KE_BACKUP_ROOT" --required-free-gib 2
+```
 
-1. Stop or suspend the Render service so snapshot, ledger and artifact references
-   cannot change. Record the deployed commit, workspace key, UTC time and reason.
-2. Read the snapshot revision and confirm `payload->'partition' IS NULL`. Record its
-   SHA-256 after writing the returned payload as `snapshot.json`.
-3. Run `pg_dump --format=custom --no-owner --no-acl --schema=knowledge_engine
-   --file=database.dump "$KNOWLEDGE_ENGINE_DATABASE_URL"`. This includes
-   `state_snapshots`, `allowance_state`, all allowance reservations and the schema
-   definitions. Hash the dump.
-4. From `snapshot.json`, collect the exact nonempty `file_path`,
-   `extracted_text_path` and `chunks_path` values. Deduplicate them. For this verified
-   production snapshot the result must be 189 locators across 63 sources.
-5. List Storage metadata under the exact workspace prefix. Join it to those locators.
-   Require one byte object and a nonnegative size for every locator. Record the exact
-   object key and metadata size. Do not include or delete the three unreferenced
-   objects.
-6. Download each referenced object separately with an authenticated Storage object
-   GET directly to `objects/<locator>.partial`. Stream to disk, rename only after a
-   successful response, then record its byte count and SHA-256. Never hold an object
-   or aggregate archive in memory. Stop on any redirect, size mismatch or error.
-7. Write `manifest.json` with `format_version: 1`, `authority: "snapshot"`, the
-   deployed commit, workspace identifier, snapshot revision, acquisition timestamps,
-   snapshot and database-dump file/checksum records, `allowance_ledger:
-   {included_in_database_dump: true}`, and one artifact record containing `locator`,
-   exact `object_key`, relative `file`, `size` and `sha256`.
-8. Run `python scripts/verify_hosted_backup.py BACKUP_DIRECTORY`. Keep the service
-   quiesced until verification and the isolated restore rehearsal pass.
+This creates a mode-0700 empty directory, checks disk and prints `STOP: obtain approval
+before suspending Render or using production credentials.` **Stop here.** Do not suspend
+Render, load credentials, query production or download artifacts without approval.
 
-Storage downloads consume egress. The procedure uses no paid service, but the owner
-must authorize the approximately 465.76 MiB transfer and confirm it fits the current
-allowance before acquisition.
+## 1. Private credentials after approval
 
-## Isolated restore rehearsal
+```sh
+set +o history
+umask 077
+export PGSERVICEFILE="/private/credentials/pg_service.conf"
+export PGPASSFILE="/private/credentials/.pgpass"
+export KE_PG_SERVICE="ke_production_backup"
+export KE_SUPABASE_URL="https://PROJECT.supabase.co"
+export KE_STORAGE_BUCKET="knowledge-engine-artifacts"
+export KE_WORKSPACE_KEY="configured-workspace-key"
+export KE_SECRET_FILE="/private/credentials/supabase-secret"
+chmod 600 "$PGSERVICEFILE" "$PGPASSFILE" "$KE_SECRET_FILE"
+```
 
-Never restore over live data.
+Keep database endpoint/password in the PostgreSQL service/pass files. The secret file
+contains only the server-side Storage secret. Values must never enter Git, reports,
+manifests, command arguments or captured output. Storage commands below expose the
+secret only in their child-process environment.
 
-1. Create a new empty local directory and run:
+## 2. Quiesce and capture the database fence
 
-   `python scripts/verify_hosted_backup.py BACKUP_DIRECTORY --restore-local NEW_DIRECTORY`
+Suspend Render and confirm user writes and provider activity have stopped. Record the
+deployed commit locally:
 
-   This verifies every checksum and exact snapshot reference, copies artifacts to an
-   isolated storage tree, and creates an isolated SQLite snapshot database. Start a
-   local app with `KNOWLEDGE_ENGINE_STORAGE=NEW_DIRECTORY/storage` and no hosted or
-   provider credentials. Verify 63 materials, histories, provenance and representative
-   artifact reads.
-2. Restore `database.dump` into a newly created empty PostgreSQL 17 database with
-   `pg_restore --exit-on-error --no-owner --no-acl --dbname=NEW_DATABASE database.dump`.
-   Confirm exactly one expected workspace snapshot, its recorded revision and JSON
-   hash, the allowance-state row, allowance reservations, and absence of a partition
-   marker. Do not point an application at this database during verification.
-3. For a hosted disaster recovery, create a new empty Storage workspace prefix and
-   upload objects one at a time under each manifest `object_key`. Verify remote size
-   and checksum where available before configuring an isolated recovery service.
-4. Start the recovery service with provider calls disabled. Check health, material
-   count, source scope, Knowledge Asset provenance, saved output history and allowance
-   state. Switch traffic only after owner review.
+```sh
+export KE_DEPLOYED_COMMIT="DEPLOYED_COMMIT_SHA"
+```
 
-## Rollback compatibility
+The SQL files are executed by `psql --file`. Their `:'workspace'` expression is psql's
+literal-safe interpolation: it quotes the value as a SQL literal, including embedded
+quotes, without shell-built SQL.
 
-The six-commit release candidate and `95c8f65` both load the current unpartitioned
-snapshot format and use the same allowance tables. Rolling back exactly to `95c8f65`
-requires no database downgrade or allowance copy-back. Quiesce requests, record the
-ledger, deploy that immutable commit, and verify snapshot revision, source counts and
-ledger values. The copy-back procedure is only for rollback to code predating ledger
-authority.
+```sh
+psql "service=$KE_PG_SERVICE" -X -qAt -v ON_ERROR_STOP=1 \
+  --set=workspace="$KE_WORKSPACE_KEY" --file=scripts/backup_sql/snapshot.sql \
+  > "$KE_BACKUP_ROOT/snapshot.json.partial"
+python - "$KE_BACKUP_ROOT/snapshot.json.partial" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); value=json.loads(p.read_text())
+assert isinstance(value, dict) and value.get("partition") is None
+PY
+mv "$KE_BACKUP_ROOT/snapshot.json.partial" "$KE_BACKUP_ROOT/snapshot.json"
+
+psql "service=$KE_PG_SERVICE" -X -qAt -v ON_ERROR_STOP=1 \
+  --set=workspace="$KE_WORKSPACE_KEY" --file=scripts/backup_sql/consistency.sql \
+  > "$KE_BACKUP_ROOT/consistency-before.json.partial"
+python - "$KE_BACKUP_ROOT/consistency-before.json.partial" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); value=json.loads(p.read_text())
+assert isinstance(value.get("revision"), int)
+assert value.get("partition_marker") is None
+assert isinstance(value.get("source_count"), int)
+PY
+mv "$KE_BACKUP_ROOT/consistency-before.json.partial" "$KE_BACKUP_ROOT/consistency-before.json"
+
+pg_dump --dbname="service=$KE_PG_SERVICE" --format=custom --no-owner --no-acl \
+  --schema=knowledge_engine --file="$KE_BACKUP_ROOT/database.dump.partial"
+mv "$KE_BACKUP_ROOT/database.dump.partial" "$KE_BACKUP_ROOT/database.dump"
+```
+
+The dump includes snapshot, allowance state, allowance reservations and schema. Counts
+are derived now; 63 sources and 189 references are comparison evidence, not permanent
+assertions.
+
+## 3. Metadata-only before inventory
+
+```sh
+SUPABASE_SECRET_KEY="$(cat "$KE_SECRET_FILE")" python scripts/backup_operator.py inventory \
+  --url "$KE_SUPABASE_URL" --bucket "$KE_STORAGE_BUCKET" \
+  --workspace "$KE_WORKSPACE_KEY" --snapshot "$KE_BACKUP_ROOT/snapshot.json" \
+  --output "$KE_BACKUP_ROOT/metadata-before.ndjson"
+```
+
+This issues Storage list requests only. For each deduplicated snapshot locator it
+requires one exact `$workspace/$locator` byte object, a unique nonempty object ID and a
+nonnegative size. Output is locator-sorted deterministic NDJSON. Missing metadata,
+duplicate matches or invalid identity stop before body GETs. Record the derived source,
+artifact and byte counts; stop for review if a difference from prior evidence is not
+explained by the fenced snapshot.
+
+## 4. Sequential transfer
+
+This is the first artifact-body read and the bandwidth authorization point:
+
+```sh
+SUPABASE_SECRET_KEY="$(cat "$KE_SECRET_FILE")" python scripts/backup_operator.py download \
+  --url "$KE_SUPABASE_URL" --bucket "$KE_STORAGE_BUCKET" \
+  --workspace "$KE_WORKSPACE_KEY" \
+  --inventory "$KE_BACKUP_ROOT/metadata-before.ndjson" --package "$KE_BACKUP_ROOT"
+```
+
+Each object streams to `objects/<locator>.partial`; the tool hashes while reading,
+checks metadata size and atomically renames only a complete object. It removes the
+current partial on failure and writes `artifacts.ndjson` only after every transfer.
+Objects outside the snapshot inventory are neither downloaded nor deleted.
+
+## 5. After inventory, fence and manifest
+
+```sh
+SUPABASE_SECRET_KEY="$(cat "$KE_SECRET_FILE")" python scripts/backup_operator.py inventory \
+  --url "$KE_SUPABASE_URL" --bucket "$KE_STORAGE_BUCKET" \
+  --workspace "$KE_WORKSPACE_KEY" --snapshot "$KE_BACKUP_ROOT/snapshot.json" \
+  --output "$KE_BACKUP_ROOT/metadata-after.ndjson"
+
+psql "service=$KE_PG_SERVICE" -X -qAt -v ON_ERROR_STOP=1 \
+  --set=workspace="$KE_WORKSPACE_KEY" --file=scripts/backup_sql/consistency.sql \
+  > "$KE_BACKUP_ROOT/consistency-after.json.partial"
+python - "$KE_BACKUP_ROOT/consistency-after.json.partial" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); value=json.loads(p.read_text())
+assert isinstance(value.get("revision"), int)
+PY
+mv "$KE_BACKUP_ROOT/consistency-after.json.partial" "$KE_BACKUP_ROOT/consistency-after.json"
+
+python scripts/backup_operator.py finalize --package "$KE_BACKUP_ROOT" \
+  --deployed-commit "$KE_DEPLOYED_COMMIT"
+python scripts/verify_hosted_backup.py "$KE_BACKUP_ROOT"
+chmod -R go-rwx "$KE_BACKUP_ROOT"
+```
+
+Finalization requires equal parsed database fences and byte-identical Storage
+inventories. It derives source, artifact, asset, job and output counts; rechecks every
+checksum; and only then publishes `manifest.json`. Any revision, allowance,
+reservation, object ID, size, timestamp or checksum change fails closed. Keep Render
+quiesced until real recovery rehearsal succeeds or the attempt is abandoned.
+
+## Isolated recovery rehearsal
+
+```sh
+export KE_RESTORE_ROOT="/private/persistent/path/ke-recovery-$(date -u +%Y%m%dT%H%M%SZ)"
+python scripts/verify_hosted_backup.py "$KE_BACKUP_ROOT" --restore-local "$KE_RESTORE_ROOT"
+```
+
+Restore into a new PostgreSQL 17 database:
+
+```sh
+createdb ke_v1_recovery
+pg_restore --exit-on-error --no-owner --no-acl \
+  --dbname=ke_v1_recovery "$KE_BACKUP_ROOT/database.dump"
+psql ke_v1_recovery -X -qAt -v ON_ERROR_STOP=1 \
+  --set=workspace="$KE_WORKSPACE_KEY" --file=scripts/backup_sql/consistency.sql \
+  > "$KE_BACKUP_ROOT/recovery-consistency.json"
+```
+
+Docker may supply PostgreSQL instead:
+
+```sh
+docker run --rm -d --name ke-v1-recovery-postgres \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=ke_recovery \
+  -e POSTGRES_DB=ke_recovery -p 127.0.0.1::5432 postgres:17-bookworm
+docker port ke-v1-recovery-postgres 5432/tcp
+pg_restore --exit-on-error --no-owner --no-acl \
+  --dbname="host=127.0.0.1 port=LOCAL_PORT user=ke_recovery dbname=ke_recovery" \
+  "$KE_BACKUP_ROOT/database.dump"
+```
+
+Compare recovery consistency JSON semantically with `consistency-before.json`. Inspect
+the isolated snapshot for exact source IDs, Knowledge Asset IDs/count, extraction-job
+counts grouped by preparation status, output/provenance history, allowance values and
+reservation count. The verifier checks every artifact checksum and exact reference.
+Start the app only with `KNOWLEDGE_ENGINE_STORAGE="$KE_RESTORE_ROOT/storage"`, local
+persistence and no Gemini or hosted credentials. Never point rehearsal at live systems.
+
+Keep the completed package on access-controlled encrypted persistent storage under the
+owner-approved retention policy.

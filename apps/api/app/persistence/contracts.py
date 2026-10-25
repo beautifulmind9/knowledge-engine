@@ -35,6 +35,13 @@ class ArtifactStore(Protocol):
         """Check exact locators in one request scope; failures are never absence."""
         ...
 
+    def size_many(self, paths: list[Path]) -> Mapping[Path, int | None]:
+        """Return byte sizes for artifacts and None for absent/non-artifact locators.
+
+        Storage failures and malformed or unavailable size metadata must raise.
+        """
+        ...
+
     def open_binary_read(self, path: Path) -> AbstractContextManager[BinaryIO]: ...
 
     def open_binary_write(self, path: Path) -> AbstractContextManager[BinaryIO]: ...

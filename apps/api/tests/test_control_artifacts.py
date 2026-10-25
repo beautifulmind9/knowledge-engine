@@ -10,6 +10,7 @@ import pytest
 from app.db import mock_data as db
 from app.db.persistence import STORAGE_ROOT
 from app.persistence.local_artifacts import LocalArtifactStore
+from app.persistence.supabase_artifacts import SupabaseArtifactStore, HostedArtifactStoreError
 from app.routers import control
 from app.routers import sources as source_router
 
@@ -97,6 +98,89 @@ def test_export_matches_original_zip_and_does_not_mutate_live_state(client, sour
         assert actual.read('RESTORE.txt') == RESTORE.encode()
         assert actual.read('storage/state.json') == json.dumps(expected_state, indent=2).encode()
     assert snapshot() == before
+
+
+class HostedExportStore(SupabaseArtifactStore):
+    """Offline hosted boundary backed by fixture files; never performs HTTP."""
+
+    def __init__(self, sizes):
+        self.storage_root = STORAGE_ROOT
+        self.sizes = sizes
+        self.reads = []
+
+    def relative_locator(self, path):
+        path = Path(path)
+        return path.relative_to(STORAGE_ROOT) if path.is_absolute() else path
+
+    def size_many(self, paths):
+        return {path: self.sizes.get(path) for path in paths}
+
+    def status(self, path):
+        return "artifact"
+
+    def open_binary_read(self, path):
+        self.reads.append(path)
+        return Path(path).open("rb")
+
+
+@pytest.mark.parametrize("total, expected", [
+    (control.HOSTED_EXPORT_ARTIFACT_BYTES_LIMIT, 200),
+    (control.HOSTED_EXPORT_ARTIFACT_BYTES_LIMIT + 1, 413),
+])
+def test_hosted_export_size_boundary_precedes_artifact_reads(client, source, monkeypatch, total, expected):
+    paths = [Path(record(source)[key]).resolve() for key in KEYS]
+    store = HostedExportStore({paths[0]: total, paths[1]: 0, paths[2]: 0})
+    monkeypatch.setattr(control, "_artifact_store", store)
+
+    response = client.get("/data/export")
+
+    assert response.status_code == expected
+    if expected == 413:
+        assert store.reads == []
+        assert "disk-backed operator backup" in response.json()["detail"]
+    else:
+        assert store.reads == paths
+
+
+def test_hosted_export_missing_or_unavailable_size_fails_before_download(client, source, monkeypatch):
+    paths = [Path(record(source)[key]).resolve() for key in KEYS]
+    store = HostedExportStore({paths[0]: 1, paths[1]: 1})
+    monkeypatch.setattr(control, "_artifact_store", store)
+    response = client.get("/data/export")
+    assert response.status_code == 409
+    assert store.reads == []
+
+    def unavailable(_paths):
+        raise HostedArtifactStoreError("private remote details")
+    store.size_many = unavailable
+    response = client.get("/data/export")
+    assert response.status_code == 503
+    assert "private remote details" not in response.text
+    assert store.reads == []
+
+
+def test_hosted_export_deduplicates_size_inventory_and_archive_entry(client, source, monkeypatch):
+    item = record(source)
+    shared = Path(item["file_path"]).resolve()
+    item["extracted_text_path"] = str(shared)
+    item["chunks_path"] = str(shared)
+    seen = []
+    store = HostedExportStore({shared: control.HOSTED_EXPORT_ARTIFACT_BYTES_LIMIT})
+    original = store.size_many
+    def track(paths):
+        seen.append(list(paths))
+        return original(paths)
+    store.size_many = track
+    monkeypatch.setattr(control, "_artifact_store", store)
+
+    response = client.get("/data/export")
+
+    assert response.status_code == 200
+    assert seen == [[shared]]
+    assert store.reads == [shared]
+    with ZipFile(BytesIO(response.content)) as archive:
+        artifact_names = [name for name in archive.namelist() if name not in ("storage/state.json", "RESTORE.txt")]
+        assert len(artifact_names) == 1
 
 
 @pytest.mark.parametrize('operation', ['export', 'delete'])

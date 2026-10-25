@@ -182,6 +182,28 @@ def test_status_many_batches_parent_inventory_and_deduplicates(storage):
     assert len([call for call in api.calls if call[0] == 'POST' and '/object/list/' in call[1]]) == 1
 
 
+def test_size_many_uses_metadata_only_and_deduplicates(storage):
+    store, api = storage
+    store.write_text(Path('uploads/a'), 'abc')
+    store.write_text(Path('uploads/b'), '12345')
+    api.calls.clear()
+
+    sizes = store.size_many([Path('uploads/a'), Path('uploads/a'), Path('uploads/b'), Path('uploads/missing')])
+
+    assert sizes == {Path('uploads/a'): 3, Path('uploads/b'): 5, Path('uploads/missing'): None}
+    assert all(method == 'POST' and '/object/list/' in route for method, route in api.calls)
+    assert not any(method == 'GET' for method, _route in api.calls)
+
+
+def test_size_many_fails_closed_when_object_size_metadata_is_missing(storage, monkeypatch):
+    store, _api = storage
+    monkeypatch.setattr(store, '_list', lambda *args, **kwargs: [
+        {'name': 'a', 'id': 'object-id', 'metadata': {}}
+    ])
+    with pytest.raises(HostedArtifactStoreError, match='size metadata is unavailable'):
+        store.size_many([Path('uploads/a')])
+
+
 def test_status_many_perf_event_is_aggregated_and_contains_no_locators(storage, caplog):
     import logging
     from app.services import performance_timing

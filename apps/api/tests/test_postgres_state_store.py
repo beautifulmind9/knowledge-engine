@@ -98,6 +98,15 @@ def test_load_exact_snapshot_and_workspace_isolation(database, snapshot):
     assert store.loaded_snapshot == snapshot
 
 
+def test_unmarked_snapshot_remains_authoritative_without_partition_tables(database, snapshot):
+    assert "partition" not in snapshot
+    database.rows[database.key] = (snapshot, 8)
+    store = database.store()
+    assert store.load() == snapshot
+    assert store.partitioned is False
+    assert store.phase2 is False and store.phase3 is False
+
+
 def test_insert_then_increment_and_roundtrip(database, snapshot):
     store = database.store()
     assert store.load() is None

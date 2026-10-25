@@ -263,6 +263,53 @@ class SupabaseArtifactStore:
                     individual_status_count=individual_status_calls)
         return result
 
+    @staticmethod
+    def _item_size(item):
+        metadata = item.get("metadata")
+        size = metadata.get("size") if isinstance(metadata, dict) else None
+        # bool is an int in Python but is never valid Storage size metadata.
+        if isinstance(size, bool) or not isinstance(size, (int, str)):
+            raise HostedArtifactStoreError("Hosted artifact size metadata is unavailable.")
+        try:
+            size = int(size)
+        except (TypeError, ValueError):
+            raise HostedArtifactStoreError("Hosted artifact size metadata is invalid.") from None
+        if size < 0:
+            raise HostedArtifactStoreError("Hosted artifact size metadata is invalid.")
+        return size
+
+    def size_many(self, paths):
+        """Inventory exact object sizes without reading artifact bodies."""
+        requested = [Path(path) for path in paths]
+        unique = list(dict.fromkeys(requested))
+        groups = {}
+        for path in unique:
+            relative = self.relative_locator(path)
+            if relative == Path("."):
+                raise ValueError("A byte artifact requires a non-root locator.")
+            parent, name = self._key(path).rsplit("/", 1)
+            groups.setdefault(parent, {}).setdefault(name, []).append(path)
+
+        result = {}
+        for parent, by_name in groups.items():
+            wanted = set(by_name)
+            found = {}
+            offset = 0
+            while wanted:
+                items = self._list(parent, offset=offset)
+                for item in items:
+                    name = item["name"]
+                    if name in wanted and item.get("id") is not None:
+                        found[name] = self._item_size(item)
+                        wanted.discard(name)
+                if not wanted or len(items) < 100:
+                    break
+                offset += len(items)
+            for name, locators in by_name.items():
+                for path in locators:
+                    result[path] = found.get(name)
+        return result
+
     def exists(self, path: Path) -> bool:
         return self.status(path) != "missing"
 

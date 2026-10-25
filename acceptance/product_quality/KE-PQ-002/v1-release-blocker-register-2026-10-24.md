@@ -47,6 +47,27 @@ blocker list. Full measurements and qualifications are in
    the hosted memory envelope and a quiesced restore into a new empty hosted workspace
    is not yet documented or rehearsed.
 
+## Backup-safety update — 2026-10-25
+
+Read-only production inventory established 63 active materials and 189 distinct,
+complete artifact references totaling 465.76 MiB. The hosted in-memory ZIP is unsafe
+for the 256 MiB worker operating budget and 512 MiB Render limit. The release-candidate
+overlay now inventories hosted object sizes before reads and rejects more than 32 MiB
+with 413. Missing objects or size metadata fail closed; repeated references are counted
+and archived once. Local export behavior remains available.
+
+The disk-backed operator procedure is documented in `docs/hosted_backup_restore.md`.
+Its verifier checks the snapshot, PostgreSQL dump, exact object keys, sizes and SHA-256
+values, then prepares a new isolated local SQLite restore. Production has snapshot
+authority and no partition marker; both the release candidate and `95c8f65` accept that
+format. Synthetic isolated restoration passed for the manifest/artifact/SQLite path
+and for a PostgreSQL 17 custom-format dump containing the snapshot and allowance
+tables. This validates the workflow mechanics, not a real production backup. No current
+production artifact backup has yet been acquired because the
+465.76 MiB read requires separate bandwidth authorization. Supervised beta therefore
+remains blocked until acquisition and an isolated PostgreSQL/local restore rehearsal
+are completed with the real package.
+
 ### P1 — accepted beta limitations and later evidence
 
 1. The original Measuring Narrative Engagement source, request, retrieval,

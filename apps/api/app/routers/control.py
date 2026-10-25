@@ -9,11 +9,18 @@ from app.db.mock_data import libraries, sources, extraction_jobs, knowledge_asse
 from app.db.persistence import STORAGE_ROOT, StateMutationConflict
 from app.persistence.factory import get_artifact_store
 from app.persistence.artifact_paths import contained_locator, archive_entry
+from app.persistence.supabase_artifacts import SupabaseArtifactStore, HostedArtifactStoreError
 from app.services.knowledge_extraction import find_source, persist_state
 from app.services.ai_gateway import status, resume_usage, current_usage_state
 
 router=APIRouter(tags=["data control"])
 _artifact_store = get_artifact_store()
+
+# The hosted implementation holds both the ZIP and response bytes in memory. With
+# the measured ~134 MiB application peak and a ~13 MiB state snapshot, 32 MiB of
+# source artifacts is the largest conservative envelope under the 256 MiB worker
+# operating budget. Local exports retain their existing behavior.
+HOSTED_EXPORT_ARTIFACT_BYTES_LIMIT = 32 * 1024 * 1024
 
 @router.get("/usage")
 def usage_status():
@@ -57,8 +64,38 @@ def integrity():
 def export_data():
     from app.services import partition_authority as authority
     # Includes private source files: never link this endpoint from a public demo.
-    buffer=io.BytesIO()
     source_copy=json.loads(json.dumps(sources))
+    if isinstance(_artifact_store, SupabaseArtifactStore):
+        referenced = []
+        for source in source_copy:
+            for key in ("file_path", "extracted_text_path", "chunks_path"):
+                value = source.get(key)
+                if value:
+                    try:
+                        referenced.append(contained_locator(
+                            _artifact_store, Path(value), STORAGE_ROOT))
+                    except ValueError:
+                        raise HTTPException(
+                            409, "A legacy file is outside storage. Move it into storage before export."
+                        ) from None
+        referenced = list(dict.fromkeys(referenced))
+        try:
+            sizes = _artifact_store.size_many(referenced)
+        except HostedArtifactStoreError:
+            raise HTTPException(
+                503, "Private export could not verify artifact sizes without downloading them."
+            ) from None
+        if any(sizes.get(path) is None for path in referenced):
+            raise HTTPException(409, "Private export requires every referenced artifact to exist with size metadata.")
+        total = sum(sizes[path] for path in referenced)
+        if total > HOSTED_EXPORT_ARTIFACT_BYTES_LIMIT:
+            raise HTTPException(
+                413,
+                "Private export is too large for the hosted worker. Use the disk-backed operator backup procedure.",
+            )
+
+    buffer=io.BytesIO()
+    archived_paths=set()
     with ZipFile(buffer,"w",ZIP_DEFLATED) as archive:
         for source in source_copy:
             for key in ("file_path","extracted_text_path","chunks_path"):
@@ -69,6 +106,10 @@ def export_data():
                     except ValueError:
                         raise HTTPException(409,"A legacy file is outside storage. Move it into storage before export.")
                     relative="storage/"+str(path.relative_to(STORAGE_ROOT))
+                    source[key]=relative
+                    if path in archived_paths:
+                        continue
+                    archived_paths.add(path)
                     # Match ZipFile.write metadata and buffered copying through the store.
                     entry = archive_entry(_artifact_store, path, relative)
                     if entry.is_dir():
@@ -77,7 +118,6 @@ def export_data():
                         entry.compress_type = archive.compression
                         with _artifact_store.open_binary_read(path) as artifact, archive.open(entry, "w") as target:
                             copyfileobj(artifact, target, 1024 * 8)
-                    source[key]=relative
         archive.writestr("storage/state.json",json.dumps(dict(libraries=libraries,sources=source_copy,
             extraction_jobs=authority.jobs(history=True),knowledge_assets=authority.assets(history=True),outputs=outputs,
             usage=current_usage_state()),indent=2))

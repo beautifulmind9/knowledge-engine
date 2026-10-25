@@ -46,6 +46,18 @@ class LocalArtifactStore:
                     list_request_count=0, exact_fallback_count=0)
         return result
 
+    def size_many(self, paths):
+        requested = [Path(path) for path in paths]
+        result = {}
+        for path in dict.fromkeys(requested):
+            try:
+                metadata = self.stat(path)
+            except (FileNotFoundError, NotADirectoryError):
+                result[path] = None
+            else:
+                result[path] = metadata.st_size if S_ISREG(metadata.st_mode) else None
+        return result
+
     def resolve(self, path: Path) -> Path:
         return path.resolve()
 

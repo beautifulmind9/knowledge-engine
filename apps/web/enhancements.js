@@ -289,10 +289,10 @@ async function generateKnowledgeAnswer(question, trigger) {
         situation: scopedQuestion,
         goal: scopedQuestion,
         audience: null,
-        constraints: [
-          "Use only the selected knowledge scope as the evidence base",
-          "Distinguish source-grounded teaching from generator synthesis",
-        ],
+        // Server instructions enforce grounding and source/synthesis separation.
+        // Constraints are scored as subject terms: injecting that boilerplate
+        // here can rank unrelated interface documentation above the question.
+        constraints: [],
         tone_or_style: "Clear, concise, practical",
         output_type: "knowledge_answer",
         output_format: null,

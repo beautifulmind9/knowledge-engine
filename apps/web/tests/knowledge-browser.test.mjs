@@ -178,6 +178,26 @@ test('late grounded answer cannot render after scope changes',async()=>{
  assert.equal(rendered.length,0);
 });
 
+test('Ask sends the question without injecting boilerplate retrieval terms',async()=>{
+ const src=readFileSync(new URL('../enhancements.js',import.meta.url),'utf8');
+ const requests=[];
+ const ctx={answerRevision:0,validateKnowledgeQuestionScope:()=>true,selectedKnowledgeSourceIds:()=>['creator_a','psychology'],beginProcessingStatus:()=>1,endProcessingStatus:()=>{},announceProcessingStatus:()=>{},
+ document:{querySelector:()=>({value:''})},scopeQuestion,scopedKnowledgeQuestion:q=>q,
+ detail:()=>({}),knowledgeAnswerCard:()=>({isConnected:true,replaceChildren(){},setAttribute(){},removeAttribute(){}}),makeElement:()=>({}),
+ apiFetch:async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>({})};},renderKnowledgeAnswer:()=>{}};
+ vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('async function generateKnowledgeAnswer('),src.indexOf('function decorateKnowledgeView(')),ctx);
+ const question='What role do narratives, information gaps and identification play in durable connections between online personalities and followers?';
+ await ctx.generateKnowledgeAnswer(question);
+ assert.equal(requests.length,1);
+ const {url,body}=requests[0];
+ assert.equal(url,'/workshops/generate');
+ assert.equal(body.situation,question);assert.equal(body.goal,question);
+ assert.deepEqual(body.constraints,[]);
+ assert.deepEqual(body.source_ids,['creator_a','psychology']);
+ assert.deepEqual(body.asset_ids,[]);assert.equal(body.library_id,null);
+ assert.equal(body.limit,8);assert.equal(body.output_type,'knowledge_answer');assert.equal(body.save,false);
+});
+
 
 const multiLibraries=[{id:'lib1',name:'Storytelling'},{id:'lib2',name:'Marketing'},{id:'lib3',name:'Unrelated'}];
 const multiSources=[{id:'s1',title:'Story 1',library_id:'lib1'},{id:'s2',title:'Marketing 1',library_id:'lib2'},{id:'s3',title:'Other 1',library_id:'lib3'}];

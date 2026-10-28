@@ -53,7 +53,16 @@ def measure_periodicity(text):
 
 def check_generated_assets(assets, job):
     """Check the whole candidate chunk before any settlement side effect."""
+    from app.services.numbered_list_review import review_asset
     for index, asset in enumerate(assets):
+        reviewed = review_asset(asset)
+        # Counts and source quotations do not establish claimed completeness.
+        # Keep every numbered-list hint advisory, including explicit mismatches.
+        if reviewed:
+            emit('generated_content_integrity', result='diagnostic_only',
+                 detector='numbered-list-review-v2', job_id=job['id'],
+                 source_id=job['source_id'], chunk_id=job['chunk_id'],
+                 asset_index=index, signals=reviewed)
         for field in PROSE_FIELDS:
             value = getattr(asset, field, None)
             values = enumerate(value) if isinstance(value, list) else [(None, value)]

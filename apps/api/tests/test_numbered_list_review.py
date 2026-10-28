@@ -1,6 +1,5 @@
 from copy import deepcopy
 import json
-from pathlib import Path
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
@@ -74,19 +73,40 @@ def test_boundary_false_positives(text):
 
 
 def test_reviewed_proposal_preserves_strict_schema_and_provenance():
-    path = Path(__file__).resolve().parents[3] / 'acceptance/product_quality/KE-PQ-002/partial-correction-proposal.json'
-    proposal = json.loads(path.read_text())
-    original = proposal['preconditions']['original_asset']
-    corrected = {**original, **proposal['proposed_field_changes']}
+    # Entirely synthetic proposal: no private acceptance evidence is required.
+    original = candidate(
+        id='synthetic-asset', source_id='synthetic-source', chunk_id='synthetic-chunk',
+        title='Five principles of a practice cycle', what_it_says='Five principles.',
+        components=['observe', 'plan', 'practice', 'reflect'],
+        chapter_or_section='Synthetic chapter',
+        evidence='Unrelated example: 42 percent preferred blue.',
+    ).model_dump()
+    original.update(active=True, schema_version=1,
+                    extraction_job_id='synthetic-job', extraction_version=1)
+    proposed_field_changes = dict(
+        title='Partial excerpt of five practice principles',
+        what_it_says='This partial excerpt supplies four practice principles.',
+        chapter_or_section='Synthetic chapter — practice cycle',
+        evidence='Five principles: 1. observe 2. plan 3. practice 4. reflect and . . .',
+        when_not_to_use=['Do not treat this excerpt as a complete cycle.'],
+    )
+    before = deepcopy(original)
+    corrected = {**original, **proposed_field_changes}
     # Persistence metadata stays in the envelope, never added to model fields.
     fields = TypeAdapter(KnowledgeAsset).validate_python
     metadata = {'active','schema_version','extraction_job_id','extraction_version'}
     validated = fields({k:v for k,v in corrected.items() if k not in metadata})
     assert validated.chunk_id == original['chunk_id']
     assert validated.components == original['components'] and len(validated.components) == 4
-    assert '68 percent' not in validated.evidence
+    assert validated.source_id == original['source_id']
+    assert validated.id == original['id']
+    assert validated.evidence == proposed_field_changes['evidence']
+    assert '42 percent' not in validated.evidence
     assert validated.evidence.endswith('and . . .')
-    assert validated.chapter_or_section.startswith('CHAPTER 4')
+    assert validated.chapter_or_section == proposed_field_changes['chapter_or_section']
+    assert review_asset(validated)[0]['reason'] == 'partial_numbered_evidence'
+    assert original == before
+    assert all(corrected[k] == original[k] for k in metadata)
     check_generated_assets([validated], dict(id='j', source_id=validated.source_id, chunk_id=validated.chunk_id))
     with pytest.raises(ValidationError):
         fields({**validated.model_dump(), 'review_signal': True})

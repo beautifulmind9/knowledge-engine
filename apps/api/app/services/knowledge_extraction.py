@@ -662,7 +662,12 @@ def search_knowledge_assets(
             validate_raw_sources(candidates, allowed)
         candidates = [a for a in candidates if a["source_id"] in allowed]
     validate_raw_sources(candidates, {source_id} if source_id else (allowed if library_id else None))
-    check_candidate_budget(candidates)
+    # Indexed mode must reject an oversized SQL candidate set before scoring.
+    # Snapshot mode already has the assets in memory. Its full selected scope
+    # may exceed the ceiling even when the complete lexical match pool does not.
+    indexed = coordinator is not None and getattr(coordinator, 'version', 2) >= 3
+    if indexed:
+        check_candidate_budget(candidates)
     if diagnostics is not None:
         from app.services.source_summary import source_summaries
         for summary in source_summaries(source_ids=diagnostic_scope_ids):
@@ -723,6 +728,16 @@ def search_knowledge_assets(
                 "matched_terms": sorted(matched_terms),
             }
         )
+        # Fail closed on the complete matched pool; do not retain the first
+        # 1,000 matches or silently discard independent source evidence.
+        if not indexed and len(ranked) > MAX_CANDIDATE_ASSETS:
+            reject_candidate_capacity()
+
+    # Snapshot Find can examine a large library cheaply without rejecting
+    # unrelated assets. Enforce the unchanged byte budget on *all* positive
+    # matches before ordering or provenance-preserving consolidation.
+    if not indexed:
+        check_candidate_budget(ranked)
 
     ranked.sort(
         key=lambda item: (

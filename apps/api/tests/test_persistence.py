@@ -134,3 +134,43 @@ def test_serialization_failure_preserves_prior_snapshot(store, snapshot):
     with pytest.raises(TypeError):
         store.save(changed)
     assert store.load() == snapshot
+
+
+@pytest.mark.parametrize("operation", ["round_trip", "load_failure", "save_failure", "setup_failure"])
+def test_connections_close_without_garbage_collection(store, monkeypatch, operation):
+    connections = []
+    original_connect = sqlite3.connect
+
+    class TrackedConnection(sqlite3.Connection):
+        def execute(self, sql, *args, **kwargs):
+            if operation == "setup_failure" and sql.startswith("CREATE TABLE"):
+                raise sqlite3.OperationalError("simulated setup failure")
+            return super().execute(sql, *args, **kwargs)
+
+    def connect(*args, **kwargs):
+        conn = original_connect(*args, factory=TrackedConnection, **kwargs)
+        connections.append(conn)  # Retain references so GC cannot mask leaks.
+        return conn
+
+    monkeypatch.setattr(sqlite3, "connect", connect)
+    if operation == "round_trip":
+        assert store.load() is None
+        for index in range(500):
+            store.save({"iteration": index})
+            assert store.load() == {"iteration": index}
+    elif operation == "load_failure":
+        store.storage_root.mkdir()
+        store.state_path.write_text("{bad JSON", encoding="utf-8")
+        with pytest.raises(json.JSONDecodeError):
+            store.load()
+    elif operation == "save_failure":
+        with pytest.raises(TypeError):
+            store.save({"invalid": object()})
+    else:
+        with pytest.raises(sqlite3.OperationalError, match="simulated setup failure"):
+            store.load()
+
+    assert connections
+    for conn in connections:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            conn.execute("SELECT 1")

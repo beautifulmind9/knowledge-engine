@@ -1,4 +1,5 @@
 """Local one-row SQLite snapshots with the original legacy JSON migration."""
+from contextlib import contextmanager
 import json
 import sqlite3
 from pathlib import Path
@@ -12,11 +13,16 @@ class SQLiteStateStore:
         self.db_path = db_path
         self.api_root = api_root
 
+    @contextmanager
     def _connect(self):
         self.storage_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         conn = sqlite3.connect(self.db_path)
-        conn.execute("CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
-        return conn
+        try:
+            with conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)")
+                yield conn
+        finally:
+            conn.close()
 
     def load(self) -> dict[str, Any] | None:
         with self._connect() as conn:

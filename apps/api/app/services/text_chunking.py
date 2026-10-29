@@ -1,0 +1,88 @@
+import json
+from pathlib import Path
+
+
+from app.db.persistence import STORAGE_ROOT
+from app.persistence.contracts import ArtifactStore
+from app.persistence.factory import get_artifact_store
+from app.services.performance_timing import start as timing_start, emit as timing_emit, utf8_size
+
+CHUNK_OUTPUT_FOLDER = STORAGE_ROOT / "chunks"
+_artifact_store: ArtifactStore = get_artifact_store()
+
+
+def chunk_text(source_id: str, text: str, chunk_size: int = 1200, overlap: int = 200):
+    words = text.split()
+
+    if not words:
+        return []
+
+    step_size = chunk_size - overlap
+
+    if step_size <= 0:
+        raise ValueError("chunk_size must be greater than overlap")
+
+    import re
+    headings=[]
+    word_offset=0
+    for line in text.splitlines():
+        if re.match(r"^#{1,6}\s+", line):
+            headings.append((word_offset, re.sub(r"^#{1,6}\s+", "", line).strip()))
+        word_offset += len(line.split())
+    chunks = []
+
+    for index, start in enumerate(range(0, len(words), step_size), start=1):
+        end = start + chunk_size
+        chunk_words = words[start:end]
+
+        if not chunk_words:
+            continue
+
+        chunk_text_value = " ".join(chunk_words)
+
+        chunks.append(
+            {
+                "id": f"chunk_{source_id}_{index:03}",
+                "source_id": source_id,
+                "chunk_index": index,
+                "chapter_or_section": next((title for offset,title in reversed(headings) if offset <= start), None),
+                "text": chunk_text_value,
+                "word_count": len(chunk_words),
+                "character_count": len(chunk_text_value),
+                "start_word_index": start,
+                "end_word_index": start + len(chunk_words)
+            }
+        )
+        # The final full window already contains the remaining words.
+        if end >= len(words):
+            break
+
+    return chunks
+
+
+def save_chunks(source_id: str, chunks):
+    started=timing_start()
+    _artifact_store.create_directory(CHUNK_OUTPUT_FOLDER)
+
+    output_path = CHUNK_OUTPUT_FOLDER / f"{source_id}.json"
+    payload=json.dumps(chunks, indent=2, ensure_ascii=False)
+    try:
+        _artifact_store.write_text(output_path,payload)
+    except Exception:
+        timing_emit("artifact_write",started,result="error",source_id=source_id,
+                    destination_category="artifact",operation_category="chunks",
+                    file_size_bytes=utf8_size(payload))
+        raise
+    timing_emit("artifact_write",started,source_id=source_id,destination_category="artifact",
+                operation_category="chunks",file_size_bytes=utf8_size(payload))
+
+    return str(output_path)
+
+
+def load_chunks(chunks_path: str):
+    path = Path(chunks_path)
+
+    if not _artifact_store.exists(path):
+        raise ValueError("Chunks file not found on disk. Restore the source data before continuing.")
+
+    return json.loads(_artifact_store.read_text(path))

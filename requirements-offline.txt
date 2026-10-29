@@ -1,0 +1,5 @@
+# Existing environment versions; no installation or provider needed for core tests.
+pytest==9.1.1
+# Optional parser probe also uses existing beautifulsoup4 and EbookLib.
+python-docx==1.2.0
+pypdf==6.18.1

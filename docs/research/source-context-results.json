@@ -1,0 +1,603 @@
+{
+  "fixture_sha256": "3c637e0043e56cb95e55c06fc446f0ae594463ec2ed2018d7b9c9da27b86b4ee",
+  "queries": [
+    {
+      "id": "records-exact",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1254,
+          "chars": 7484,
+          "passages": 19,
+          "bytes": 22824,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "measurement-exact",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1011,
+          "chars": 6202,
+          "passages": 17,
+          "bytes": 20336,
+          "omitted": 36,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "consent-omission",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1102,
+          "chars": 6640,
+          "passages": 16,
+          "bytes": 20664,
+          "omitted": 37,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "capacity-omission",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1356,
+          "chars": 8156,
+          "passages": 20,
+          "bytes": 23967,
+          "omitted": 33,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "layout-omission",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 997,
+          "chars": 6007,
+          "passages": 15,
+          "bytes": 19263,
+          "omitted": 38,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "eligibility-omission",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1285,
+          "chars": 7680,
+          "passages": 18,
+          "bytes": 22665,
+          "omitted": 35,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "compatibility",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 700,
+          "chars": 4286,
+          "passages": 10,
+          "bytes": 14930,
+          "omitted": 43,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "parts-record",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1394,
+          "chars": 8482,
+          "passages": 20,
+          "bytes": 24424,
+          "omitted": 33,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "diagnosis",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1608,
+          "chars": 9649,
+          "passages": 23,
+          "bytes": 27265,
+          "omitted": 30,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "paraphrase-alias",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1144,
+          "chars": 6876,
+          "passages": 17,
+          "bytes": 21434,
+          "omitted": 36,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "paraphrase-alias-2",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1023,
+          "chars": 6191,
+          "passages": 15,
+          "bytes": 19455,
+          "omitted": 38,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "paraphrase-unmapped",
+      "kind": "targeted",
+      "baseline_recall": 0.0,
+      "modes": {
+        "targeted": {
+          "recall": 0.0,
+          "qualification_recall": 0.0,
+          "required_section_recall": 0.0,
+          "state": "context_available",
+          "words": 134,
+          "chars": 824,
+          "passages": 2,
+          "bytes": 7263,
+          "omitted": 51,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "broad-operations",
+      "kind": "broad",
+      "baseline_recall": 0.6666666666666666,
+      "modes": {
+        "targeted": {
+          "recall": 0.6666666666666666,
+          "qualification_recall": 0.6666666666666666,
+          "required_section_recall": 0.6666666666666666,
+          "state": "context_available",
+          "words": 1138,
+          "chars": 7000,
+          "passages": 17,
+          "bytes": 19725,
+          "omitted": 29,
+          "lost_ranked": 0
+        },
+        "broad": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 3184,
+          "chars": 19300,
+          "passages": 46,
+          "bytes": 47330,
+          "omitted": 0,
+          "lost_ranked": 0
+        },
+        "broad_12": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 748,
+          "chars": 4668,
+          "passages": 12,
+          "bytes": 14580,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "broad-decisions",
+      "kind": "broad",
+      "baseline_recall": 0.3333333333333333,
+      "modes": {
+        "targeted": {
+          "recall": 0.6666666666666666,
+          "qualification_recall": 0.6666666666666666,
+          "required_section_recall": 0.5,
+          "state": "context_available",
+          "words": 1305,
+          "chars": 7968,
+          "passages": 19,
+          "bytes": 21657,
+          "omitted": 27,
+          "lost_ranked": 0
+        },
+        "broad": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 3184,
+          "chars": 19300,
+          "passages": 46,
+          "bytes": 47296,
+          "omitted": 0,
+          "lost_ranked": 0
+        },
+        "broad_12": {
+          "recall": 0.3333333333333333,
+          "qualification_recall": 0.3333333333333333,
+          "required_section_recall": 0.5,
+          "state": "context_available",
+          "words": 778,
+          "chars": 4795,
+          "passages": 12,
+          "bytes": 14555,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "broad-closing",
+      "kind": "broad",
+      "baseline_recall": 0.0,
+      "modes": {
+        "targeted": {
+          "recall": 0.3333333333333333,
+          "qualification_recall": 0.3333333333333333,
+          "required_section_recall": 0.3333333333333333,
+          "state": "context_available",
+          "words": 1060,
+          "chars": 6534,
+          "passages": 16,
+          "bytes": 18869,
+          "omitted": 30,
+          "lost_ranked": 0
+        },
+        "broad": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 3184,
+          "chars": 19300,
+          "passages": 46,
+          "bytes": 47387,
+          "omitted": 0,
+          "lost_ranked": 0
+        },
+        "broad_12": {
+          "recall": 0.0,
+          "qualification_recall": 0.0,
+          "required_section_recall": 0.3333333333333333,
+          "state": "context_available",
+          "words": 829,
+          "chars": 5063,
+          "passages": 12,
+          "bytes": 15170,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "broad-authority",
+      "kind": "broad",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1565,
+          "chars": 9405,
+          "passages": 22,
+          "bytes": 24793,
+          "omitted": 24,
+          "lost_ranked": 0
+        },
+        "broad": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 3184,
+          "chars": 19300,
+          "passages": 46,
+          "bytes": 47477,
+          "omitted": 0,
+          "lost_ranked": 0
+        },
+        "broad_12": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 772,
+          "chars": 4743,
+          "passages": 12,
+          "bytes": 14608,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "cross-records",
+      "kind": "cross",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1115,
+          "chars": 6716,
+          "passages": 17,
+          "bytes": 21036,
+          "omitted": 36,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "cross-measure",
+      "kind": "cross",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1026,
+          "chars": 6258,
+          "passages": 16,
+          "bytes": 20092,
+          "omitted": 37,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "cross-consent",
+      "kind": "cross",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1163,
+          "chars": 6965,
+          "passages": 17,
+          "bytes": 21428,
+          "omitted": 36,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "cross-queue",
+      "kind": "cross",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1183,
+          "chars": 7152,
+          "passages": 17,
+          "bytes": 21685,
+          "omitted": 36,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "noanswer-1",
+      "kind": "noanswer",
+      "baseline_recall": null,
+      "modes": {
+        "targeted": {
+          "recall": null,
+          "qualification_recall": null,
+          "required_section_recall": null,
+          "state": "no_matches",
+          "words": 0,
+          "chars": 0,
+          "passages": 0,
+          "bytes": 5382,
+          "omitted": 53,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "noanswer-2",
+      "kind": "noanswer",
+      "baseline_recall": null,
+      "modes": {
+        "targeted": {
+          "recall": null,
+          "qualification_recall": null,
+          "required_section_recall": null,
+          "state": "no_matches",
+          "words": 0,
+          "chars": 0,
+          "passages": 0,
+          "bytes": 5384,
+          "omitted": 53,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "noanswer-3",
+      "kind": "noanswer",
+      "baseline_recall": null,
+      "modes": {
+        "targeted": {
+          "recall": null,
+          "qualification_recall": null,
+          "required_section_recall": null,
+          "state": "no_matches",
+          "words": 0,
+          "chars": 0,
+          "passages": 0,
+          "bytes": 5374,
+          "omitted": 53,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "noanswer-4",
+      "kind": "noanswer",
+      "baseline_recall": null,
+      "modes": {
+        "targeted": {
+          "recall": null,
+          "qualification_recall": null,
+          "required_section_recall": null,
+          "state": "no_matches",
+          "words": 0,
+          "chars": 0,
+          "passages": 0,
+          "bytes": 5386,
+          "omitted": 53,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "records-long",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1091,
+          "chars": 6724,
+          "passages": 18,
+          "bytes": 21627,
+          "omitted": 35,
+          "lost_ranked": 0
+        }
+      }
+    },
+    {
+      "id": "records-repeat",
+      "kind": "targeted",
+      "baseline_recall": 1.0,
+      "modes": {
+        "targeted": {
+          "recall": 1.0,
+          "qualification_recall": 1.0,
+          "required_section_recall": 1.0,
+          "state": "context_available",
+          "words": 1254,
+          "chars": 7484,
+          "passages": 19,
+          "bytes": 22990,
+          "omitted": 34,
+          "lost_ranked": 0
+        }
+      }
+    }
+  ],
+  "recorded_utc": "2026-10-20T02:48:50.504501+00:00",
+  "summary": {
+    "baseline_recall": 0.8636363636363636,
+    "targeted_context_recall": 0.8939393939393939,
+    "broad_context_recall": 1.0,
+    "broad_12_context_recall": 0.5833333333333334,
+    "lost_ranked_hits": 0
+  }
+}

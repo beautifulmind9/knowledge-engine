@@ -1,0 +1,802 @@
+{
+  "version": 1,
+  "status": "frozen-before-implementation",
+  "source_basis": "committed original synthetic KE-PQ-001 source; no runtime assets loaded",
+  "sources": [
+    {
+      "id": "repair",
+      "path": "../../acceptance/extraction_quality_2026-10-17/source.md",
+      "sha256": "93afffd120832c93694a2e854e4a8dd444e0d1f83bc05d812ab7d49390485de8"
+    },
+    {
+      "id": "alpha",
+      "text": "# Workshop Alpha policy\n\n## Records\n\nAn intake ticket records only an anonymous ticket number and an arrival time. Unlike community repair sessions, Workshop Alpha keeps the item description in a separate private register.\n\n## Measurement\n\nWorkshop Alpha counts accepted items, repaired items, referrals and returned items separately. A referral is not a completed repair. Workshop Alpha never compares raw counts between volunteers.\n\n## Consent\n\nWorkshop Alpha requires fresh owner consent before replacing any part. Consent to inspect is not consent to replace parts.\n\n## Scheduling\n\nWorkshop Alpha prioritizes accepted items by promised return time and repairer skill. Do not prioritize forceful owners.\n",
+      "sha256": "0b2f9d3b2d89dd1761cee0cf89211a3a0213a20af3a8f0bb66aec66238b94ae7"
+    },
+    {
+      "id": "noise",
+      "text": "# Marketing event ideas\n\n## Storytelling\n\nA community session can use stories, headline ideas and attendee feedback for marketing. Repeat the event story to improve marketing attention.\n\n## Tickets\n\nA ticket campaign can advertise a session. Ticket sales and event counts track marketing activity, not repair operations.\n\n## Topics\n\nA chapter about product strategy recommends clear audience positioning and broad marketing categories.\n",
+      "sha256": "f7947b8ea4c168570a3ca5800f1910547e8ed7b1b882c13d8589c22249afe1a1"
+    }
+  ],
+  "queries": [
+    {
+      "id": "records-exact",
+      "query": "intake ticket preferred name arrival time next station",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ]
+    },
+    {
+      "id": "measurement-exact",
+      "query": "accepted items completed inspections repairs completed referrals categories separate",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        }
+      ]
+    },
+    {
+      "id": "consent-omission",
+      "query": "consent inspect replace parts discard irreversible damage",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        }
+      ]
+    },
+    {
+      "id": "capacity-omission",
+      "query": "supervision capacity electrical repairer",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 3506,
+          "end": 3974,
+          "text": "Set a capacity before intake begins. For a small fictional session, the host might start with eight open tickets and reassess after the first hour. That number is an example, not a universal safe limit. The correct limit depends on bench space, volunteer coverage, item mix, and the time needed to explain decisions. If new arrivals exceed capacity, offer a later session or a referral rather than quietly expanding the queue beyond the team’s ability to supervise it."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 3506,
+          "end": 3974,
+          "text": "Set a capacity before intake begins. For a small fictional session, the host might start with eight open tickets and reassess after the first hour. That number is an example, not a universal safe limit. The correct limit depends on bench space, volunteer coverage, item mix, and the time needed to explain decisions. If new arrivals exceed capacity, offer a later session or a referral rather than quietly expanding the queue beyond the team’s ability to supervise it."
+        }
+      ]
+    },
+    {
+      "id": "layout-omission",
+      "query": "layout clear routes exits",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 2532,
+          "end": 3063,
+          "text": "The host should walk the room and identify the welcome table, waiting area, active benches, tool-return point, and a clear exit path. Put a visible sign at each station. Keep food and drinks away from work surfaces. Place a first-aid kit where volunteers can find it without searching, and identify the person responsible for calling emergency services if needed. If the venue cannot provide a safe layout, reduce the number of active benches or postpone the session; a crowded room is not made safe by asking people to be careful."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 2532,
+          "end": 3063,
+          "text": "The host should walk the room and identify the welcome table, waiting area, active benches, tool-return point, and a clear exit path. Put a visible sign at each station. Keep food and drinks away from work surfaces. Place a first-aid kit where volunteers can find it without searching, and identify the person responsible for calling emergency services if needed. If the venue cannot provide a safe layout, reduce the number of active benches or postpone the session; a crowded room is not made safe by asking people to be careful."
+        }
+      ]
+    },
+    {
+      "id": "eligibility-omission",
+      "query": "required competence needed tool stop work",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 8999,
+          "end": 9389,
+          "text": "Stop work when a new hazard appears, the owner withdraws consent, the repairer lacks the required competence, the needed tool is not available, or the item’s condition makes the next step uncertain in a safety-relevant way. Make the item safe only within the repairer’s competence. Do not improvise a test to “see what happens.” Tell the owner what caused the stop and what can happen next."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 8999,
+          "end": 9389,
+          "text": "Stop work when a new hazard appears, the owner withdraws consent, the repairer lacks the required competence, the needed tool is not available, or the item’s condition makes the next step uncertain in a safety-relevant way. Make the item safe only within the repairer’s competence. Do not improvise a test to “see what happens.” Tell the owner what caused the stop and what can happen next."
+        }
+      ]
+    },
+    {
+      "id": "compatibility",
+      "query": "possible match compatibility power-on reliability",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 7101,
+          "end": 7467,
+          "text": "If a part appears to fit but compatibility is unconfirmed, label it “possible match” and list what must be checked before purchase. Do not tell an owner that a repair will succeed until the relevant test has been completed. A successful power-on test, for example, does not establish long-term reliability. The team can say what it observed and what it did not test."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 7101,
+          "end": 7467,
+          "text": "If a part appears to fit but compatibility is unconfirmed, label it “possible match” and list what must be checked before purchase. Do not tell an owner that a repair will succeed until the relevant test has been completed. A successful power-on test, for example, does not establish long-term reliability. The team can say what it observed and what it did not test."
+        }
+      ]
+    },
+    {
+      "id": "parts-record",
+      "query": "parts note compatibility question who check date revisit",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 2100,
+          "end": 2501,
+          "text": "Use a **parts note** only when a possible part or supplier needs follow-up. Record the part description, compatibility question, who will check it, and a date to revisit. Do not write “part ordered” when someone has only found a possible match. These three records reduce handoff confusion, but combining them into one long narrative makes queue status, diagnosis, and follow-up harder to distinguish."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 2100,
+          "end": 2501,
+          "text": "Use a **parts note** only when a possible part or supplier needs follow-up. Record the part description, compatibility question, who will check it, and a date to revisit. Do not write “part ordered” when someone has only found a possible match. These three records reduce handoff confusion, but combining them into one long narrative makes queue status, diagnosis, and follow-up harder to distinguish."
+        }
+      ]
+    },
+    {
+      "id": "diagnosis",
+      "query": "diagnosis card symptom checks causes uncertain",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1753,
+          "end": 2098,
+          "text": "Use a **diagnosis card** to record what the repairer and owner observed together: the symptom, checks already made, likely causes, parts or tools needed, and what remains uncertain. The owner should be able to correct the description. A diagnosis card is not proof that the item is safe, and a guess written on it must remain labeled as a guess."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1753,
+          "end": 2098,
+          "text": "Use a **diagnosis card** to record what the repairer and owner observed together: the symptom, checks already made, likely causes, parts or tools needed, and what remains uncertain. The owner should be able to correct the description. A diagnosis card is not proof that the item is safe, and a guess written on it must remain labeled as a guess."
+        }
+      ]
+    },
+    {
+      "id": "paraphrase-alias",
+      "query": "registration slip personal identifier next destination",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ]
+    },
+    {
+      "id": "paraphrase-alias-2",
+      "query": "job card",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1753,
+          "end": 2098,
+          "text": "Use a **diagnosis card** to record what the repairer and owner observed together: the symptom, checks already made, likely causes, parts or tools needed, and what remains uncertain. The owner should be able to correct the description. A diagnosis card is not proof that the item is safe, and a guess written on it must remain labeled as a guess."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1753,
+          "end": 2098,
+          "text": "Use a **diagnosis card** to record what the repairer and owner observed together: the symptom, checks already made, likely causes, parts or tools needed, and what remains uncertain. The owner should be able to correct the description. A diagnosis card is not proof that the item is safe, and a guess written on it must remain labeled as a guess."
+        }
+      ]
+    },
+    {
+      "id": "paraphrase-unmapped",
+      "query": "How is informed assent delimited before disassembly?",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        }
+      ]
+    },
+    {
+      "id": "broad-operations",
+      "query": "community repair session guide",
+      "kind": "broad",
+      "scope": [
+        "repair"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        },
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        },
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        }
+      ]
+    },
+    {
+      "id": "broad-decisions",
+      "query": "decisions in a repair session",
+      "kind": "broad",
+      "scope": [
+        "repair"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 4438,
+          "end": 4873,
+          "text": "**Triage** decides whether the event can safely and reasonably take the item today. It is a short routing decision, not a diagnosis and not a judgment about whether the owner deserves help. A safe item may still be declined because no qualified volunteer or suitable tool is available. A high-risk item is declined even if the owner is willing to accept the risk; willingness does not make an unsafe process appropriate for volunteers."
+        },
+        {
+          "source_id": "repair",
+          "start": 4875,
+          "end": 5313,
+          "text": "**Queue prioritization** happens only among items already accepted for the session. It considers promised return times, a repairer’s relevant skill, and whether a short task can be completed without disrupting a longer repair. Arrival order is a useful default when those factors are equal. Do not move someone ahead because they are more confident, more familiar to the host, or more forceful. Tell owners when the order changes and why."
+        },
+        {
+          "source_id": "repair",
+          "start": 8999,
+          "end": 9389,
+          "text": "Stop work when a new hazard appears, the owner withdraws consent, the repairer lacks the required competence, the needed tool is not available, or the item’s condition makes the next step uncertain in a safety-relevant way. Make the item safe only within the repairer’s competence. Do not improvise a test to “see what happens.” Tell the owner what caused the stop and what can happen next."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 4438,
+          "end": 4873,
+          "text": "**Triage** decides whether the event can safely and reasonably take the item today. It is a short routing decision, not a diagnosis and not a judgment about whether the owner deserves help. A safe item may still be declined because no qualified volunteer or suitable tool is available. A high-risk item is declined even if the owner is willing to accept the risk; willingness does not make an unsafe process appropriate for volunteers."
+        },
+        {
+          "source_id": "repair",
+          "start": 4875,
+          "end": 5313,
+          "text": "**Queue prioritization** happens only among items already accepted for the session. It considers promised return times, a repairer’s relevant skill, and whether a short task can be completed without disrupting a longer repair. Arrival order is a useful default when those factors are equal. Do not move someone ahead because they are more confident, more familiar to the host, or more forceful. Tell owners when the order changes and why."
+        },
+        {
+          "source_id": "repair",
+          "start": 8999,
+          "end": 9389,
+          "text": "Stop work when a new hazard appears, the owner withdraws consent, the repairer lacks the required competence, the needed tool is not available, or the item’s condition makes the next step uncertain in a safety-relevant way. Make the item safe only within the repairer’s competence. Do not improvise a test to “see what happens.” Tell the owner what caused the stop and what can happen next."
+        }
+      ]
+    },
+    {
+      "id": "broad-closing",
+      "query": "learning across a repair session",
+      "kind": "broad",
+      "scope": [
+        "repair"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 9795,
+          "end": 10231,
+          "text": "At closing, review open parts notes and unresolved tickets with the owners who are still present. Return every item to its owner unless the owner explicitly agrees to another arrangement. Reconcile tools against the sign-out list. Record a short incident note for a safety stop, without collecting unnecessary personal details. A stop-work event is useful information for improving the session; it is not evidence that the event failed."
+        },
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        },
+        {
+          "source_id": "repair",
+          "start": 18975,
+          "end": 19358,
+          "text": "Do not treat an empty bench as proof that the event can accept every waiting item. Supervision and skill coverage matter as much as space. Do not treat a completed diagnosis card as a safety certification. Do not rank items by how easy their stories are to understand. Do not report a suspected cause as a confirmed one. Do not let a parts note silently become a purchase commitment."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 9795,
+          "end": 10231,
+          "text": "At closing, review open parts notes and unresolved tickets with the owners who are still present. Return every item to its owner unless the owner explicitly agrees to another arrangement. Reconcile tools against the sign-out list. Record a short incident note for a safety stop, without collecting unnecessary personal details. A stop-work event is useful information for improving the session; it is not evidence that the event failed."
+        },
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        },
+        {
+          "source_id": "repair",
+          "start": 18975,
+          "end": 19358,
+          "text": "Do not treat an empty bench as proof that the event can accept every waiting item. Supervision and skill coverage matter as much as space. Do not treat a completed diagnosis card as a safety certification. Do not rank items by how easy their stories are to understand. Do not report a suspected cause as a confirmed one. Do not let a parts note silently become a purchase commitment."
+        }
+      ]
+    },
+    {
+      "id": "broad-authority",
+      "query": "owner host repairer responsibilities",
+      "kind": "broad",
+      "scope": [
+        "repair"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "repair",
+          "start": 3065,
+          "end": 3504,
+          "text": "Run a ten-minute volunteer briefing. Confirm who is hosting, who handles intake, who can pause the queue, and which repairers are qualified for which work. Review the event’s stop-work rule: any participant may call “pause” when they see an immediate hazard, and the repairer decides whether work can resume. A host can stop activity to clear a path or make space; a host must not tell a repairer to continue a repair they consider unsafe."
+        },
+        {
+          "source_id": "repair",
+          "start": 474,
+          "end": 898,
+          "text": "A community repair session gives neighbors a place to examine small household items with volunteer repairers. The goal is to help an owner make an informed next move, which may be a safe repair, a referral, a parts search, or a decision to stop. The goal is not to promise that every item will be fixed. A host coordinates the room and the queue; the host does not overrule a repairer’s safety judgment or an owner’s choice."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "repair",
+          "start": 3065,
+          "end": 3504,
+          "text": "Run a ten-minute volunteer briefing. Confirm who is hosting, who handles intake, who can pause the queue, and which repairers are qualified for which work. Review the event’s stop-work rule: any participant may call “pause” when they see an immediate hazard, and the repairer decides whether work can resume. A host can stop activity to clear a path or make space; a host must not tell a repairer to continue a repair they consider unsafe."
+        },
+        {
+          "source_id": "repair",
+          "start": 474,
+          "end": 898,
+          "text": "A community repair session gives neighbors a place to examine small household items with volunteer repairers. The goal is to help an owner make an informed next move, which may be a safe repair, a referral, a parts search, or a decision to stop. The goal is not to promise that every item will be fixed. A host coordinates the room and the queue; the host does not overrule a repairer’s safety judgment or an owner’s choice."
+        }
+      ]
+    },
+    {
+      "id": "cross-records",
+      "query": "intake ticket records",
+      "kind": "cross",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        },
+        {
+          "source_id": "alpha",
+          "start": 37,
+          "end": 222,
+          "text": "An intake ticket records only an anonymous ticket number and an arrival time. Unlike community repair sessions, Workshop Alpha keeps the item description in a separate private register."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        },
+        {
+          "source_id": "alpha",
+          "start": 37,
+          "end": 222,
+          "text": "An intake ticket records only an anonymous ticket number and an arrival time. Unlike community repair sessions, Workshop Alpha keeps the item description in a separate private register."
+        }
+      ]
+    },
+    {
+      "id": "cross-measure",
+      "query": "measurement accepted items referrals repair",
+      "kind": "cross",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        },
+        {
+          "source_id": "alpha",
+          "start": 240,
+          "end": 433,
+          "text": "Workshop Alpha counts accepted items, repaired items, referrals and returned items separately. A referral is not a completed repair. Workshop Alpha never compares raw counts between volunteers."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 13906,
+          "end": 14354,
+          "text": "After each event, the host may count accepted items, completed inspections, repairs completed, referrals, and items returned without a repair. Keep the categories separate. An item with a useful safety referral is not a completed repair, and a repair that takes longer than the event is not necessarily a failed interaction. These counts help plan staffing and tools; they do not measure whether an owner felt respected or learned something useful."
+        },
+        {
+          "source_id": "alpha",
+          "start": 240,
+          "end": 433,
+          "text": "Workshop Alpha counts accepted items, repaired items, referrals and returned items separately. A referral is not a completed repair. Workshop Alpha never compares raw counts between volunteers."
+        }
+      ]
+    },
+    {
+      "id": "cross-consent",
+      "query": "consent inspect replace parts",
+      "kind": "cross",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "alpha",
+          "start": 447,
+          "end": 569,
+          "text": "Workshop Alpha requires fresh owner consent before replacing any part. Consent to inspect is not consent to replace parts."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 5792,
+          "end": 6175,
+          "text": "Before a repairer opens an item, the owner should understand the proposed inspection and agree to it. Explain that volunteers may find a problem they cannot fix and that replacement parts may cost money. If opening the item could cause irreversible damage, say so before proceeding. Consent to inspect is not consent to replace parts, discard the item, or perform a different repair."
+        },
+        {
+          "source_id": "alpha",
+          "start": 447,
+          "end": 569,
+          "text": "Workshop Alpha requires fresh owner consent before replacing any part. Consent to inspect is not consent to replace parts."
+        }
+      ]
+    },
+    {
+      "id": "cross-queue",
+      "query": "queue prioritization promised return skill",
+      "kind": "cross",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 4875,
+          "end": 5313,
+          "text": "**Queue prioritization** happens only among items already accepted for the session. It considers promised return times, a repairer’s relevant skill, and whether a short task can be completed without disrupting a longer repair. Arrival order is a useful default when those factors are equal. Do not move someone ahead because they are more confident, more familiar to the host, or more forceful. Tell owners when the order changes and why."
+        },
+        {
+          "source_id": "alpha",
+          "start": 586,
+          "end": 706,
+          "text": "Workshop Alpha prioritizes accepted items by promised return time and repairer skill. Do not prioritize forceful owners."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 4875,
+          "end": 5313,
+          "text": "**Queue prioritization** happens only among items already accepted for the session. It considers promised return times, a repairer’s relevant skill, and whether a short task can be completed without disrupting a longer repair. Arrival order is a useful default when those factors are equal. Do not move someone ahead because they are more confident, more familiar to the host, or more forceful. Tell owners when the order changes and why."
+        },
+        {
+          "source_id": "alpha",
+          "start": 586,
+          "end": 706,
+          "text": "Workshop Alpha prioritizes accepted items by promised return time and repairer skill. Do not prioritize forceful owners."
+        }
+      ]
+    },
+    {
+      "id": "noanswer-1",
+      "query": "lunar isotope spectroscopy",
+      "kind": "noanswer",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [],
+      "qualifications": []
+    },
+    {
+      "id": "noanswer-2",
+      "query": "submarine sonar calibration",
+      "kind": "noanswer",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [],
+      "qualifications": []
+    },
+    {
+      "id": "noanswer-3",
+      "query": "volcanic zircon dating",
+      "kind": "noanswer",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [],
+      "qualifications": []
+    },
+    {
+      "id": "noanswer-4",
+      "query": "quantum neutrino oscillation",
+      "kind": "noanswer",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [],
+      "qualifications": []
+    },
+    {
+      "id": "records-long",
+      "query": "I am planning a practical community repair session. Please help me decide exactly what to write on an intake ticket: preferred name, arrival time and next station. I am also thinking about marketing event storytelling.",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ]
+    },
+    {
+      "id": "records-repeat",
+      "query": "intake ticket preferred name arrival time next station intake ticket preferred name arrival time next station intake ticket preferred name arrival time next station intake ticket preferred name arrival time next station ",
+      "kind": "targeted",
+      "scope": [
+        "repair",
+        "alpha",
+        "noise"
+      ],
+      "relevant": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ],
+      "qualifications": [
+        {
+          "source_id": "repair",
+          "start": 1340,
+          "end": 1751,
+          "text": "Use an **intake ticket** to track a person and an item through the room. It records a ticket number, the owner’s preferred name, a short item description, arrival time, and the next station. It should not collect a home address, a detailed personal story, or contact information unless the owner asks for follow-up and the event has a clear way to protect it. The ticket is a queue tool, not a repair diagnosis."
+        }
+      ]
+    }
+  ],
+  "aliases": {
+    "registration slip": "intake ticket",
+    "job card": "diagnosis card"
+  },
+  "settings": {
+    "max_variants": 4,
+    "per_list": 20,
+    "rank_k": 10,
+    "max_blocks": 12,
+    "max_words": 6000,
+    "rrf_k": 60,
+    "neighbor_radius": 1
+  },
+  "split_note": "Fixed feasibility probes, not secret held-out queries; labels not tuned after results. No generalization or model-quality claim.",
+  "omission_probe_ids": [
+    "records-exact",
+    "measurement-exact",
+    "consent-omission",
+    "capacity-omission",
+    "layout-omission",
+    "eligibility-omission"
+  ]
+}

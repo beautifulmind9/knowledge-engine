@@ -1,0 +1,191 @@
+{
+  "contract": "source-first-isolated-publication-allowlist-v1",
+  "source_checkpoint": "c9641fb68c83eb1fa38354d42ba329b2cf28ff3b",
+  "ancestry": "new independent root; no Git history copied",
+  "copied_files": [
+    {
+      "path": "LICENSE",
+      "sha256": "959faad1d5c1238604ad19c7c1b19cb6134750c4803170f3fe6131870427f607",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "acceptance/extraction_quality_2026-10-17/source.md",
+      "sha256": "93afffd120832c93694a2e854e4a8dd444e0d1f83bc05d812ab7d49390485de8",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/prototype.py",
+      "sha256": "d4fc3af3570fcfc4099ce3b9af6b8bf2bdf5e71a0e1640fb4e5e69bc590b4330",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/evaluate.py",
+      "sha256": "46051d09b63660a5a12b70be07b813bb60d06e3a95b69d3a837878fc9d2a7a07",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/test_prototype.py",
+      "sha256": "f90079cd99ae6768e2b56bcb0ee060bc447ae2ceb8de8ce041831c5683084a34",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/multimodal_probe.py",
+      "sha256": "a51d4291b2cdce18820316bedc93cd57b5d461817ddcb2fc77b460f93365e493",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/fixture.json",
+      "sha256": "3c637e0043e56cb95e55c06fc446f0ae594463ec2ed2018d7b9c9da27b86b4ee",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/fixture.sha256",
+      "sha256": "54d3d65f7913433102fc45e8a11c51d8669b0f176de2f6ce8f8b510ec901ed31",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/results.json",
+      "sha256": "468d44686829e2fe7c4dd43ad0d8ce5417c756508ed39a19ab93439361d119aa",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "experiments/source_first/multimodal-results.json",
+      "sha256": "753939cd6678e2855f81f577c38419fa4d0dcfb47cf8c2bff0cad74c17ac0acb",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/models/source_answer.py",
+      "sha256": "04c1ed96798b945325dbfcbae26c7f89793f0c19ffee8468a69f69183fbcff91",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/routers/source_search.py",
+      "sha256": "642db44d779f5b9320a8c60d3dc6f7f8626440bf17e87ce286042d8d8aa73c14",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/routers/control.py",
+      "sha256": "85ee9d79dc8756f3c5df22918afcebf9867bf775e22aac69bb0b697222e8e0df",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/source_search.py",
+      "sha256": "fb1dd94901020584d06cf48e1dc64fa3a32a7e58c6d274f9a878e65ce54dc2be",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/source_context.py",
+      "sha256": "7b0da9f9134cb5442cb0dc645ced90ee483bbefd410af3cb716025ab6e388257",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/source_answer.py",
+      "sha256": "c0481f150d2c7f2d617d7a0076a76959f8528c6d10d74d413e0449adf80498ff",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/source_answer_transport.py",
+      "sha256": "794d5b3f30cf74351826fd0e8b6c2b973d3322d6c21722fcd77cae1cccb0b6e8",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/ai_gateway.py",
+      "sha256": "57ac4e970cd9b818a1c5813e5e943a7bbff64b7f6d001154703fad9256d66721",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/text_extraction.py",
+      "sha256": "92f7e9c5efe0463e83aceef92680876d2b05337d4c8e5ac86c58882b4ee81fc0",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/text_chunking.py",
+      "sha256": "43b3743348caa55c855f16d7fe028581bca8ff0a726e91f7a64aa55b1ba5b09b",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/app/services/source_structure.py",
+      "sha256": "55c2bcb82079194d2193e7bacebac9d8d8cde7b5e1b92712fc3e7a2fc65864db",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_source_search.py",
+      "sha256": "d875c3747a18f1e7d6de075998c3a2618bfe8d188c8158416cc5dfd0d650020c",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_source_context.py",
+      "sha256": "2c9e2f4b767e5e4bed7d3dec6e89035568f8224903de625c6e07713572f27805",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_source_answer.py",
+      "sha256": "885333a3366751c656d3e91fde13582e8be9ab13efe2d4189b80bbe9007055c6",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_counted_source_answer_transport.py",
+      "sha256": "27353e4038f40c24f7d90ac163a5105646b5e8333f80ca1b9a084830a7bde94e",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_source_answer_counting_compatibility.py",
+      "sha256": "8a4966c62127a1a992126aaaa76747d5bacb1298b5cda26a9d89df7920e7a423",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/api/tests/test_source_answer_generation_tool.py",
+      "sha256": "c9f9ffca123f06544bed9231d4697cf88b933d877c6c5bbd2045dfdc60f77a0f",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/web/source-search.js",
+      "sha256": "b51e4ab1d10b71544549ea73454ef11bbd066da7a2e9a5d3fd3192a1c98717eb",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "apps/web/tests/source-search.test.mjs",
+      "sha256": "b51ffddfbf1cc4c4886615250a970bde59d393828dce934fbec355bcbac965e4",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "docs/research/source-first-integration-results.json",
+      "sha256": "dd323625f1c1737c1d2882298b77347eb16a8b7599d7bd3b6ae931e00cbf01a9",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "docs/research/source-context-results.json",
+      "sha256": "e0895dbe6c306e8fa71de2de726af7364aa84ec5b854c0309c7e637ae74c3b60",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "tools/source_answer_count.py",
+      "sha256": "45a0f70b5afa5967889b2fd992c2446f979aed4c1e71dd4de6ea245cf3ff7ae6",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    },
+    {
+      "path": "tools/source_answer_generate.py",
+      "sha256": "dc89fb8679ffd5a7700a4e0ce24a9ae46defec5240fb2db218647ade6ac955c9",
+      "origin": "allowlisted existing research worktree file; exact bytes"
+    }
+  ],
+  "generated_files": [
+    ".gitignore",
+    "pytest.ini",
+    "requirements-offline.txt",
+    "README.md",
+    "docs/ARCHITECTURE-AND-HANDOFF.md",
+    "docs/PDF-HISTORY-ISSUE.md",
+    "docs/SNAPSHOT-VALIDATION.md",
+    "snapshot_tests/test_snapshot.py",
+    "PUBLICATION-MANIFEST.json"
+  ],
+  "excluded": [
+    "legacy/",
+    "storage/",
+    "original private audits/receipts/backups",
+    "historical live-execution reports",
+    "application startup and persistence subsystem",
+    "all files not explicitly listed"
+  ]
+}

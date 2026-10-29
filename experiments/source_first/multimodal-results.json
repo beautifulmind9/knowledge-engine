@@ -1,0 +1,47 @@
+{
+  "parser_hash": "92f7e9c5efe0463e83aceef92680876d2b05337d4c8e5ac86c58882b4ee81fc0",
+  "chunker_hash": "43b3743348caa55c855f16d7fe028581bca8ff0a726e91f7a64aa55b1ba5b09b",
+  "structure_hash": "55c2bcb82079194d2193e7bacebac9d8d8cde7b5e1b92712fc3e7a2fc65864db",
+  "fixtures": {
+    "docx": {
+      "original_unchanged": true,
+      "embedded_images_in_original": 1,
+      "extracted_text": "Synthetic station report\nBefore table: counts are not safety certifications.\nCategory | Count (items)\nInspected | 12\nReferred | 3\nFootnote: referrals are not completed repairs.\n\nFigure 1. Synthetic colored indicator; colors are not described here.\n\nAfter page break: owner retains decision authority.",
+      "table_values_headers_footnote_retained": true,
+      "table_grid_in_plain_text": false,
+      "image_payload_in_text": false,
+      "caption_retained": true,
+      "page_locators_in_text_contract": false,
+      "image_to_caption_relationship_in_text_contract": false
+    },
+    "html": {
+      "extracted_text": "# Diagram review\nBefore image.\nFigure 2. Visible caption.\nAfter image.",
+      "caption_retained": true,
+      "image_alt_retained": false,
+      "image_data_in_original": true,
+      "image_association_in_text_contract": false
+    },
+    "pdf": {
+      "original_unchanged": true,
+      "original_pages": 3,
+      "image_only_page_retained_in_original": true,
+      "page_text_lengths": [
+        81,
+        0,
+        74
+      ],
+      "extracted_text": "Category Count items\nInspected 12\nReferred 3\nFootnote: referrals are not repairs.\n\nFigure 3. Diagram appears on prior page.\nOwner retains decision authority.",
+      "image_only_page_silently_absent_from_text": true,
+      "table_structure_returned": false,
+      "caption_retained": true,
+      "chunk_page_starts": [
+        1
+      ],
+      "caption_diagram_link_returned": false,
+      "original_unchanged_after_annotation": true,
+      "note": "Existing chunk metadata supplies a coarse starting page; individual extracted passages have no page map, grid or image relationship."
+    }
+  },
+  "method": "Exact pure function definitions loaded via AST to avoid app storage initialization. Tests parser/annotation behavior, not end-to-end upload persistence. Synthetic files generated in a disposable directory; no new dependencies.",
+  "limitations": "One simple synthetic document per format; no OCR, diagram meaning or complex PDF parsing success is inferred."
+}
